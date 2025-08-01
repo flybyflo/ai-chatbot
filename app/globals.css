@@ -24,73 +24,90 @@
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 240 10% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 240 10% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 240 10% 3.9%;
-        --primary: 240 5.9% 10%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 240 4.8% 95.9%;
-        --secondary-foreground: 240 5.9% 10%;
-        --muted: 240 4.8% 95.9%;
-        --muted-foreground: 240 3.8% 46.1%;
-        --accent: 240 4.8% 95.9%;
-        --accent-foreground: 240 5.9% 10%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 240 5.9% 90%;
-        --input: 240 5.9% 90%;
-        --ring: 240 10% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-        --sidebar-background: 0 0% 98%;
-        --sidebar-foreground: 240 5.3% 26.1%;
-        --sidebar-primary: 240 5.9% 10%;
-        --sidebar-primary-foreground: 0 0% 98%;
-        --sidebar-accent: 240 4.8% 95.9%;
-        --sidebar-accent-foreground: 240 5.9% 10%;
-        --sidebar-border: 220 13% 91%;
-        --sidebar-ring: 217.2 91.2% 59.8%;
+        /* Light pastel theme - Blue & Mint focused */
+        --background: 195 25% 97%;           /* Soft blue-white */
+        --foreground: 200 20% 25%;           /* Blue-gray text */
+        --card: 195 30% 95%;                 /* Light blue card */
+        --card-foreground: 200 20% 25%;      /* Matching text */
+        --popover: 195 30% 95%;              /* Light popover */
+        --popover-foreground: 200 20% 25%;   /* Matching text */
+        --primary: 200 65% 75%;              /* Pastel blue primary */
+        --primary-foreground: 200 20% 15%;   /* Dark text on primary */
+        --secondary: 150 50% 80%;            /* Pastel mint secondary */
+        --secondary-foreground: 200 20% 25%; /* Dark text */
+        --muted: 180 35% 90%;                /* Light blue-mint mix */
+        --muted-foreground: 200 15% 45%;     /* Muted text */
+        --accent: 160 45% 75%;               /* Mint green accent */
+        --accent-foreground: 200 20% 25%;    /* Dark text */
+        --destructive: 0 60% 75%;            /* Soft pastel red */
+        --destructive-foreground: 0 0% 15%;  /* Dark text */
+        --border: 180 25% 87%;               /* Soft blue-mint border */
+        --input: 180 25% 87%;                /* Input background */
+        --ring: 200 55% 70%;                 /* Blue focus ring */
+        --chart-1: 200 65% 75%;              /* Pastel blue */
+        --chart-2: 150 50% 75%;              /* Pastel mint */
+        --chart-3: 180 55% 78%;              /* Blue-mint blend */
+        --chart-4: 220 60% 78%;              /* Deeper blue */
+        --chart-5: 140 45% 72%;              /* Deeper mint */
+        --chart-6: 280 45% 78%;              /* Pastel lavender */
+        --chart-7: 340 60% 80%;              /* Pastel coral */
+        --chart-8: 25 55% 78%;               /* Pastel peach */
+        --chart-9: 170 50% 72%;              /* Teal-mint mix */
+        --chart-10: 250 50% 75%;             /* Soft purple */
+        --chart-11: 45 50% 75%;              /* Soft yellow */
+        --chart-12: 15 55% 78%;              /* Warm coral */
+        --radius: 0.75rem;
+        --sidebar-background: 190 30% 94%;
+        --sidebar-foreground: 200 20% 30%;
+        --sidebar-primary: 200 60% 70%;
+        --sidebar-primary-foreground: 200 20% 15%;
+        --sidebar-accent: 160 40% 85%;
+        --sidebar-accent-foreground: 200 20% 30%;
+        --sidebar-border: 180 25% 85%;
+        --sidebar-ring: 200 50% 65%;
     }
+    
     .dark {
-        --background: 240 10% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 240 10% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 240 10% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 240 5.9% 10%;
-        --secondary: 240 3.7% 15.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 240 3.7% 15.9%;
-        --muted-foreground: 240 5% 64.9%;
-        --accent: 240 3.7% 15.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 240 3.7% 15.9%;
-        --input: 240 3.7% 15.9%;
-        --ring: 240 4.9% 83.9%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-        --sidebar-background: 240 5.9% 10%;
-        --sidebar-foreground: 240 4.8% 95.9%;
-        --sidebar-primary: 224.3 76.3% 48%;
-        --sidebar-primary-foreground: 0 0% 100%;
-        --sidebar-accent: 240 3.7% 15.9%;
-        --sidebar-accent-foreground: 240 4.8% 95.9%;
-        --sidebar-border: 240 3.7% 15.9%;
-        --sidebar-ring: 217.2 91.2% 59.8%;
+        /* Dark pastel theme - Blue & Mint focused */
+        --background: 200 20% 8%;            /* Deep blue background */
+        --foreground: 180 25% 88%;           /* Soft blue-mint text */
+        --card: 200 25% 12%;                 /* Dark blue card */
+        --card-foreground: 180 25% 88%;      /* Light text */
+        --popover: 200 25% 12%;              /* Dark popover */
+        --popover-foreground: 180 25% 88%;   /* Light text */
+        --primary: 200 50% 65%;              /* Muted pastel blue */
+        --primary-foreground: 200 20% 5%;    /* Very dark text */
+        --secondary: 150 35% 35%;            /* Deep pastel mint */
+        --secondary-foreground: 180 25% 88%; /* Light text */
+        --muted: 180 20% 18%;                /* Deep blue-mint mix */
+        --muted-foreground: 180 20% 65%;     /* Lighter muted text */
+        --accent: 160 30% 45%;               /* Deep mint green */
+        --accent-foreground: 180 25% 88%;    /* Light text */
+        --destructive: 0 45% 45%;            /* Deep pastel red */
+        --destructive-foreground: 0 0% 95%;  /* Light text */
+        --border: 180 20% 22%;               /* Dark blue-mint border */
+        --input: 180 20% 22%;                /* Input background */
+        --ring: 200 40% 60%;                 /* Blue focus ring */
+        --chart-1: 200 50% 55%;              /* Deep pastel blue */
+        --chart-2: 150 40% 50%;              /* Deep pastel mint */
+        --chart-3: 180 45% 52%;              /* Blue-mint blend */
+        --chart-4: 220 45% 58%;              /* Deeper blue */
+        --chart-5: 140 35% 48%;              /* Deeper mint */
+        --chart-6: 280 35% 55%;              /* Deep lavender */
+        --chart-7: 340 45% 58%;              /* Deep coral */
+        --chart-8: 25 40% 55%;               /* Deep peach */
+        --chart-9: 170 40% 50%;              /* Deep teal-mint */
+        --chart-10: 250 40% 52%;             /* Deep purple */
+        --chart-11: 45 40% 52%;              /* Deep yellow */
+        --chart-12: 15 45% 55%;              /* Deep warm coral */
+        --sidebar-background: 195 25% 10%;
+        --sidebar-foreground: 180 20% 85%;
+        --sidebar-primary: 200 45% 60%;
+        --sidebar-primary-foreground: 200 20% 5%;
+        --sidebar-accent: 160 25% 25%;
+        --sidebar-accent-foreground: 180 20% 85%;
+        --sidebar-border: 180 20% 18%;
+        --sidebar-ring: 200 35% 55%;
     }
 }
 
@@ -161,4 +178,129 @@
 
 .suggestion-highlight {
     @apply bg-blue-200 hover:bg-blue-300 dark:hover:bg-blue-400/50 dark:text-blue-50 dark:bg-blue-500/40;
+}
+
+/* Additional pastel utility classes - Blue & Mint focused */
+@layer utilities {
+    .bg-pastel-blue {
+        background-color: hsl(200, 65%, 75%);
+    }
+    
+    .bg-pastel-mint {
+        background-color: hsl(150, 50%, 80%);
+    }
+    
+    .bg-pastel-blue-light {
+        background-color: hsl(210, 60%, 85%);
+    }
+    
+    .bg-pastel-mint-light {
+        background-color: hsl(160, 45%, 85%);
+    }
+    
+    .bg-pastel-teal {
+        background-color: hsl(180, 55%, 78%);
+    }
+    
+    .bg-pastel-cyan {
+        background-color: hsl(190, 60%, 80%);
+    }
+    
+    .bg-pastel-lavender {
+        background-color: hsl(280, 45%, 78%);
+    }
+    
+    .bg-pastel-coral {
+        background-color: hsl(340, 60%, 80%);
+    }
+    
+    .bg-pastel-peach {
+        background-color: hsl(25, 55%, 78%);
+    }
+    
+    .bg-pastel-purple {
+        background-color: hsl(250, 50%, 75%);
+    }
+    
+    .bg-pastel-yellow {
+        background-color: hsl(45, 50%, 75%);
+    }
+    
+    .text-pastel-blue {
+        color: hsl(200, 65%, 35%);
+    }
+    
+    .text-pastel-mint {
+        color: hsl(150, 50%, 35%);
+    }
+    
+    .text-pastel-blue-light {
+        color: hsl(210, 60%, 40%);
+    }
+    
+    .text-pastel-mint-light {
+        color: hsl(160, 45%, 40%);
+    }
+    
+    .text-pastel-teal {
+        color: hsl(180, 55%, 35%);
+    }
+    
+    .text-pastel-cyan {
+        color: hsl(190, 60%, 35%);
+    }
+    
+    .text-pastel-lavender {
+        color: hsl(280, 45%, 35%);
+    }
+    
+    .text-pastel-coral {
+        color: hsl(340, 60%, 35%);
+    }
+    
+    .text-pastel-peach {
+        color: hsl(25, 55%, 35%);
+    }
+    
+    .text-pastel-purple {
+        color: hsl(250, 50%, 35%);
+    }
+    
+    .text-pastel-yellow {
+        color: hsl(45, 50%, 35%);
+    }
+}
+
+@layer base {
+    :root {
+      /* Chart colors in OKLCH - Mixed pastel blends */
+      --chart-1: oklch(0.82 0.08 195);   /* Blue-cyan blend */
+      --chart-2: oklch(0.85 0.1 165);    /* Mint-teal blend */
+      --chart-3: oklch(0.83 0.09 210);   /* Blue-lavender blend */
+      --chart-4: oklch(0.84 0.07 140);   /* Mint-green blend */
+      --chart-5: oklch(0.81 0.09 280);   /* Lavender-blue blend */
+      --chart-6: oklch(0.86 0.06 175);   /* Teal-mint blend */
+      --chart-7: oklch(0.83 0.08 230);   /* Blue-purple blend */
+      --chart-8: oklch(0.85 0.07 155);   /* Mint-cyan blend */
+      --chart-9: oklch(0.82 0.09 260);   /* Purple-blue blend */
+      --chart-10: oklch(0.84 0.08 185);  /* Cyan-blue blend */
+      --chart-11: oklch(0.86 0.06 145);  /* Green-mint blend */
+      --chart-12: oklch(0.83 0.07 275);  /* Lavender-purple blend */
+    }
+  
+    .dark {
+      /* Dark chart colors - Mixed pastel blends */
+      --chart-1: oklch(0.65 0.12 195);   /* Deep blue-cyan blend */
+      --chart-2: oklch(0.68 0.13 165);   /* Deep mint-teal blend */
+      --chart-3: oklch(0.66 0.11 210);   /* Deep blue-lavender blend */
+      --chart-4: oklch(0.67 0.1 140);    /* Deep mint-green blend */
+      --chart-5: oklch(0.64 0.12 280);   /* Deep lavender-blue blend */
+      --chart-6: oklch(0.69 0.09 175);   /* Deep teal-mint blend */
+      --chart-7: oklch(0.66 0.11 230);   /* Deep blue-purple blend */
+      --chart-8: oklch(0.68 0.1 155);    /* Deep mint-cyan blend */
+      --chart-9: oklch(0.65 0.12 260);   /* Deep purple-blue blend */
+      --chart-10: oklch(0.67 0.11 185);  /* Deep cyan-blue blend */
+      --chart-11: oklch(0.69 0.09 145);  /* Deep green-mint blend */
+      --chart-12: oklch(0.66 0.1 275);   /* Deep lavender-purple blend */
+    }
 }
