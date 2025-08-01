@@ -52,42 +52,55 @@ function jsonSchemaToZod(jsonSchema: any): z.ZodType<any> {
 
   if (jsonSchema.type === 'object' && jsonSchema.properties) {
     const zodObject: Record<string, z.ZodType<any>> = {};
-    
+
     for (const [key, prop] of Object.entries(jsonSchema.properties)) {
       const property = prop as any;
-      
+
       switch (property.type) {
         case 'string':
-          zodObject[key] = z.string().describe(property.description || property.title || '');
+          zodObject[key] = z
+            .string()
+            .describe(property.description || property.title || '');
           break;
         case 'number':
-          zodObject[key] = z.number().describe(property.description || property.title || '');
+          zodObject[key] = z
+            .number()
+            .describe(property.description || property.title || '');
           break;
         case 'integer':
-          zodObject[key] = z.number().int().describe(property.description || property.title || '');
+          zodObject[key] = z
+            .number()
+            .int()
+            .describe(property.description || property.title || '');
           break;
         case 'boolean':
-          zodObject[key] = z.boolean().describe(property.description || property.title || '');
+          zodObject[key] = z
+            .boolean()
+            .describe(property.description || property.title || '');
           break;
         case 'array':
-          zodObject[key] = z.array(z.any()).describe(property.description || property.title || '');
+          zodObject[key] = z
+            .array(z.any())
+            .describe(property.description || property.title || '');
           break;
         case 'object':
           zodObject[key] = jsonSchemaToZod(property);
           break;
         default:
-          zodObject[key] = z.any().describe(property.description || property.title || '');
+          zodObject[key] = z
+            .any()
+            .describe(property.description || property.title || '');
       }
-      
+
       // Make optional if not in required array
       if (!jsonSchema.required || !jsonSchema.required.includes(key)) {
         zodObject[key] = zodObject[key].optional();
       }
     }
-    
+
     return z.object(zodObject);
   }
-  
+
   // Fallback for non-object schemas
   return z.object({});
 }
@@ -251,69 +264,94 @@ export async function POST(request: Request) {
 
             // Get available tools from MCP server
             const toolsResult = await mcpClient.listTools();
-            
+
             // Convert MCP tools to AI SDK format
             mcpTools = {};
             for (const mcpTool of toolsResult.tools) {
               console.log(`🔧 Converting MCP tool: ${mcpTool.name}`, {
                 description: mcpTool.description,
                 inputSchema: mcpTool.inputSchema,
-                inputSchemaStringified: JSON.stringify(mcpTool.inputSchema, null, 2),
+                inputSchemaStringified: JSON.stringify(
+                  mcpTool.inputSchema,
+                  null,
+                  2,
+                ),
               });
-              
+
               // Ensure the schema is a valid JSON Schema object
               let validSchema = mcpTool.inputSchema;
-              
+
               // If inputSchema is null, undefined, or has invalid type, create a default schema
-              if (!validSchema || typeof validSchema !== 'object' || validSchema.type !== 'object') {
-                console.warn(`⚠️ Invalid inputSchema for tool ${mcpTool.name}, using default schema`);
+              if (
+                !validSchema ||
+                typeof validSchema !== 'object' ||
+                validSchema.type !== 'object'
+              ) {
+                console.warn(
+                  `⚠️ Invalid inputSchema for tool ${mcpTool.name}, using default schema`,
+                );
                 validSchema = {
                   type: 'object',
                   properties: {},
                   additionalProperties: true,
                 };
               }
-              
+
               // Ensure the schema has all required fields
               if (!validSchema.properties) {
                 validSchema.properties = {};
               }
-              
-              console.log(`✅ Final schema for ${mcpTool.name}:`, JSON.stringify(validSchema, null, 2));
-              
+
+              console.log(
+                `✅ Final schema for ${mcpTool.name}:`,
+                JSON.stringify(validSchema, null, 2),
+              );
+
               // Convert JSON Schema to Zod schema
               const zodSchema = jsonSchemaToZod(validSchema);
               console.log(`🔄 Converted to Zod schema for ${mcpTool.name}`);
-              
+
               // Debug: Check if tool function is available
               console.log(`🔍 tool function type:`, typeof tool);
-              
+
               // Create proper AI SDK tool using tool() function
               try {
                 mcpTools[mcpTool.name] = tool({
-                description: mcpTool.description || `MCP tool: ${mcpTool.name}`,
-                inputSchema: zodSchema,
-                execute: async (args: any) => {
-                  console.log(`🚀 MCP tool "${mcpTool.name}" called with args:`, args);
-                  
-                  if (!mcpClient) {
-                    console.error(`❌ MCP client not connected for tool ${mcpTool.name}`);
-                    throw new Error('MCP client not connected');
-                  }
-                  
-                  try {
-                    const result = await mcpClient.callTool({
-                      name: mcpTool.name,
-                      arguments: args,
-                    });
-                    
-                    console.log(`✅ MCP tool "${mcpTool.name}" result:`, result);
-                    return result.content;
-                  } catch (error) {
-                    console.error(`❌ MCP tool "${mcpTool.name}" error:`, error);
-                    throw error;
-                  }
-                },
+                  description:
+                    mcpTool.description || `MCP tool: ${mcpTool.name}`,
+                  inputSchema: zodSchema,
+                  execute: async (args: any) => {
+                    console.log(
+                      `🚀 MCP tool "${mcpTool.name}" called with args:`,
+                      args,
+                    );
+
+                    if (!mcpClient) {
+                      console.error(
+                        `❌ MCP client not connected for tool ${mcpTool.name}`,
+                      );
+                      throw new Error('MCP client not connected');
+                    }
+
+                    try {
+                      const result = await mcpClient.callTool({
+                        name: mcpTool.name,
+                        arguments: args,
+                      });
+
+                      console.log(
+                        `✅ MCP tool "${mcpTool.name}" result:`,
+                        result,
+                      );
+                      return result.content;
+                    } catch (error) {
+                      console.error(
+                        `❌ MCP tool "${mcpTool.name}" error:`,
+                        error,
+                      );
+                      throw error;
+                    }
+                  },
                 });
               } catch (error) {
                 console.error(`❌ Error creating tool ${mcpTool.name}:`, error);
@@ -326,10 +364,14 @@ export async function POST(request: Request) {
               `✅ Connected to MCP server at ${mcpUrl} with ${Object.keys(mcpTools).length} tools: ${Object.keys(mcpTools).join(', ')}`,
             );
           } catch (error: any) {
-            console.error(`❌ Failed to connect to MCP server: ${error.message}`);
+            console.error(
+              `❌ Failed to connect to MCP server: ${error.message}`,
+            );
             console.error(`   URL: ${mcpUrl}`);
             if (error.message?.includes('protocol version')) {
-              console.error(`   This may be a protocol version issue - try updating your MCP server`);
+              console.error(
+                `   This may be a protocol version issue - try updating your MCP server`,
+              );
             }
             mcpTools = {};
           }
@@ -346,16 +388,17 @@ export async function POST(request: Request) {
           }),
           ...mcpTools,
         };
-        
-        const activeToolNames = selectedChatModel === 'chat-model-reasoning'
-          ? []
-          : [
-              'getWeather',
-              'createDocument',
-              'updateDocument',
-              'requestSuggestions',
-              ...Object.keys(mcpTools),
-            ];
+
+        const activeToolNames =
+          selectedChatModel === 'chat-model-reasoning'
+            ? []
+            : [
+                'getWeather',
+                'createDocument',
+                'updateDocument',
+                'requestSuggestions',
+                ...Object.keys(mcpTools),
+              ];
 
         console.log(`🔧 AI SDK Tools Setup:`, {
           totalTools: Object.keys(allTools).length,
@@ -366,37 +409,52 @@ export async function POST(request: Request) {
         });
 
         // Debug: Log the actual tool definitions that will be sent to AI SDK
-        Object.entries(mcpTools).forEach(([toolName, toolDef]: [string, any]) => {
-          console.log(`🔍 Final tool definition for ${toolName}:`, {
-            description: toolDef.description,
-            parameters: toolDef.parameters,
-            parametersStringified: JSON.stringify(toolDef.parameters, null, 2),
-          });
-        });
+        Object.entries(mcpTools).forEach(
+          ([toolName, toolDef]: [string, any]) => {
+            console.log(`🔍 Final tool definition for ${toolName}:`, {
+              description: toolDef.description,
+              parameters: toolDef.parameters,
+              parametersStringified: JSON.stringify(
+                toolDef.parameters,
+                null,
+                2,
+              ),
+            });
+          },
+        );
 
         // Enhanced system prompt with MCP tool awareness
-        let enhancedSystemPrompt = systemPrompt({ selectedChatModel, requestHints });
-        
+        let enhancedSystemPrompt = systemPrompt({
+          selectedChatModel,
+          requestHints,
+        });
+
         if (Object.keys(mcpTools).length > 0) {
           const mcpToolDescriptions = Object.entries(mcpTools)
-            .map(([name, tool]: [string, any]) => `- ${name}: ${tool.description}`)
+            .map(
+              ([name, tool]: [string, any]) => `- ${name}: ${tool.description}`,
+            )
             .join('\n');
-            
+
           enhancedSystemPrompt += `\n\nAdditional MCP Tools Available:\n${mcpToolDescriptions}\n\nYou can use these MCP tools when appropriate to help users. Be proactive in suggesting and using them when they match the user's request.`;
-          
-          console.log(`🎯 Enhanced system prompt with ${Object.keys(mcpTools).length} MCP tools`);
+
+          console.log(
+            `🎯 Enhanced system prompt with ${Object.keys(mcpTools).length} MCP tools`,
+          );
         }
 
         // Log the messages being sent to the AI
         const modelMessages = convertToModelMessages(uiMessages);
-        console.log(`💬 Sending ${modelMessages.length} messages to AI:`, 
-          modelMessages.map((msg, i) => ({ 
-            index: i, 
-            role: msg.role, 
-            content: typeof msg.content === 'string' 
-              ? msg.content.substring(0, 100) + '...' 
-              : `[${typeof msg.content}]`
-          }))
+        console.log(
+          `💬 Sending ${modelMessages.length} messages to AI:`,
+          modelMessages.map((msg, i) => ({
+            index: i,
+            role: msg.role,
+            content:
+              typeof msg.content === 'string'
+                ? `${msg.content.substring(0, 100)}...`
+                : `[${typeof msg.content}]`,
+          })),
         );
 
         const result = streamText({
@@ -411,20 +469,26 @@ export async function POST(request: Request) {
             isEnabled: isProductionEnvironment,
             functionId: 'stream-text',
           },
-          onStepFinish: ({ stepType, text, toolCalls, toolResults }) => {
-            console.log(`📊 Step finished - Type: ${stepType}`);
+          onStepFinish: ({ text, toolCalls, toolResults }) => {
+            console.log(`📊 Step finished`);
             if (toolCalls && toolCalls.length > 0) {
-              console.log(`🔧 Tool calls in step:`, toolCalls.map(tc => ({ 
-                toolName: tc.toolName, 
-                args: tc.args 
-              })));
+              console.log(
+                `🔧 Tool calls in step:`,
+                toolCalls.map((tc) => ({
+                  toolName: tc.toolName,
+                  input: tc.input,
+                })),
+              );
             }
             if (toolResults && toolResults.length > 0) {
-              console.log(`✅ Tool results in step:`, toolResults.map(tr => ({ 
-                toolCallId: tr.toolCallId, 
-                toolName: tr.toolName,
-                result: tr.result 
-              })));
+              console.log(
+                `✅ Tool results in step:`,
+                toolResults.map((tr) => ({
+                  toolCallId: tr.toolCallId,
+                  toolName: tr.toolName,
+                  output: tr.output,
+                })),
+              );
             }
             if (text) {
               console.log(`💬 Text in step: "${text.substring(0, 100)}..."`);
@@ -435,14 +499,17 @@ export async function POST(request: Request) {
             console.log(`📝 Final text length: ${text?.length || 0}`);
             console.log(`🔧 Total tool calls: ${toolCalls?.length || 0}`);
             console.log(`✅ Total tool results: ${toolResults?.length || 0}`);
-            
+
             if (toolCalls && toolCalls.length > 0) {
-              console.log(`🔧 All tool calls:`, toolCalls.map(tc => ({ 
-                toolName: tc.toolName, 
-                args: tc.args 
-              })));
+              console.log(
+                `🔧 All tool calls:`,
+                toolCalls.map((tc) => ({
+                  toolName: tc.toolName,
+                  input: tc.input,
+                })),
+              );
             }
-            
+
             // Close MCP client when done
             if (mcpClient) {
               await mcpClient.close();
