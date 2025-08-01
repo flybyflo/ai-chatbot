@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob';
+import { BlobServiceClient } from '@azure/storage-blob';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -51,12 +51,49 @@ export async function POST(request: Request) {
     const fileBuffer = await file.arrayBuffer();
 
     try {
-      const data = await put(`${filename}`, fileBuffer, {
-        access: 'public',
+      const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+      const containerName =
+        process.env.AZURE_STORAGE_CONTAINER_NAME || 'uploads';
+
+      if (!connectionString) {
+        return NextResponse.json(
+          { error: 'Azure Storage connection string not configured' },
+          { status: 500 },
+        );
+      }
+
+      const blobServiceClient =
+        BlobServiceClient.fromConnectionString(connectionString);
+      const containerClient =
+        blobServiceClient.getContainerClient(containerName);
+
+      // Ensure container exists and has public read access
+      await containerClient.createIfNotExists({
+        access: 'blob',
       });
 
-      return NextResponse.json(data);
+      // Generate unique filename with timestamp
+      const timestamp = Date.now();
+      const uniqueFilename = `${timestamp}-${filename}`;
+      const blockBlobClient =
+        containerClient.getBlockBlobClient(uniqueFilename);
+
+      await blockBlobClient.uploadData(fileBuffer, {
+        blobHTTPHeaders: {
+          blobContentType: file.type,
+        },
+      });
+
+      const url = blockBlobClient.url;
+
+      return NextResponse.json({
+        url,
+        pathname: uniqueFilename,
+        contentType: file.type,
+        size: file.size,
+      });
     } catch (error) {
+      console.error('Azure Storage upload error:', error);
       return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
   } catch (error) {
