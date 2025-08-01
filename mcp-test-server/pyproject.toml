@@ -1,0 +1,20 @@
+[project]
+name = "mcp-test-server"
+version = "0.1.0"
+description = "FastMCP test server for development"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp",
+    "fastapi",
+]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+start = "mcp_test_server.main:main"
+dev = "mcp_test_server.main:main"
+
+[tool.uv.sources]
+fastmcp = { git = "https://github.com/jlowin/fastmcp.git" }
