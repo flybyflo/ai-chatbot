@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDownIcon, LoaderIcon } from './icons';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Markdown } from './markdown';
 
@@ -37,7 +37,7 @@ export function MessageReasoning({
         <div className="flex flex-row gap-2 items-center">
           <div className="font-medium">Reasoning</div>
           <div className="animate-spin">
-            <LoaderIcon />
+            <Loader2 />
           </div>
         </div>
       ) : (
@@ -51,7 +51,7 @@ export function MessageReasoning({
               setIsExpanded(!isExpanded);
             }}
           >
-            <ChevronDownIcon />
+            <ChevronDown />
           </button>
         </div>
       )}

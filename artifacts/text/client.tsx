@@ -3,13 +3,13 @@ import { DiffView } from '@/components/diffview';
 import { DocumentSkeleton } from '@/components/document-skeleton';
 import { Editor } from '@/components/text-editor';
 import {
-  ClockRewind,
+  RewindIcon,
   CopyIcon,
-  MessageIcon,
+  MessageCircleIcon,
   PenIcon,
   RedoIcon,
   UndoIcon,
-} from '@/components/icons';
+} from 'lucide-react';
 import type { Suggestion } from '@/lib/db/schema';
 import { toast } from 'sonner';
 import { getSuggestions } from '../actions';
@@ -96,7 +96,7 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
   },
   actions: [
     {
-      icon: <ClockRewind size={18} />,
+      icon: <RewindIcon size={18} />,
       description: 'View changes',
       onClick: ({ handleVersionChange }) => {
         handleVersionChange('toggle');
@@ -163,7 +163,7 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
       },
     },
     {
-      icon: <MessageIcon />,
+      icon: <MessageCircleIcon />,
       description: 'Request suggestions',
       onClick: ({ sendMessage }) => {
         sendMessage({

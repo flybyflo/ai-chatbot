@@ -9,7 +9,7 @@ import { useWindowSize } from 'usehooks-ts';
 import type { Document } from '@/lib/db/schema';
 import { getDocumentTimestampByIndex } from '@/lib/utils';
 
-import { LoaderIcon } from './icons';
+import { Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useArtifact } from '@/hooks/use-artifact';
 
@@ -89,7 +89,7 @@ export const VersionFooter = ({
           <div>Restore this version</div>
           {isMutating && (
             <div className="animate-spin">
-              <LoaderIcon />
+              <Loader2 />
             </div>
           )}
         </Button>

@@ -5,7 +5,7 @@ import {
   RedoIcon,
   SparklesIcon,
   UndoIcon,
-} from '@/components/icons';
+} from 'lucide-react';
 import { SpreadsheetEditor } from '@/components/sheet-editor';
 import { parse, unparse } from 'papaparse';
 import { toast } from 'sonner';

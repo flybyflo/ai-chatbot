@@ -9,7 +9,7 @@ import {
   useRef,
 } from 'react';
 import type { ArtifactKind, UIArtifact } from './artifact';
-import { FileIcon, FullscreenIcon, ImageIcon, LoaderIcon } from './icons';
+import { FileText, Maximize2, Image, Loader2 } from 'lucide-react';
 import { cn, fetcher } from '@/lib/utils';
 import type { Document } from '@/lib/db/schema';
 import { InlineDocumentSkeleton } from './document-skeleton';
@@ -126,7 +126,7 @@ const LoadingSkeleton = ({ artifactKind }: { artifactKind: ArtifactKind }) => (
         <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-24" />
       </div>
       <div>
-        <FullscreenIcon />
+        <Maximize2 />
       </div>
     </div>
     {artifactKind === 'image' ? (
@@ -187,7 +187,7 @@ const PureHitboxLayer = ({
     >
       <div className="w-full p-4 flex justify-end items-center">
         <div className="absolute right-[9px] top-[13px] p-2 hover:dark:bg-zinc-700 rounded-md hover:bg-zinc-100">
-          <FullscreenIcon />
+          <Maximize2 />
         </div>
       </div>
     </div>
@@ -213,12 +213,12 @@ const PureDocumentHeader = ({
       <div className="text-muted-foreground">
         {isStreaming ? (
           <div className="animate-spin">
-            <LoaderIcon />
+            <Loader2 />
           </div>
         ) : kind === 'image' ? (
-          <ImageIcon />
+          <Image alt="" />
         ) : (
-          <FileIcon />
+          <FileText />
         )}
       </div>
       <div className="-translate-y-1 sm:translate-y-0 font-medium">{title}</div>

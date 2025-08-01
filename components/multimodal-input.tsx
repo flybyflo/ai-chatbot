@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUp, Paperclip, Square } from 'lucide-react';
+import { ArrowUp, ArrowDown, Paperclip, Square } from 'lucide-react';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -24,7 +24,6 @@ import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
@@ -355,7 +354,7 @@ function PureAttachmentsButton({
       disabled={status !== 'ready'}
       variant="ghost"
     >
-              <Paperclip size={14} />
+      <Paperclip size={14} />
     </Button>
   );
 }
@@ -379,7 +378,7 @@ function PureStopButton({
         setMessages((messages) => messages);
       }}
     >
-              <Square size={14} />
+      <Square size={14} />
     </Button>
   );
 }
@@ -405,7 +404,7 @@ function PureSendButton({
       }}
       disabled={input.length === 0 || uploadQueue.length > 0}
     >
-              <ArrowUp size={14} />
+      <ArrowUp size={14} />
     </Button>
   );
 }

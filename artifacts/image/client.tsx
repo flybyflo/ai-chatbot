@@ -1,5 +1,5 @@
 import { Artifact } from '@/components/create-artifact';
-import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
+import { CopyIcon, RedoIcon, UndoIcon } from 'lucide-react';
 import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
 
