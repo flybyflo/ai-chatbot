@@ -15,6 +15,7 @@ interface InputExpandableContentProps {
   className?: string;
   attachmentButton: ReactNode;
   sendButton: ReactNode;
+  onModelSelect?: (modelId: string) => void;
 }
 
 export function InputExpandableContent({
@@ -24,6 +25,7 @@ export function InputExpandableContent({
   className = '',
   attachmentButton,
   sendButton,
+  onModelSelect,
 }: InputExpandableContentProps) {
   const [activePanel, setActivePanel] = useState<'options' | 'models' | null>(
     null,
@@ -46,7 +48,13 @@ export function InputExpandableContent({
   const modelSelectorData = ModelSelectorPanel({
     session,
     selectedModelId,
-    onModelSelect: () => setActivePanel(null),
+    onModelSelect: (modelId: string) => {
+      setActivePanel(null);
+      // Call the parent's onModelSelect if provided
+      if (onModelSelect) {
+        onModelSelect(modelId);
+      }
+    },
   });
 
   const [resetTrigger, setResetTrigger] = useState(false);
@@ -80,7 +88,10 @@ export function InputExpandableContent({
         className={className}
       >
         {activePanel === 'options' ? (
-          <InputOptions onTitleChange={handleTitleChange} resetTrigger={resetTrigger} />
+          <InputOptions
+            onTitleChange={handleTitleChange}
+            resetTrigger={resetTrigger}
+          />
         ) : (
           modelSelectorData.panel
         )}

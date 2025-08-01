@@ -8,9 +8,9 @@ import { saveChatModelAsCookie } from '@/app/(chat)/actions';
 import type { Session } from 'next-auth';
 
 interface ModelSelectorPanelProps {
-  session: Session;
+  session: Session | null;
   selectedModelId: string;
-  onModelSelect?: () => void;
+  onModelSelect?: (modelId: string) => void;
 }
 
 export function ModelSelectorPanel({
@@ -18,16 +18,22 @@ export function ModelSelectorPanel({
   selectedModelId,
   onModelSelect,
 }: ModelSelectorPanelProps) {
-  const [optimisticModelId, setOptimisticModelId] = useOptimistic(selectedModelId);
-  const userType = session.user.type;
+  const [optimisticModelId, setOptimisticModelId] =
+    useOptimistic(selectedModelId);
+
+  // Add null checks for session and session.user
+  const userType = session?.user?.type || 'guest';
   const { availableChatModelIds } = entitlementsByUserType[userType];
-  
+
   const availableChatModels = chatModels.filter((chatModel) =>
     availableChatModelIds.includes(chatModel.id),
   );
 
   const selectedChatModel = useMemo(
-    () => availableChatModels.find((chatModel) => chatModel.id === optimisticModelId),
+    () =>
+      availableChatModels.find(
+        (chatModel) => chatModel.id === optimisticModelId,
+      ),
     [optimisticModelId, availableChatModels],
   );
 
@@ -53,7 +59,7 @@ export function ModelSelectorPanel({
                       setOptimisticModelId(chatModel.id);
                       saveChatModelAsCookie(chatModel.id);
                     });
-                    onModelSelect?.();
+                    onModelSelect?.(chatModel.id);
                   }}
                 >
                   <div>

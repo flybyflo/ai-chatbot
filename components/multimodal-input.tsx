@@ -16,12 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import {
-  ArrowUp,
-  ArrowDown,
-  Paperclip,
-  Square,
-} from 'lucide-react';
+import { ArrowUp, ArrowDown, Paperclip, Square } from 'lucide-react';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -47,6 +42,7 @@ function PureMultimodalInput({
   className,
   session,
   selectedModelId,
+  onModelSelect,
 }: {
   chatId: string;
   input: string;
@@ -61,6 +57,7 @@ function PureMultimodalInput({
   className?: string;
   session: Session;
   selectedModelId: string;
+  onModelSelect?: (modelId: string) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -299,6 +296,7 @@ function PureMultimodalInput({
       <InputExpandableContent
         session={session}
         selectedModelId={selectedModelId}
+        onModelSelect={onModelSelect}
         attachmentButton={
           <AttachmentsButton fileInputRef={fileInputRef} status={status} />
         }

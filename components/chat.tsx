@@ -49,6 +49,8 @@ export function Chat({
   const { setDataStream } = useDataStream();
 
   const [input, setInput] = useState<string>('');
+  const [selectedModelId, setSelectedModelId] =
+    useState<string>(initialChatModel);
 
   const {
     messages,
@@ -163,7 +165,8 @@ export function Chat({
                   setMessages={setMessages}
                   sendMessage={sendMessage}
                   session={session}
-                  selectedModelId={initialChatModel}
+                  selectedModelId={selectedModelId}
+                  onModelSelect={(modelId) => setSelectedModelId(modelId)}
                 />
               )}
             </div>
@@ -185,7 +188,8 @@ export function Chat({
                 setMessages={setMessages}
                 sendMessage={sendMessage}
                 session={session}
-                selectedModelId={initialChatModel}
+                selectedModelId={selectedModelId}
+                onModelSelect={(modelId) => setSelectedModelId(modelId)}
               />
             )}
           </form>
@@ -207,6 +211,8 @@ export function Chat({
         votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
+        session={session}
+        selectedModelId={selectedModelId}
       />
     </>
   );
