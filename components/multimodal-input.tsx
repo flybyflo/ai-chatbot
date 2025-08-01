@@ -16,17 +16,22 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUp, ArrowDown, Paperclip, Square } from 'lucide-react';
+import {
+  ArrowUp,
+  ArrowDown,
+  Paperclip,
+  Square,
+} from 'lucide-react';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { SuggestedActions } from './suggested-actions';
+import { InputExpandableContent } from './input-expandable-content';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
-import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
+import type { Session } from 'next-auth';
 
 function PureMultimodalInput({
   chatId,
@@ -40,7 +45,8 @@ function PureMultimodalInput({
   setMessages,
   sendMessage,
   className,
-  selectedVisibilityType,
+  session,
+  selectedModelId,
 }: {
   chatId: string;
   input: string;
@@ -53,7 +59,8 @@ function PureMultimodalInput({
   setMessages: UseChatHelpers<ChatMessage>['setMessages'];
   sendMessage: UseChatHelpers<ChatMessage>['sendMessage'];
   className?: string;
-  selectedVisibilityType: VisibilityType;
+  session: Session;
+  selectedModelId: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -82,6 +89,20 @@ function PureMultimodalInput({
     'input',
     '',
   );
+
+  const [glowVisible, setGlowVisible] = useState(false);
+
+  // Animate glow effect for new chats
+  useEffect(() => {
+    if (messages.length === 0) {
+      const timer = setTimeout(() => {
+        setGlowVisible(true);
+      }, 800); // Start glow after heading animation
+      return () => clearTimeout(timer);
+    } else {
+      setGlowVisible(false);
+    }
+  }, [messages.length]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -209,7 +230,7 @@ function PureMultimodalInput({
   return (
     <div className="relative w-full flex flex-col gap-4">
       <AnimatePresence>
-        {!isAtBottom && (
+        {!isAtBottom && messages.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -236,11 +257,11 @@ function PureMultimodalInput({
       {messages.length === 0 &&
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
-          <SuggestedActions
-            sendMessage={sendMessage}
-            chatId={chatId}
-            selectedVisibilityType={selectedVisibilityType}
-          />
+          <div className="text-center pb-2">
+            <p className="text-3xl font-bold text-foreground">
+              How can I help you today?
+            </p>
+          </div>
         )}
 
       <input
@@ -275,50 +296,63 @@ function PureMultimodalInput({
         </div>
       )}
 
-      <Textarea
-        data-testid="multimodal-input"
-        ref={textareaRef}
-        placeholder="Send a message..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
-          className,
-        )}
-        rows={2}
-        autoFocus
-        onKeyDown={(event) => {
-          if (
-            event.key === 'Enter' &&
-            !event.shiftKey &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
+      <InputExpandableContent
+        session={session}
+        selectedModelId={selectedModelId}
+        attachmentButton={
+          <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+        }
+        sendButton={
+          status === 'submitted' ? (
+            <StopButton stop={stop} setMessages={setMessages} />
+          ) : (
+            <SendButton
+              input={input}
+              submitForm={submitForm}
+              uploadQueue={uploadQueue}
+            />
+          )
+        }
+        normalContent={
+          <Textarea
+            data-testid="multimodal-input"
+            ref={textareaRef}
+            placeholder="Send a message..."
+            value={input}
+            onChange={handleInput}
+            className={cx(
+              'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
+              'transition-shadow duration-700 ease-in-out',
+              messages.length === 0 &&
+                glowVisible &&
+                'shadow-[0_8px_30px_-4px] shadow-blue-500/15 dark:shadow-blue-400/15',
+              messages.length === 0 &&
+                glowVisible &&
+                'focus-within:shadow-[0_12px_40px_-4px] focus-within:shadow-blue-500/25 dark:focus-within:shadow-blue-400/25 focus-within:transition-shadow focus-within:duration-300',
+              className,
+            )}
+            rows={2}
+            autoFocus
+            onKeyDown={(event) => {
+              if (
+                event.key === 'Enter' &&
+                !event.shiftKey &&
+                !event.nativeEvent.isComposing
+              ) {
+                event.preventDefault();
 
-            if (status !== 'ready') {
-              toast.error('Please wait for the model to finish its response!');
-            } else {
-              submitForm();
-            }
-          }
-        }}
-      />
-
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-      </div>
-
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
-          <StopButton stop={stop} setMessages={setMessages} />
-        ) : (
-          <SendButton
-            input={input}
-            submitForm={submitForm}
-            uploadQueue={uploadQueue}
+                if (status !== 'ready') {
+                  toast.error(
+                    'Please wait for the model to finish its response!',
+                  );
+                } else {
+                  submitForm();
+                }
+              }
+            }}
           />
-        )}
-      </div>
+        }
+      />
     </div>
   );
 }
@@ -329,8 +363,7 @@ export const MultimodalInput = memo(
     if (prevProps.input !== nextProps.input) return false;
     if (prevProps.status !== nextProps.status) return false;
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
-    if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
-      return false;
+    if (prevProps.selectedModelId !== nextProps.selectedModelId) return false;
 
     return true;
   },
