@@ -10,11 +10,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import {
-  CheckCircleFillIcon,
-  ChevronDownIcon,
-  GlobeIcon,
-  LockIcon,
-} from './icons';
+  CheckCircle,
+  ChevronDown,
+  Globe,
+  Lock,
+} from 'lucide-react';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 
 export type VisibilityType = 'private' | 'public';
@@ -29,13 +29,13 @@ const visibilities: Array<{
     id: 'private',
     label: 'Private',
     description: 'Only you can access this chat',
-    icon: <LockIcon />,
+    icon: <Lock />,
   },
   {
     id: 'public',
     label: 'Public',
     description: 'Anyone with the link can access this chat',
-    icon: <GlobeIcon />,
+    icon: <Globe />,
   },
 ];
 
@@ -75,7 +75,7 @@ export function VisibilitySelector({
         >
           {selectedVisibility?.icon}
           {selectedVisibility?.label}
-          <ChevronDownIcon />
+          <ChevronDown />
         </Button>
       </DropdownMenuTrigger>
 
@@ -100,7 +100,7 @@ export function VisibilitySelector({
               )}
             </div>
             <div className="text-foreground dark:text-foreground opacity-0 group-data-[active=true]/item:opacity-100">
-              <CheckCircleFillIcon />
+              <CheckCircle />
             </div>
           </DropdownMenuItem>
         ))}

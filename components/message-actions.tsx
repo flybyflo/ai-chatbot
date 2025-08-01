@@ -3,7 +3,7 @@ import { useCopyToClipboard } from 'usehooks-ts';
 
 import type { Vote } from '@/lib/db/schema';
 
-import { CopyIcon, ThumbDownIcon, ThumbUpIcon } from './icons';
+import { Copy, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Tooltip,
@@ -57,7 +57,7 @@ export function PureMessageActions({
                 toast.success('Copied to clipboard!');
               }}
             >
-              <CopyIcon />
+              <Copy />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Copy</TooltipContent>
@@ -110,7 +110,7 @@ export function PureMessageActions({
                 });
               }}
             >
-              <ThumbUpIcon />
+              <ThumbsUp />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Upvote Response</TooltipContent>
@@ -163,7 +163,7 @@ export function PureMessageActions({
                 });
               }}
             >
-              <ThumbDownIcon />
+              <ThumbsDown />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Downvote Response</TooltipContent>

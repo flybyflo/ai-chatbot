@@ -2,12 +2,12 @@
 
 import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast as sonnerToast } from 'sonner';
-import { CheckCircleFillIcon, WarningIcon } from './icons';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const iconsByType: Record<'success' | 'error', ReactNode> = {
-  success: <CheckCircleFillIcon />,
-  error: <WarningIcon />,
+  success: <CheckCircle />,
+  error: <AlertTriangle />,
 };
 
 export function toast(props: Omit<ToastProps, 'id'>) {
