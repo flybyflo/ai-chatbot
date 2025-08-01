@@ -19,6 +19,7 @@ import { MessageReasoning } from './message-reasoning';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { MCPToolContainer } from './mcp-tool-container';
 
 // Type narrowing is handled by TypeScript's control flow analysis
 // The AI SDK provides proper discriminated unions for tool calls
@@ -102,6 +103,11 @@ const PurePreviewMessage = ({
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
+              
+              // Debug all message parts
+              if (type.startsWith('tool-')) {
+                console.log(`🔍 Message part ${index}:`, { type, part });
+              }
 
               if (type === 'reasoning' && part.text?.trim().length > 0) {
                 return (
@@ -302,6 +308,53 @@ const PurePreviewMessage = ({
                         type="request-suggestions"
                         result={output}
                         isReadonly={isReadonly}
+                      />
+                    </div>
+                  );
+                }
+              }
+
+              // Handle MCP tool calls - any tool that's not one of the built-in ones
+              if (type.startsWith('tool-') && !['tool-getWeather', 'tool-createDocument', 'tool-updateDocument', 'tool-requestSuggestions'].includes(type)) {
+                const { toolCallId, state } = part;
+                const toolName = type.replace('tool-', ''); // Remove 'tool-' prefix
+                
+                console.log(`🎨 Rendering MCP tool in message:`, {
+                  type,
+                  toolName,
+                  toolCallId,
+                  state,
+                  part,
+                });
+                
+                if (state === 'input-available') {
+                  const { input } = part;
+                  return (
+                    <div key={toolCallId}>
+                      <MCPToolContainer
+                        toolName={toolName}
+                        toolCallId={toolCallId}
+                        args={input}
+                        state="call"
+                        isReadonly={isReadonly}
+                        serverName="mcp"
+                      />
+                    </div>
+                  );
+                }
+
+                if (state === 'output-available') {
+                  const { input, output } = part;
+                  return (
+                    <div key={toolCallId}>
+                      <MCPToolContainer
+                        toolName={toolName}
+                        toolCallId={toolCallId}
+                        args={input}
+                        result={output}
+                        state="result"
+                        isReadonly={isReadonly}
+                        serverName="mcp"
                       />
                     </div>
                   );
