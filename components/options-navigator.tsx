@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 export interface OptionPage {
   id: string;
   title: string;
   icon?: React.ComponentType<{ size?: number; className?: string }>;
   component: React.ComponentType<any>;
-  headerAction?: React.ReactNode;
+  headerAction?: React.ComponentType<any>;
 }
 
 interface OptionsNavigatorProps {
@@ -29,7 +29,8 @@ export function OptionsNavigator({ pages, defaultPageId, onTitleChange, resetTri
     setCurrentPageId(null);
   }, [resetTrigger]);
 
-  // Update title when page changes
+
+  // Simplified title management - just set the basic title
   useEffect(() => {
     if (currentPage) {
       onTitleChange?.(
@@ -44,15 +45,16 @@ export function OptionsNavigator({ pages, defaultPageId, onTitleChange, resetTri
           <span className="text-muted-foreground mx-1">/</span>
           <span className="font-medium">{currentPage.title}</span>
         </>,
-        currentPage.headerAction ? React.createElement(currentPage.headerAction) : undefined
+        currentPage.headerAction ? <currentPage.headerAction /> : undefined
       );
     } else {
       onTitleChange?.('Options');
     }
-  }, [currentPageId, currentPage?.title, currentPage?.headerAction]);
+  }, [currentPage, onTitleChange]);
 
   if (currentPage) {
     const PageComponent = currentPage.component;
+    
     return (
       <div className="space-y-3">
         <PageComponent />

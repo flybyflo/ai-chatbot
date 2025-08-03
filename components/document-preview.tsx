@@ -216,7 +216,7 @@ const PureDocumentHeader = ({
             <Loader2 />
           </div>
         ) : kind === 'image' ? (
-          <Image alt="" />
+          <Image aria-label="Document image" />
         ) : (
           <FileText />
         )}

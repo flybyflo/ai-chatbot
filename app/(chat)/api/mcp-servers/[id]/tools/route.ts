@@ -23,7 +23,7 @@ export async function GET(
     const server = servers.find(s => s.id === id);
 
     if (!server) {
-      return new ChatSDKError('not_found:mcp_server').toResponse();
+      return new ChatSDKError('not_found:mcp_servers').toResponse();
     }
 
     if (!server.isEnabled) {

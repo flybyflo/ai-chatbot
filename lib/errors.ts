@@ -4,7 +4,8 @@ export type ErrorType =
   | 'forbidden'
   | 'not_found'
   | 'rate_limit'
-  | 'offline';
+  | 'offline'
+  | 'internal';
 
 export type Surface =
   | 'chat'
@@ -15,7 +16,8 @@ export type Surface =
   | 'history'
   | 'vote'
   | 'document'
-  | 'suggestions';
+  | 'suggestions'
+  | 'mcp_servers';
 
 export type ErrorCode = `${ErrorType}:${Surface}`;
 
@@ -31,6 +33,7 @@ export const visibilityBySurface: Record<Surface, ErrorVisibility> = {
   vote: 'response',
   document: 'response',
   suggestions: 'response',
+  mcp_servers: 'response',
 };
 
 export class ChatSDKError extends Error {
@@ -107,6 +110,17 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
     case 'bad_request:document':
       return 'The request to create or update the document was invalid. Please check your input and try again.';
 
+    case 'unauthorized:mcp_servers':
+      return 'You need to sign in to manage MCP servers. Please sign in and try again.';
+    case 'forbidden:mcp_servers':
+      return 'You do not have permission to access this MCP server. Please check your permissions.';
+    case 'not_found:mcp_servers':
+      return 'The requested MCP server was not found. Please check the server ID and try again.';
+    case 'bad_request:mcp_servers':
+      return 'The request to create or update the MCP server was invalid. Please check your input and try again.';
+    case 'internal:mcp_servers':
+      return 'An internal error occurred while processing MCP server request. Please try again later.';
+
     default:
       return 'Something went wrong. Please try again later.';
   }
@@ -126,6 +140,8 @@ function getStatusCodeByType(type: ErrorType) {
       return 429;
     case 'offline':
       return 503;
+    case 'internal':
+      return 500;
     default:
       return 500;
   }

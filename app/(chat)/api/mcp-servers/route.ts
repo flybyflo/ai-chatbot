@@ -97,7 +97,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!updatedServer) {
-      return new ChatSDKError('not_found:mcp_server').toResponse();
+      return new ChatSDKError('not_found:mcp_servers').toResponse();
     }
 
     return NextResponse.json({ server: updatedServer });
@@ -143,7 +143,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!deletedServer) {
-      return new ChatSDKError('not_found:mcp_server').toResponse();
+      return new ChatSDKError('not_found:mcp_servers').toResponse();
     }
 
     return NextResponse.json({ server: deletedServer });

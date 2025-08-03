@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, createContext, } from 'react';
+import React, { useState, createContext, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { MCPServers } from './mcp-servers';
+import { MCPServerDetail } from './mcp-server-detail';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -149,11 +150,35 @@ function MCPServersProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Simplified navigation component with basic server selection
+function MCPServersNavigator(props: any) {
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+
+  const handleServerSelect = (serverId: string) => {
+    setSelectedServerId(serverId);
+  };
+
+  const handleBackToList = () => {
+    setSelectedServerId(null);
+  };
+
+  if (selectedServerId) {
+    return (
+      <MCPServerDetail 
+        serverId={selectedServerId} 
+        onBackToList={handleBackToList}
+      />
+    );
+  }
+
+  return <MCPServers onServerSelect={handleServerSelect} />;
+}
+
 // Create a special component that exposes both content and header action
-export function MCPServersWithHeader() {
+export function MCPServersWithHeader(props: any) {
   return (
     <MCPServersProvider>
-      <MCPServers />
+      <MCPServersNavigator {...props} />
     </MCPServersProvider>
   );
 }

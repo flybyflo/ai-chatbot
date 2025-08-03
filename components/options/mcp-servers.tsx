@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
-import { ChevronDown, ChevronRight, Server, Wrench, Edit, Trash2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, Server, } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MCPTool {
@@ -44,9 +43,12 @@ interface MCPServerFormData {
 }
 
 
-function MCPServersContent() {
+interface MCPServersContentProps {
+  onServerSelect?: (serverId: string) => void;
+}
+
+function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
   const [servers, setServers] = useState<MCPServerWithStatus[]>([]);
-  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingServer, setEditingServer] = useState<MCPServer | null>(null);
@@ -61,45 +63,8 @@ function MCPServersContent() {
   const [authRequiredServer, setAuthRequiredServer] = useState<MCPServer | null>(null);
   const [authToken, setAuthToken] = useState('');
 
-  // Fetch saved MCP servers from database
-  const fetchMCPServers = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/mcp-servers');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch MCP servers: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      const serversWithStatus: MCPServerWithStatus[] = (data.servers || []).map((server: MCPServer) => ({
-        ...server,
-        status: server.isEnabled ? 'loading' : 'disabled',
-        tools: [],
-        createdAt: new Date(server.createdAt),
-        updatedAt: new Date(server.updatedAt)
-      }));
-      
-      setServers(serversWithStatus);
-      
-      // Fetch tools for enabled servers
-      serversWithStatus.forEach(server => {
-        if (server.isEnabled) {
-          fetchServerTools(server.id);
-        }
-      });
-    } catch (err) {
-      console.error('Error fetching MCP servers:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch MCP servers');
-      setServers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   // Fetch tools for a specific server
-  const fetchServerTools = async (serverId: string) => {
+  const fetchServerTools = useCallback(async (serverId: string) => {
     setLoadingTools(prev => new Set(prev).add(serverId));
     
     try {
@@ -149,7 +114,44 @@ function MCPServersContent() {
         return newSet;
       });
     }
-  };
+  }, []);
+
+  // Fetch saved MCP servers from database
+  const fetchMCPServers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/mcp-servers');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch MCP servers: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      const serversWithStatus: MCPServerWithStatus[] = (data.servers || []).map((server: MCPServer) => ({
+        ...server,
+        status: server.isEnabled ? 'loading' : 'disabled',
+        tools: [],
+        createdAt: new Date(server.createdAt),
+        updatedAt: new Date(server.updatedAt)
+      }));
+      
+      setServers(serversWithStatus);
+      
+      // Fetch tools for enabled servers
+      serversWithStatus.forEach(server => {
+        if (server.isEnabled) {
+          fetchServerTools(server.id);
+        }
+      });
+    } catch (err) {
+      console.error('Error fetching MCP servers:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch MCP servers');
+      setServers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchServerTools]);
 
   useEffect(() => {
     fetchMCPServers();
@@ -239,14 +241,8 @@ function MCPServersContent() {
     });
   };
 
-  const toggleServerExpansion = (serverId: string) => {
-    const newExpanded = new Set(expandedServers);
-    if (newExpanded.has(serverId)) {
-      newExpanded.delete(serverId);
-    } else {
-      newExpanded.add(serverId);
-    }
-    setExpandedServers(newExpanded);
+  const selectServer = (server: MCPServerWithStatus) => {
+    onServerSelect?.(server.id);
   };
 
   const getStatusColor = (status: MCPServerWithStatus['status']) => {
@@ -283,17 +279,20 @@ function MCPServersContent() {
     }
   };
 
-  const refreshServerStatus = (serverId: string) => {
-    const server = servers.find(s => s.id === serverId);
-    if (server?.isEnabled) {
-      setServers(prev => prev.map(s => 
-        s.id === serverId ? { ...s, status: 'loading' } : s
-      ));
-      fetchServerTools(serverId);
-    }
-  };
+  const refreshServerStatus = useCallback((serverId: string) => {
+    setServers(prev => {
+      const server = prev.find(s => s.id === serverId);
+      if (server?.isEnabled) {
+        fetchServerTools(serverId);
+        return prev.map(s => 
+          s.id === serverId ? { ...s, status: 'loading' } : s
+        );
+      }
+      return prev;
+    });
+  }, [fetchServerTools]);
 
-  const handleUpdateAuthToken = async () => {
+  const handleUpdateAuthToken = useCallback(async () => {
     if (!authRequiredServer) return;
 
     setSubmitting(true);
@@ -339,7 +338,7 @@ function MCPServersContent() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [authRequiredServer, authToken, fetchMCPServers, fetchServerTools]);
 
   if (loading) {
     return (
@@ -394,13 +393,17 @@ function MCPServersContent() {
     );
   }
 
+
   return (
     <div className="space-y-4">
-
-      <div className="grid gap-3">
+      <div className="grid gap-2">
         {servers.map((server) => (
-          <Card key={server.id} className="overflow-hidden">
-            <CardHeader className="pb-2 pt-3">
+          <Card 
+            key={server.id} 
+            className="overflow-hidden cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => selectServer(server)}
+          >
+            <CardHeader className="py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <div className={`size-2 rounded-full ${getStatusColor(server.status)}`} />
@@ -413,11 +416,7 @@ function MCPServersContent() {
                           server.status === 'auth_required' ? 'destructive' : 
                           'secondary'
                         } 
-                        className={`text-xs h-5 ${server.status === 'auth_required' ? 'cursor-pointer hover:bg-destructive/80' : ''}`}
-                        onClick={server.status === 'auth_required' ? () => {
-                          setAuthRequiredServer(server);
-                          setAuthToken(server.authToken || '');
-                        } : undefined}
+                        className="text-xs h-5"
                       >
                         {getStatusText(server.status)}
                       </Badge>
@@ -430,141 +429,14 @@ function MCPServersContent() {
                     <p className="font-mono text-xs text-muted-foreground truncate">{server.url}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  {server.isEnabled && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => refreshServerStatus(server.id)}
-                      disabled={loadingTools.has(server.id)}
-                      className="h-6 px-2 text-xs"
-                    >
-                      {loadingTools.has(server.id) ? '⟳' : '↻'}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEditDialog(server)}
-                    className="size-6 p-0"
-                  >
-                    <Edit className="size-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteServer(server)}
-                    className="size-6 p-0 text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="size-3" />
-                  </Button>
-                  {(server.description || (server.tools && server.tools.length > 0)) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleServerExpansion(server.id)}
-                      className="size-6 p-0"
-                    >
-                      {expandedServers.has(server.id) ? (
-                        <ChevronDown className="size-3" />
-                      ) : (
-                        <ChevronRight className="size-3" />
-                      )}
-                    </Button>
-                  )}
-                </div>
+                <ChevronRight className="size-4 text-muted-foreground" />
               </div>
-              {server.error && (
-                <div className={`mt-1 p-1.5 border rounded text-xs ${
-                  server.status === 'auth_required' 
-                    ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400'
-                    : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
-                }`}>
-                  {server.status === 'auth_required' 
-                    ? 'Authentication required. Click &ldquo;Auth Required&rdquo; badge to update token.'
-                    : server.error
-                  }
+              {server.error && server.status === 'auth_required' && (
+                <div className="mt-2 p-1.5 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded text-xs text-orange-700 dark:text-orange-400">
+                  Authentication required
                 </div>
-              )}
-              {server.lastChecked && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Checked: {server.lastChecked.toLocaleString()}
-                </p>
               )}
             </CardHeader>
-
-            <AnimatePresence>
-              {expandedServers.has(server.id) && (server.description || (server.tools && server.tools.length > 0)) && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <CardContent className="pt-0 px-3 pb-3 border-t border-border/20">
-                    <div className="space-y-3">
-                      {server.description && (
-                        <div>
-                          <h4 className="font-medium text-xs text-muted-foreground mb-1">DESCRIPTION</h4>
-                          <p className="text-xs">
-                            {server.description}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {server.authToken && (
-                        <div>
-                          <h4 className="font-medium text-xs text-muted-foreground mb-1">AUTH</h4>
-                          <p className="text-xs">Bearer token configured</p>
-                        </div>
-                      )}
-
-                      {server.tools && server.tools.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                            <Wrench className="size-3" />
-                            TOOLS ({server.tools.length})
-                          </h4>
-                          <div className="space-y-2">
-                            {server.tools.map((tool) => (
-                              <div
-                                key={tool.name}
-                                className="border border-border/30 rounded p-2 bg-muted/10"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <h5 className="font-mono text-xs font-medium truncate">
-                                      {tool.name}
-                                    </h5>
-                                    {tool.description && (
-                                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                        {tool.description}
-                                      </p>
-                                    )}
-                                  </div>
-                                  {tool.inputSchema && (
-                                    <details className="ml-2">
-                                      <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                                        Schema
-                                      </summary>
-                                      <div className="absolute z-10 mt-1 p-2 bg-popover border rounded shadow-md max-w-sm">
-                                        <pre className="text-xs overflow-auto font-mono max-h-32">
-                                          {JSON.stringify(tool.inputSchema, null, 2)}
-                                        </pre>
-                                      </div>
-                                    </details>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </Card>
         ))}
       </div>
@@ -683,6 +555,6 @@ function MCPServersContent() {
   );
 }
 
-export function MCPServers() {
-  return <MCPServersContent />;
+export function MCPServers({ onServerSelect }: MCPServersContentProps = {}) {
+  return <MCPServersContent onServerSelect={onServerSelect} />;
 }

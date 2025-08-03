@@ -316,7 +316,7 @@ const PurePreviewMessage = ({
 
               // Handle MCP tool calls - any tool that's not one of the built-in ones
               if (type.startsWith('tool-') && !['tool-getWeather', 'tool-createDocument', 'tool-updateDocument', 'tool-requestSuggestions'].includes(type)) {
-                const { toolCallId, state } = part;
+                const { toolCallId, state } = part as any;
                 const toolName = type.replace('tool-', ''); // Remove 'tool-' prefix
                 
                 console.log(`🎨 Rendering MCP tool in message:`, {
@@ -328,7 +328,7 @@ const PurePreviewMessage = ({
                 });
                 
                 if (state === 'input-available') {
-                  const { input } = part;
+                  const { input } = part as any;
                   return (
                     <div key={toolCallId}>
                       <MCPToolContainer
@@ -344,7 +344,7 @@ const PurePreviewMessage = ({
                 }
 
                 if (state === 'output-available') {
-                  const { input, output } = part;
+                  const { input, output } = part as any;
                   return (
                     <div key={toolCallId}>
                       <MCPToolContainer

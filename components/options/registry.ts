@@ -1,26 +1,33 @@
-import { Settings, Cpu, Zap, Server, type LucideIcon } from 'lucide-react';
+import { Settings, Cpu, Zap, Server } from 'lucide-react';
 import type { OptionPage } from '../options-navigator';
 import { GeneralSettings } from './general-settings';
 import { ModelSettings } from './model-settings';
 import { AdvancedOptions } from './advanced-options';
-import { MCPServersWithHeader, MCPServersHeaderAction } from './mcp-servers-with-header';
+import {
+  MCPServersWithHeader,
+  MCPServersHeaderAction,
+} from './mcp-servers-with-header';
 import React from 'react';
 
 export interface OptionPageConfig {
   id: string;
   title: string;
-  icon: LucideIcon;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
   component: React.ComponentType<any>;
   category?: string;
   order?: number;
   enabled?: boolean | ((context: any) => boolean);
+  headerAction?: React.ComponentType<any>;
 }
 
 const defaultOptionPages: OptionPageConfig[] = [
   {
     id: 'general',
     title: 'General Settings',
-    icon: Settings,
+    icon: Settings as React.ComponentType<{
+      size?: number;
+      className?: string;
+    }>,
     component: GeneralSettings,
     category: 'settings',
     order: 1,
@@ -29,7 +36,10 @@ const defaultOptionPages: OptionPageConfig[] = [
   {
     id: 'model',
     title: 'Model Settings',
-    icon: Cpu,
+    icon: Cpu as React.ComponentType<{
+      size?: number;
+      className?: string;
+    }>,
     component: ModelSettings,
     category: 'ai',
     order: 2,
@@ -38,7 +48,10 @@ const defaultOptionPages: OptionPageConfig[] = [
   {
     id: 'advanced',
     title: 'Advanced Options',
-    icon: Zap,
+    icon: Zap as React.ComponentType<{
+      size?: number;
+      className?: string;
+    }>,
     component: AdvancedOptions,
     category: 'developer',
     order: 3,
@@ -47,7 +60,10 @@ const defaultOptionPages: OptionPageConfig[] = [
   {
     id: 'mcp-servers',
     title: 'MCP Servers',
-    icon: Server,
+    icon: Server as React.ComponentType<{
+      size?: number;
+      className?: string;
+    }>,
     component: MCPServersWithHeader,
     category: 'developer',
     order: 4,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Sliders } from 'lucide-react';
 import { ExpandablePanel } from './expandable-panel';
@@ -74,11 +74,13 @@ export function InputExpandableContent({
     }
   };
 
-  const handleTitleChange = (title: React.ReactNode, headerAction?: React.ReactNode) => {
-    setPanelTitle(title);
-    setPanelHeaderAction(headerAction || null);
-    setIsInSubpage(title !== 'Options');
-  };
+  const handleTitleChange = useCallback((title: React.ReactNode, headerAction?: React.ReactNode) => {
+    // Temporarily disable all title changes to stop infinite loop
+    console.log('Title change called:', title);
+    // setPanelTitle(title);
+    // setPanelHeaderAction(headerAction || null);
+    // setIsInSubpage(title !== 'Options');
+  }, []);
 
   return (
     <>

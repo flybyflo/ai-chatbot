@@ -19,5 +19,5 @@
       }
     }
   },
-  "ignorePatterns": ["**/components/ui/**"]
+  "ignorePatterns": ["**/components/ui/**", "mcp-test-server/**"]
 }

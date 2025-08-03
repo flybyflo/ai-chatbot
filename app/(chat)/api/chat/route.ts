@@ -402,16 +402,13 @@ export async function POST(request: Request) {
           ...mcpTools,
         };
 
-        const activeToolNames =
-          selectedChatModel === 'chat-model-reasoning'
-            ? []
-            : [
-                'getWeather',
-                'createDocument',
-                'updateDocument',
-                'requestSuggestions',
-                ...Object.keys(mcpTools),
-              ];
+        const activeToolNames = [
+          'getWeather',
+          'createDocument',
+          'updateDocument',
+          'requestSuggestions',
+          ...Object.keys(mcpTools),
+        ];
 
         console.log(`🔧 AI SDK Tools Setup:`, {
           totalTools: Object.keys(allTools).length,
