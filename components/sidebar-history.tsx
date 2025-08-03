@@ -43,6 +43,17 @@ export interface ChatHistory {
 
 const PAGE_SIZE = 20;
 
+const filterChatsBySearch = (chats: Chat[], searchQuery: string): Chat[] => {
+  if (!searchQuery.trim()) {
+    return chats;
+  }
+  
+  const query = searchQuery.toLowerCase().trim();
+  return chats.filter(chat => 
+    chat.title.toLowerCase().includes(query)
+  );
+};
+
 const groupChatsByDate = (chats: Chat[]): GroupedChats => {
   const now = new Date();
   const oneWeekAgo = subWeeks(now, 1);
@@ -93,7 +104,7 @@ export function getChatHistoryPaginationKey(
   return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
 }
 
-export function SidebarHistory({ user }: { user: User | undefined }) {
+export function SidebarHistory({ user, searchQuery }: { user: User | undefined; searchQuery?: string }) {
   const { setOpenMobile } = useSidebar();
   const { id } = useParams();
 
@@ -212,7 +223,20 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   (paginatedChatHistory) => paginatedChatHistory.chats,
                 );
 
-                const groupedChats = groupChatsByDate(chatsFromHistory);
+                const filteredChats = filterChatsBySearch(chatsFromHistory, searchQuery || '');
+                const groupedChats = groupChatsByDate(filteredChats);
+
+                // Show "no results" message when searching but no matches found
+                if (searchQuery?.trim() && filteredChats.length === 0) {
+                  return (
+                    <div className="px-2 text-zinc-500 w-full flex flex-col justify-center items-center text-sm gap-2 py-8">
+                      <div>No conversations found</div>
+                      <div className="text-xs text-muted-foreground">
+                        Try a different search term
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="flex flex-col gap-6">
@@ -320,25 +344,30 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
               })()}
           </SidebarMenu>
 
-          <motion.div
-            onViewportEnter={() => {
-              if (!isValidating && !hasReachedEnd) {
-                setSize((size) => size + 1);
-              }
-            }}
-          />
+          {/* Only show pagination when not searching */}
+          {(!searchQuery || !searchQuery.trim()) && (
+            <>
+              <motion.div
+                onViewportEnter={() => {
+                  if (!isValidating && !hasReachedEnd) {
+                    setSize((size) => size + 1);
+                  }
+                }}
+              />
 
-          {hasReachedEnd ? (
-            <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2 mt-8">
-              You have reached the end of your chat history.
-            </div>
-          ) : (
-            <div className="p-2 text-zinc-500 dark:text-zinc-400 flex flex-row gap-2 items-center mt-8">
-              <div className="animate-spin">
-                <Loader2 />
-              </div>
-              <div>Loading Chats...</div>
-            </div>
+              {hasReachedEnd ? (
+                <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2 mt-8">
+                  You have reached the end of your chat history.
+                </div>
+              ) : (
+                <div className="p-2 text-zinc-500 dark:text-zinc-400 flex flex-row gap-2 items-center mt-8">
+                  <div className="animate-spin">
+                    <Loader2 />
+                  </div>
+                  <div>Loading Chats...</div>
+                </div>
+              )}
+            </>
           )}
         </SidebarGroupContent>
       </SidebarGroup>

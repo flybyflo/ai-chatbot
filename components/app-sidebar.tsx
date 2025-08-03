@@ -2,11 +2,13 @@
 
 import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
@@ -57,9 +60,20 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </Tooltip>
           </div>
         </SidebarMenu>
+        <div className="px-2 pb-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarHistory user={user} />
+        <SidebarHistory user={user} searchQuery={searchQuery} />
       </SidebarContent>
       <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
     </Sidebar>
