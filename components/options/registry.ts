@@ -1,8 +1,10 @@
-import { Settings, Cpu, Zap, type LucideIcon } from 'lucide-react';
+import { Settings, Cpu, Zap, Server, type LucideIcon } from 'lucide-react';
 import type { OptionPage } from '../options-navigator';
 import { GeneralSettings } from './general-settings';
 import { ModelSettings } from './model-settings';
 import { AdvancedOptions } from './advanced-options';
+import { MCPServersWithHeader, MCPServersHeaderAction } from './mcp-servers-with-header';
+import React from 'react';
 
 export interface OptionPageConfig {
   id: string;
@@ -42,6 +44,16 @@ const defaultOptionPages: OptionPageConfig[] = [
     order: 3,
     enabled: true,
   },
+  {
+    id: 'mcp-servers',
+    title: 'MCP Servers',
+    icon: Server,
+    component: MCPServersWithHeader,
+    category: 'developer',
+    order: 4,
+    enabled: true,
+    headerAction: MCPServersHeaderAction,
+  },
 ];
 
 class OptionPageRegistry {
@@ -77,6 +89,7 @@ class OptionPageRegistry {
         title: config.title,
         icon: config.icon,
         component: config.component,
+        headerAction: config.headerAction,
       }));
   }
 

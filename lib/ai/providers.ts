@@ -25,7 +25,7 @@ export const myProvider = isTestEnvironment
       languageModels: {
         'chat-model': azure.languageModel('gpt-4.1'),
         'chat-model-reasoning': wrapLanguageModel({
-          model: azure.languageModel('o3-mini'),
+          model: azure.languageModel('o4-mini'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
         'title-model': azure.languageModel('gpt-4.1'),

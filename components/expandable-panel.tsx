@@ -12,6 +12,7 @@ interface ExpandablePanelProps {
   children: ReactNode;
   normalContent: ReactNode;
   className?: string;
+  headerAction?: React.ReactNode;
 }
 
 export function ExpandablePanel({
@@ -21,6 +22,7 @@ export function ExpandablePanel({
   children,
   normalContent,
   className = '',
+  headerAction,
 }: ExpandablePanelProps) {
   // Handle ESC key to close panel
   useEffect(() => {
@@ -56,7 +58,9 @@ export function ExpandablePanel({
               <ArrowLeft size={14} />
             </Button>
             <h3 className="text-base font-semibold text-foreground">{title}</h3>
-            <div className="w-6" />
+            <div className="w-6 flex justify-end">
+              {headerAction}
+            </div>
           </div>
           <div className="h-full overflow-y-auto">{children}</div>
         </motion.div>

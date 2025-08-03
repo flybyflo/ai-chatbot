@@ -27,6 +27,7 @@ import {
   type DBMessage,
   type Chat,
   stream,
+  mcpServer,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
 import { generateUUID } from '../utils';
@@ -533,6 +534,116 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get stream ids by chat id',
+    );
+  }
+}
+
+export async function getMCPServersByUserId({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(mcpServer)
+      .where(eq(mcpServer.userId, userId))
+      .orderBy(asc(mcpServer.name));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get MCP servers by user id',
+    );
+  }
+}
+
+export async function createMCPServer({
+  name,
+  url,
+  authToken,
+  description,
+  userId,
+}: {
+  name: string;
+  url: string;
+  authToken?: string;
+  description?: string;
+  userId: string;
+}) {
+  try {
+    const [newServer] = await db
+      .insert(mcpServer)
+      .values({
+        name,
+        url,
+        authToken,
+        description,
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return newServer;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to create MCP server',
+    );
+  }
+}
+
+export async function updateMCPServer({
+  id,
+  name,
+  url,
+  authToken,
+  description,
+  isEnabled,
+  userId,
+}: {
+  id: string;
+  name?: string;
+  url?: string;
+  authToken?: string;
+  description?: string;
+  isEnabled?: boolean;
+  userId: string;
+}) {
+  try {
+    const [updatedServer] = await db
+      .update(mcpServer)
+      .set({
+        ...(name !== undefined && { name }),
+        ...(url !== undefined && { url }),
+        ...(authToken !== undefined && { authToken }),
+        ...(description !== undefined && { description }),
+        ...(isEnabled !== undefined && { isEnabled }),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(mcpServer.id, id), eq(mcpServer.userId, userId)))
+      .returning();
+    return updatedServer;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to update MCP server',
+    );
+  }
+}
+
+export async function deleteMCPServer({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  try {
+    const [deletedServer] = await db
+      .delete(mcpServer)
+      .where(and(eq(mcpServer.id, id), eq(mcpServer.userId, userId)))
+      .returning();
+    return deletedServer;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to delete MCP server',
     );
   }
 }

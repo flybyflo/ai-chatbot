@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export interface OptionPage {
   id: string;
   title: string;
   icon?: React.ComponentType<{ size?: number; className?: string }>;
   component: React.ComponentType<any>;
+  headerAction?: React.ReactNode;
 }
 
 interface OptionsNavigatorProps {
   pages: OptionPage[];
   defaultPageId?: string;
-  onTitleChange?: (title: React.ReactNode) => void;
+  onTitleChange?: (title: React.ReactNode, headerAction?: React.ReactNode) => void;
   resetTrigger?: boolean;
 }
 
@@ -42,12 +43,13 @@ export function OptionsNavigator({ pages, defaultPageId, onTitleChange, resetTri
           </button>
           <span className="text-muted-foreground mx-1">/</span>
           <span className="font-medium">{currentPage.title}</span>
-        </>
+        </>,
+        currentPage.headerAction ? React.createElement(currentPage.headerAction) : undefined
       );
     } else {
       onTitleChange?.('Options');
     }
-  }, [currentPageId, currentPage?.title]);
+  }, [currentPageId, currentPage?.title, currentPage?.headerAction]);
 
   if (currentPage) {
     const PageComponent = currentPage.component;

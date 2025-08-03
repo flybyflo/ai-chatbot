@@ -5,8 +5,7 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
-} from 'ai';
-import { tool } from 'ai';
+ tool } from 'ai';
 import { z } from 'zod';
 import { auth, type UserType } from '@/app/(auth)/auth';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
@@ -18,6 +17,7 @@ import {
   getMessagesByChatId,
   saveChat,
   saveMessages,
+  getMCPServersByUserId,
 } from '@/lib/db/queries';
 import { convertToUIMessages, generateUUID } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
@@ -217,164 +217,177 @@ export async function POST(request: Request) {
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
         // Initialize MCP client for additional tools (optional)
-        let mcpClient: Client | null = null;
-        let mcpTools: Record<string, any> = {};
+        const mcpClients: Client[] = [];
+        const mcpTools: Record<string, any> = {};
 
-        // Try to connect to MCP server if configured
-        const mcpUrl = process.env.MCP_SERVER_URL;
-        const mcpAuthToken = process.env.MCP_AUTH_TOKEN;
+        // Get saved MCP servers from database
+        try {
+          const savedServers = await getMCPServersByUserId({ userId: session.user.id });
+          const enabledServers = savedServers.filter(server => server.isEnabled);
 
-        if (mcpUrl) {
-          try {
-            // Configure transport with optional authentication
-            const transportConfig: any = {};
+          // Connect to all enabled MCP servers
+          for (const server of enabledServers) {
+            let mcpClient: Client | null = null;
+            try {
+              // Configure transport with optional authentication
+              const transportConfig: any = {};
 
-            // Add authentication headers if token is provided
-            if (mcpAuthToken) {
-              transportConfig.requestInit = {
-                headers: {
-                  Authorization: `Bearer ${mcpAuthToken}`,
-                  'Content-Type': 'application/json',
-                },
-              };
-            }
-
-            const transport = new StreamableHTTPClientTransport(
-              new URL(mcpUrl),
-              Object.keys(transportConfig).length > 0
-                ? transportConfig
-                : undefined,
-            );
-
-            // Create official MCP client
-            mcpClient = new Client(
-              {
-                name: 'ai-chatbot',
-                version: '1.0.0',
-              },
-              {
-                capabilities: {
-                  tools: {},
-                },
-              },
-            );
-
-            // Connect to the server
-            await mcpClient.connect(transport);
-
-            // Get available tools from MCP server
-            const toolsResult = await mcpClient.listTools();
-
-            // Convert MCP tools to AI SDK format
-            mcpTools = {};
-            for (const mcpTool of toolsResult.tools) {
-              console.log(`🔧 Converting MCP tool: ${mcpTool.name}`, {
-                description: mcpTool.description,
-                inputSchema: mcpTool.inputSchema,
-                inputSchemaStringified: JSON.stringify(
-                  mcpTool.inputSchema,
-                  null,
-                  2,
-                ),
-              });
-
-              // Ensure the schema is a valid JSON Schema object
-              let validSchema = mcpTool.inputSchema;
-
-              // If inputSchema is null, undefined, or has invalid type, create a default schema
-              if (
-                !validSchema ||
-                typeof validSchema !== 'object' ||
-                validSchema.type !== 'object'
-              ) {
-                console.warn(
-                  `⚠️ Invalid inputSchema for tool ${mcpTool.name}, using default schema`,
-                );
-                validSchema = {
-                  type: 'object',
-                  properties: {},
-                  additionalProperties: true,
+              // Add authentication headers if token is provided
+              if (server.authToken) {
+                transportConfig.requestInit = {
+                  headers: {
+                    Authorization: `Bearer ${server.authToken}`,
+                    'Content-Type': 'application/json',
+                  },
                 };
               }
 
-              // Ensure the schema has all required fields
-              if (!validSchema.properties) {
-                validSchema.properties = {};
+              const transport = new StreamableHTTPClientTransport(
+                new URL(server.url),
+                Object.keys(transportConfig).length > 0
+                  ? transportConfig
+                  : undefined,
+              );
+
+              // Create official MCP client
+              mcpClient = new Client(
+                {
+                  name: 'ai-chatbot',
+                  version: '1.0.0',
+                },
+                {
+                  capabilities: {
+                    tools: {},
+                  },
+                },
+              );
+
+              // Connect to the server
+              await mcpClient.connect(transport);
+              mcpClients.push(mcpClient);
+
+              // Get available tools from MCP server
+              const toolsResult = await mcpClient.listTools();
+
+              // Convert MCP tools to AI SDK format
+              for (const mcpTool of toolsResult.tools) {
+                console.log(`🔧 Converting MCP tool: ${mcpTool.name} from ${server.name}`, {
+                  description: mcpTool.description,
+                  inputSchema: mcpTool.inputSchema,
+                  inputSchemaStringified: JSON.stringify(
+                    mcpTool.inputSchema,
+                    null,
+                    2,
+                  ),
+                });
+
+                // Ensure the schema is a valid JSON Schema object
+                let validSchema = mcpTool.inputSchema;
+
+                // If inputSchema is null, undefined, or has invalid type, create a default schema
+                if (
+                  !validSchema ||
+                  typeof validSchema !== 'object' ||
+                  validSchema.type !== 'object'
+                ) {
+                  console.warn(
+                    `⚠️ Invalid inputSchema for tool ${mcpTool.name}, using default schema`,
+                  );
+                  validSchema = {
+                    type: 'object',
+                    properties: {},
+                    additionalProperties: true,
+                  };
+                }
+
+                // Ensure the schema has all required fields
+                if (!validSchema.properties) {
+                  validSchema.properties = {};
+                }
+
+                console.log(
+                  `✅ Final schema for ${mcpTool.name}:`,
+                  JSON.stringify(validSchema, null, 2),
+                );
+
+                // Convert JSON Schema to Zod schema
+                const zodSchema = jsonSchemaToZod(validSchema);
+                console.log(`🔄 Converted to Zod schema for ${mcpTool.name}`);
+
+                // Create unique tool name to avoid conflicts between servers
+                const uniqueToolName = `${server.name}__${mcpTool.name}`;
+
+                // Create proper AI SDK tool using tool() function
+                try {
+                  mcpTools[uniqueToolName] = tool({
+                    description:
+                      mcpTool.description || `MCP tool: ${mcpTool.name} from ${server.name}`,
+                    inputSchema: zodSchema,
+                    execute: async (args: any) => {
+                      console.log(
+                        `🚀 MCP tool "${mcpTool.name}" from ${server.name} called with args:`,
+                        args,
+                      );
+
+                      if (!mcpClient) {
+                        console.error(
+                          `❌ MCP client not connected for tool ${mcpTool.name}`,
+                        );
+                        throw new Error('MCP client not connected');
+                      }
+
+                      try {
+                        const result = await mcpClient.callTool({
+                          name: mcpTool.name,
+                          arguments: args,
+                        });
+
+                        console.log(
+                          `✅ MCP tool "${mcpTool.name}" result:`,
+                          result,
+                        );
+                        return result.content;
+                      } catch (error) {
+                        console.error(
+                          `❌ MCP tool "${mcpTool.name}" error:`,
+                          error,
+                        );
+                        throw error;
+                      }
+                    },
+                  });
+                } catch (error) {
+                  console.error(`❌ Error creating tool ${mcpTool.name}:`, error);
+                  // Fallback - skip this tool
+                  continue;
+                }
               }
 
               console.log(
-                `✅ Final schema for ${mcpTool.name}:`,
-                JSON.stringify(validSchema, null, 2),
+                `✅ Connected to MCP server ${server.name} at ${server.url} with ${toolsResult.tools.length} tools`,
               );
-
-              // Convert JSON Schema to Zod schema
-              const zodSchema = jsonSchemaToZod(validSchema);
-              console.log(`🔄 Converted to Zod schema for ${mcpTool.name}`);
-
-              // Debug: Check if tool function is available
-              console.log(`🔍 tool function type:`, typeof tool);
-
-              // Create proper AI SDK tool using tool() function
-              try {
-                mcpTools[mcpTool.name] = tool({
-                  description:
-                    mcpTool.description || `MCP tool: ${mcpTool.name}`,
-                  inputSchema: zodSchema,
-                  execute: async (args: any) => {
-                    console.log(
-                      `🚀 MCP tool "${mcpTool.name}" called with args:`,
-                      args,
-                    );
-
-                    if (!mcpClient) {
-                      console.error(
-                        `❌ MCP client not connected for tool ${mcpTool.name}`,
-                      );
-                      throw new Error('MCP client not connected');
-                    }
-
-                    try {
-                      const result = await mcpClient.callTool({
-                        name: mcpTool.name,
-                        arguments: args,
-                      });
-
-                      console.log(
-                        `✅ MCP tool "${mcpTool.name}" result:`,
-                        result,
-                      );
-                      return result.content;
-                    } catch (error) {
-                      console.error(
-                        `❌ MCP tool "${mcpTool.name}" error:`,
-                        error,
-                      );
-                      throw error;
-                    }
-                  },
-                });
-              } catch (error) {
-                console.error(`❌ Error creating tool ${mcpTool.name}:`, error);
-                // Fallback - skip this tool
-                continue;
+            } catch (error: any) {
+              console.error(
+                `❌ Failed to connect to MCP server ${server.name}: ${error.message}`,
+              );
+              console.error(`   URL: ${server.url}`);
+              if (error.message?.includes('protocol version')) {
+                console.error(
+                  `   This may be a protocol version issue - try updating your MCP server`,
+                );
+              }
+              
+              if (mcpClient) {
+                try {
+                  await mcpClient.close();
+                } catch (closeError) {
+                  console.error('Error closing MCP client:', closeError);
+                }
               }
             }
-
-            console.log(
-              `✅ Connected to MCP server at ${mcpUrl} with ${Object.keys(mcpTools).length} tools: ${Object.keys(mcpTools).join(', ')}`,
-            );
-          } catch (error: any) {
-            console.error(
-              `❌ Failed to connect to MCP server: ${error.message}`,
-            );
-            console.error(`   URL: ${mcpUrl}`);
-            if (error.message?.includes('protocol version')) {
-              console.error(
-                `   This may be a protocol version issue - try updating your MCP server`,
-              );
-            }
-            mcpTools = {};
           }
+        } catch (dbError: any) {
+          console.error('❌ Failed to fetch MCP servers from database:', dbError.message);
         }
 
         // Log all available tools before calling streamText
@@ -510,16 +523,24 @@ export async function POST(request: Request) {
               );
             }
 
-            // Close MCP client when done
-            if (mcpClient) {
-              await mcpClient.close();
+            // Close all MCP clients when done
+            for (const client of mcpClients) {
+              try {
+                await client.close();
+              } catch (closeError) {
+                console.error('Error closing MCP client:', closeError);
+              }
             }
           },
           onError: async (error) => {
             console.error(`❌ Stream error:`, error);
-            // Close MCP client on error
-            if (mcpClient) {
-              await mcpClient.close();
+            // Close all MCP clients on error
+            for (const client of mcpClients) {
+              try {
+                await client.close();
+              } catch (closeError) {
+                console.error('Error closing MCP client:', closeError);
+              }
             }
           },
         });

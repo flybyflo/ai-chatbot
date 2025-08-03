@@ -31,6 +31,7 @@ export function InputExpandableContent({
     null,
   );
   const [panelTitle, setPanelTitle] = useState<React.ReactNode>('Options');
+  const [panelHeaderAction, setPanelHeaderAction] = useState<React.ReactNode>(null);
   const [isInSubpage, setIsInSubpage] = useState(false);
 
   // Handle ESC key to close panel
@@ -73,8 +74,9 @@ export function InputExpandableContent({
     }
   };
 
-  const handleTitleChange = (title: React.ReactNode) => {
+  const handleTitleChange = (title: React.ReactNode, headerAction?: React.ReactNode) => {
     setPanelTitle(title);
+    setPanelHeaderAction(headerAction || null);
     setIsInSubpage(title !== 'Options');
   };
 
@@ -86,6 +88,7 @@ export function InputExpandableContent({
         title={activePanel === 'options' ? panelTitle : 'Model Selection'}
         normalContent={normalContent}
         className={className}
+        headerAction={activePanel === 'options' ? panelHeaderAction : undefined}
       >
         {activePanel === 'options' ? (
           <InputOptions

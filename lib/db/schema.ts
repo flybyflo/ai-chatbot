@@ -168,3 +168,19 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const mcpServer = pgTable('MCPServer', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  url: text('url').notNull(),
+  authToken: text('authToken'),
+  description: text('description'),
+  isEnabled: boolean('isEnabled').notNull().default(true),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type MCPServer = InferSelectModel<typeof mcpServer>;
