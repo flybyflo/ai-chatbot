@@ -61,25 +61,19 @@ export function InputExpandableContent({
   const [resetTrigger, setResetTrigger] = useState(false);
 
   const handleBackClick = () => {
-    if (activePanel === 'options' && isInSubpage) {
-      // Go back to main options menu
-      setIsInSubpage(false);
-      setResetTrigger(!resetTrigger);
-      // Title will be updated by the OptionsNavigator
-    } else {
-      // Close the entire panel
-      setActivePanel(null);
-      setIsInSubpage(false);
-      setPanelTitle('Options');
-    }
+    // Since we only have MCP Servers now, back button always closes the panel
+    setActivePanel(null);
+    setIsInSubpage(false);
+    setPanelTitle('Options');
   };
 
   const handleTitleChange = useCallback((title: React.ReactNode, headerAction?: React.ReactNode) => {
-    // Temporarily disable all title changes to stop infinite loop
-    console.log('Title change called:', title);
-    // setPanelTitle(title);
-    // setPanelHeaderAction(headerAction || null);
-    // setIsInSubpage(title !== 'Options');
+    setPanelTitle(title);
+    setPanelHeaderAction(headerAction || null);
+    
+    // Only update isInSubpage if it's actually changing to prevent infinite loops
+    const isSubpage = title !== 'Options';
+    setIsInSubpage(prev => prev !== isSubpage ? isSubpage : prev);
   }, []);
 
   return (

@@ -43,12 +43,12 @@ export function ExpandablePanel({
       ) : (
         <motion.div
           initial={{ height: '50px' }}
-          animate={{ height: '240px' }}
+          animate={{ height: '320px' }}
           exit={{ height: '50px' }}
           transition={{ duration: 0.4, ease: 'easeInOut' }}
-          className={`bg-muted rounded-2xl p-3 border dark:border-zinc-700 overflow-hidden ${className}`}
+          className={`bg-muted rounded-2xl p-3 border dark:border-zinc-700 overflow-hidden flex flex-col ${className}`}
         >
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-3 shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -62,7 +62,7 @@ export function ExpandablePanel({
               {headerAction}
             </div>
           </div>
-          <div className="h-full overflow-y-auto">{children}</div>
+          <div className="flex-1 overflow-y-auto min-h-0 pb-2">{children}</div>
         </motion.div>
       )}
     </div>

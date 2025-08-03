@@ -1,14 +1,18 @@
 'use client';
 
-import { OptionsNavigator } from './options-navigator';
-import { getOptionPages } from './options/registry';
+import { useEffect } from 'react';
+import { MCPServersWithDialog } from './options/mcp-servers-with-dialog';
 
 interface InputOptionsProps {
-  onTitleChange?: (title: React.ReactNode) => void;
+  onTitleChange?: (title: React.ReactNode, headerAction?: React.ReactNode) => void;
   resetTrigger?: boolean;
 }
 
 export function InputOptions({ onTitleChange, resetTrigger }: InputOptionsProps) {
-  const optionPages = getOptionPages();
-  return <OptionsNavigator pages={optionPages} onTitleChange={onTitleChange} resetTrigger={resetTrigger} />;
+  // Update title when component mounts or resets
+  useEffect(() => {
+    onTitleChange?.('MCP Servers');
+  }, [onTitleChange, resetTrigger]);
+
+  return <MCPServersWithDialog />;
 }
