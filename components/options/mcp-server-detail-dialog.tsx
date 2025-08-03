@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -77,66 +77,8 @@ export function MCPServerDetailDialog({
     useState<MCPServer | null>(null);
   const [authToken, setAuthToken] = useState('');
 
-  // Fetch server details when dialog opens
-  useEffect(() => {
-    if (isOpen && serverId) {
-      fetchServerDetails();
-    } else if (!isOpen) {
-      // Reset state when dialog closes
-      setServer(null);
-      setError(null);
-      setEditingServer(null);
-      setAuthRequiredServer(null);
-    }
-  }, [isOpen, serverId]);
-
-  const fetchServerDetails = async () => {
-    if (!serverId) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/mcp-servers');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch MCP servers: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const foundServer = (data.servers || []).find(
-        (s: MCPServer) => s.id === serverId,
-      );
-
-      if (!foundServer) {
-        throw new Error('Server not found');
-      }
-
-      const serverWithStatus: MCPServerWithStatus = {
-        ...foundServer,
-        status: foundServer.isEnabled ? 'loading' : 'disabled',
-        tools: [],
-        createdAt: new Date(foundServer.createdAt),
-        updatedAt: new Date(foundServer.updatedAt),
-      };
-
-      setServer(serverWithStatus);
-
-      // Fetch tools if enabled
-      if (foundServer.isEnabled) {
-        fetchServerTools(serverId);
-      }
-    } catch (err) {
-      console.error('Error fetching server details:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to fetch server details',
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Fetch tools for the server
-  const fetchServerTools = async (id: string) => {
+  const fetchServerTools = useCallback(async (id: string) => {
     setLoadingTools(true);
 
     try {
@@ -185,7 +127,65 @@ export function MCPServerDetailDialog({
     } finally {
       setLoadingTools(false);
     }
-  };
+  }, []);
+
+  const fetchServerDetails = useCallback(async () => {
+    if (!serverId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/mcp-servers');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch MCP servers: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const foundServer = (data.servers || []).find(
+        (s: MCPServer) => s.id === serverId,
+      );
+
+      if (!foundServer) {
+        throw new Error('Server not found');
+      }
+
+      const serverWithStatus: MCPServerWithStatus = {
+        ...foundServer,
+        status: foundServer.isEnabled ? 'loading' : 'disabled',
+        tools: [],
+        createdAt: new Date(foundServer.createdAt),
+        updatedAt: new Date(foundServer.updatedAt),
+      };
+
+      setServer(serverWithStatus);
+
+      // Fetch tools if enabled
+      if (foundServer.isEnabled) {
+        fetchServerTools(serverId);
+      }
+    } catch (err) {
+      console.error('Error fetching server details:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch server details',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [serverId, fetchServerTools]);
+
+  // Fetch server details when dialog opens
+  useEffect(() => {
+    if (isOpen && serverId) {
+      fetchServerDetails();
+    } else if (!isOpen) {
+      // Reset state when dialog closes
+      setServer(null);
+      setError(null);
+      setEditingServer(null);
+      setAuthRequiredServer(null);
+    }
+  }, [isOpen, serverId, fetchServerDetails]);
 
   const openEditDialog = (server: MCPServer) => {
     setEditingServer(server);

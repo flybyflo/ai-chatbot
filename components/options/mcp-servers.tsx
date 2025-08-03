@@ -155,7 +155,7 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
 
   useEffect(() => {
     fetchMCPServers();
-  }, []); // Remove fetchMCPServers from dependencies to avoid infinite loop
+  }, [fetchMCPServers]);
 
   const resetForm = () => {
     setFormData({ name: '', url: '', authToken: '', description: '' });
