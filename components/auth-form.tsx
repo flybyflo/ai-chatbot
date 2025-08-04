@@ -51,6 +51,8 @@ export function AuthForm({
           className="bg-muted text-md md:text-sm"
           type="password"
           required
+          minLength={6}
+          placeholder="Minimum 6 characters"
         />
       </div>
 

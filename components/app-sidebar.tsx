@@ -1,6 +1,6 @@
 'use client';
 
-import type { User } from 'next-auth';
+import type { User } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 

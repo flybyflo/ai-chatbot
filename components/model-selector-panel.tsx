@@ -3,9 +3,9 @@
 import { startTransition, useMemo, useOptimistic } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { chatModels } from '@/lib/ai/models';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
+import { entitlements } from '@/lib/ai/entitlements';
 import { saveChatModelAsCookie } from '@/app/(chat)/actions';
-import type { Session } from 'next-auth';
+import type { Session } from '@/lib/auth';
 
 interface ModelSelectorPanelProps {
   session: Session | null;
@@ -21,9 +21,7 @@ export function ModelSelectorPanel({
   const [optimisticModelId, setOptimisticModelId] =
     useOptimistic(selectedModelId);
 
-  // Add null checks for session and session.user
-  const userType = session?.user?.type || 'guest';
-  const { availableChatModelIds } = entitlementsByUserType[userType];
+  const { availableChatModelIds } = entitlements;
 
   const availableChatModels = chatModels.filter((chatModel) =>
     availableChatModelIds.includes(chatModel.id),

@@ -26,7 +26,7 @@ import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { Attachment, ChatMessage } from '@/lib/types';
-import type { Session } from 'next-auth';
+import type { Session } from '@/lib/auth';
 
 function PureMultimodalInput({
   chatId,

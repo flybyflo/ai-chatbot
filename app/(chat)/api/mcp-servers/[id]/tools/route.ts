@@ -1,5 +1,6 @@
+import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/app/(auth)/auth';
+import { auth } from '@/lib/auth';
 import { getMCPServersByUserId } from '@/lib/db/queries';
 import { ChatSDKError } from '@/lib/errors';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -10,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await headers() });
     
     if (!session?.user) {
       return new ChatSDKError('unauthorized:mcp_servers').toResponse();

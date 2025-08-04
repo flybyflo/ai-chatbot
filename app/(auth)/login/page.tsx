@@ -9,7 +9,7 @@ import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
 
 import { login, type LoginActionState } from '../actions';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth-client';
 
 export default function Page() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function Page() {
     },
   );
 
-  const { update: updateSession } = useSession();
+  const { refetch } = useSession();
 
   useEffect(() => {
     if (state.status === 'failed') {
@@ -39,8 +39,8 @@ export default function Page() {
       });
     } else if (state.status === 'success') {
       setIsSuccessful(true);
-      updateSession();
-      router.refresh();
+      refetch();
+      router.push('/');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);

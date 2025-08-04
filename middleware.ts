@@ -1,14 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { guestRegex, isDevelopmentEnvironment } from './lib/constants';
+import { getSessionCookie } from 'better-auth/cookies';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Temporarily disable auth for Docker development
-  if (process.env.NODE_ENV === 'development') {
-    return NextResponse.next();
-  }
+  // Enable auth in development for testing
+  // if (process.env.NODE_ENV === 'development') {
+  //   return NextResponse.next();
+  // }
 
   /*
    * Playwright starts the dev server and requires a 200 status to
@@ -22,25 +21,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-    secureCookie: false, // Allow non-secure cookies for local Docker development
-  });
-
-  if (!token) {
-    const redirectUrl = encodeURIComponent(request.url);
-
-    return NextResponse.redirect(
-      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url),
-    );
+  // Allow access to auth pages without session
+  if (['/login', '/register'].includes(pathname)) {
+    return NextResponse.next();
   }
 
-  const isGuest = guestRegex.test(token?.email ?? '');
+  const sessionCookie = getSessionCookie(request);
 
-  if (token && !isGuest && ['/login', '/register'].includes(pathname)) {
-    return NextResponse.redirect(new URL('/', request.url));
+  if (!sessionCookie) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
+
+  // Note: This is not secure! Better Auth middleware only checks for cookie existence
+  // You should always validate the session on your server for any protected actions
 
   return NextResponse.next();
 }

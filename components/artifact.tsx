@@ -28,7 +28,7 @@ import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
-import type { Session } from 'next-auth';
+import type { Session } from '@/lib/auth';
 
 export const artifactDefinitions = [
   textArtifact,

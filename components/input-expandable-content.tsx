@@ -6,7 +6,7 @@ import { Sliders } from 'lucide-react';
 import { ExpandablePanel } from './expandable-panel';
 import { InputOptions } from './input-options';
 import { ModelSelectorPanel } from './model-selector-panel';
-import type { Session } from 'next-auth';
+import type { Session } from '@/lib/auth';
 
 interface InputExpandableContentProps {
   normalContent: ReactNode;
