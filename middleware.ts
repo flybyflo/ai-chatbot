@@ -5,6 +5,11 @@ import { guestRegex, isDevelopmentEnvironment } from './lib/constants';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Temporarily disable auth for Docker development
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next();
+  }
+
   /*
    * Playwright starts the dev server and requires a 200 status to
    * begin the tests, so this ensures that the tests can start
@@ -20,7 +25,7 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
-    secureCookie: !isDevelopmentEnvironment,
+    secureCookie: false, // Allow non-secure cookies for local Docker development
   });
 
   if (!token) {

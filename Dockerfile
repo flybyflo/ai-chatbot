@@ -5,7 +5,7 @@ FROM node:22-alpine AS base
 # Install dependencies only when needed
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 make g++
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
@@ -58,9 +58,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
 COPY --from=builder --chown=nextjs:nodejs /app/migrate.js ./migrate.js
 COPY --from=builder --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh
-# Copy specific dependencies needed for migrations
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/postgres ./node_modules/postgres
+# Copy drizzle config for migrations
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
+# Copy all node_modules for migrations (simplified approach)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 RUN chmod +x docker-entrypoint.sh
 
 USER nextjs
