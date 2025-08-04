@@ -2,6 +2,7 @@
 
 import { memo, useState, useEffect, useRef } from 'react';
 import { MCPToolResult } from './mcp-tool-result';
+import { useProgress } from '@/hooks/use-progress';
 
 interface MCPToolContainerProps {
   toolName: string;
@@ -28,6 +29,12 @@ const MCPToolContainer = memo(function MCPToolContainer({
   const [currentState, setCurrentState] = useState<'call' | 'result'>('call');
   const [currentResult, setCurrentResult] = useState(result);
   const mountedRef = useRef(true);
+  const { getProgressForTool } = useProgress();
+  
+  // Get progress for this specific tool - use the original tool name without server prefix
+  const originalToolName = toolName.startsWith(`${serverName}__`) ? toolName.substring(`${serverName}__`.length) : toolName;
+  const progressInfo = serverName ? getProgressForTool(originalToolName, serverName) : undefined;
+  
 
   useEffect(() => {
     mountedRef.current = true;
@@ -71,6 +78,7 @@ const MCPToolContainer = memo(function MCPToolContainer({
       result={currentResult}
       state={currentState}
       serverName={serverName}
+      progress={progressInfo?.currentProgress}
     />
   );
 });

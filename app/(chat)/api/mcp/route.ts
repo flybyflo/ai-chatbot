@@ -61,6 +61,7 @@ export async function GET() {
           {
             capabilities: {
               tools: {},
+              sampling: {},
             },
           },
         );

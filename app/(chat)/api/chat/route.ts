@@ -6,7 +6,8 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
- tool } from 'ai';
+  tool,
+} from 'ai';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
@@ -42,6 +43,8 @@ import type { ChatModel } from '@/lib/ai/models';
 import type { VisibilityType } from '@/components/visibility-selector';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { samplingManager } from '@/lib/sampling-manager';
+import { progressManager } from '@/lib/progress-manager';
 
 export const maxDuration = 60;
 
@@ -221,8 +224,12 @@ export async function POST(request: Request) {
 
         // Get saved MCP servers from database
         try {
-          const savedServers = await getMCPServersByUserId({ userId: session.user.id });
-          const enabledServers = savedServers.filter(server => server.isEnabled);
+          const savedServers = await getMCPServersByUserId({
+            userId: session.user.id,
+          });
+          const enabledServers = savedServers.filter(
+            (server) => server.isEnabled,
+          );
 
           // Connect to all enabled MCP servers
           for (const server of enabledServers) {
@@ -257,12 +264,166 @@ export async function POST(request: Request) {
                 {
                   capabilities: {
                     tools: {},
+                    sampling: {},
                   },
                 },
               );
 
               // Connect to the server
               await mcpClient.connect(transport);
+
+              // Set up progress notification handler
+              const progressNotificationSchema = z.object({
+                method: z.literal('notifications/progress'),
+                params: z.object({
+                  progressToken: z.string(),
+                  progress: z.number().optional(),
+                  total: z.number().optional(),
+                  description: z.string().optional()
+                }).optional()
+              });
+
+              mcpClient.setNotificationHandler(progressNotificationSchema, async (notification) => {
+                console.log('📊 Received progress notification:', notification);
+                
+                const { progressToken, progress, total, description } = notification.params || {};
+                
+                // Update progress directly through the progress manager
+                if (progressToken) {
+                  progressManager.updateProgress(progressToken, {
+                    progress,
+                    total,
+                    description,
+                    timestamp: Date.now()
+                  });
+                  
+                  console.log(`📈 Progress update for token ${progressToken}:`, { progress, total, description });
+                }
+              });
+
+              // Set up sampling handler using correct Zod schema
+              const samplingRequestSchema = z.object({
+                method: z.literal('sampling/createMessage'),
+                params: z
+                  .object({
+                    messages: z
+                      .array(
+                        z.object({
+                          role: z.string(),
+                          content: z.union([
+                            z.object({ type: z.string(), text: z.string() }),
+                            z.string(),
+                          ]),
+                        }),
+                      )
+                      .optional()
+                      .default([]),
+                    systemPrompt: z.string().optional(),
+                    includeContext: z.string().optional(),
+                    maxTokens: z.number().optional(),
+                    temperature: z.number().optional(),
+                    modelPreferences: z
+                      .object({
+                        speedPriority: z.number().optional(),
+                        intelligencePriority: z.number().optional(),
+                        costPriority: z.number().optional(),
+                      })
+                      .optional(),
+                  })
+                  .optional(),
+              });
+
+              mcpClient.setRequestHandler(
+                samplingRequestSchema,
+                async (request, extra) => {
+                  console.log('🎯 Received sampling request:', request);
+
+                  // Extract sampling parameters
+                  const {
+                    messages = [],
+                    systemPrompt,
+                    includeContext,
+                    maxTokens,
+                    temperature,
+                    modelPreferences,
+                  } = request.params || {};
+
+                  try {
+                    // Create sampling request for approval
+                    const samplingRequest = {
+                      id: samplingManager.generateRequestId(),
+                      serverName: server.name,
+                      messages: messages.map((msg) => ({
+                        role: msg.role,
+                        content: {
+                          type: 'text',
+                          text:
+                            typeof msg.content === 'string'
+                              ? msg.content
+                              : msg.content.text,
+                        },
+                      })),
+                      systemPrompt,
+                      maxTokens,
+                      temperature,
+                      modelPreferences,
+                    };
+
+                    // Request user approval (this would integrate with UI in a full implementation)
+                    const approval =
+                      await samplingManager.requestApproval(samplingRequest);
+
+                    if (!approval.approved) {
+                      console.log('❌ Sampling request denied by user');
+                      throw new Error('Sampling request denied by user');
+                    }
+
+                    console.log('✅ Sampling request approved by user');
+
+                    // Use the current AI model to handle sampling
+                    const model = myProvider.languageModel(selectedChatModel);
+
+                    const result = await streamText({
+                      model,
+                      messages: messages.map((msg) => ({
+                        role: msg.role as 'user' | 'assistant' | 'system',
+                        content:
+                          typeof msg.content === 'string'
+                            ? msg.content
+                            : msg.content.text,
+                      })),
+                      system:
+                        approval.modifiedSystemPrompt ||
+                        systemPrompt ||
+                        'You are a helpful assistant.',
+                      temperature: temperature || 0.7,
+                    });
+
+                    let fullResponse = '';
+                    for await (const chunk of result.textStream) {
+                      fullResponse += chunk;
+                    }
+
+                    console.log(
+                      '✅ Sampling response generated:',
+                      `${fullResponse.substring(0, 100)}...`,
+                    );
+
+                    return {
+                      model: selectedChatModel,
+                      role: 'assistant',
+                      content: {
+                        type: 'text',
+                        text: fullResponse,
+                      },
+                    };
+                  } catch (error) {
+                    console.error('❌ Sampling error:', error);
+                    throw error;
+                  }
+                },
+              );
+
               mcpClients.push(mcpClient);
 
               // Get available tools from MCP server
@@ -270,15 +431,18 @@ export async function POST(request: Request) {
 
               // Convert MCP tools to AI SDK format
               for (const mcpTool of toolsResult.tools) {
-                console.log(`🔧 Converting MCP tool: ${mcpTool.name} from ${server.name}`, {
-                  description: mcpTool.description,
-                  inputSchema: mcpTool.inputSchema,
-                  inputSchemaStringified: JSON.stringify(
-                    mcpTool.inputSchema,
-                    null,
-                    2,
-                  ),
-                });
+                console.log(
+                  `🔧 Converting MCP tool: ${mcpTool.name} from ${server.name}`,
+                  {
+                    description: mcpTool.description,
+                    inputSchema: mcpTool.inputSchema,
+                    inputSchemaStringified: JSON.stringify(
+                      mcpTool.inputSchema,
+                      null,
+                      2,
+                    ),
+                  },
+                );
 
                 // Ensure the schema is a valid JSON Schema object
                 let validSchema = mcpTool.inputSchema;
@@ -320,7 +484,8 @@ export async function POST(request: Request) {
                 try {
                   mcpTools[uniqueToolName] = tool({
                     description:
-                      mcpTool.description || `MCP tool: ${mcpTool.name} from ${server.name}`,
+                      mcpTool.description ||
+                      `MCP tool: ${mcpTool.name} from ${server.name}`,
                     inputSchema: zodSchema,
                     execute: async (args: any) => {
                       console.log(
@@ -336,10 +501,22 @@ export async function POST(request: Request) {
                       }
 
                       try {
+                        // Generate a unique progress token for this tool call
+                        const progressToken = `progress-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                        
+                        // Register the tool execution with progress manager
+                        progressManager.registerToolExecution(progressToken, mcpTool.name, server.name);
+                        
                         const result = await mcpClient.callTool({
                           name: mcpTool.name,
                           arguments: args,
+                          _meta: {
+                            progressToken: progressToken
+                          }
                         });
+                        
+                        // Clean up progress tracking when tool completes
+                        progressManager.cleanupProgress(progressToken);
 
                         console.log(
                           `✅ MCP tool "${mcpTool.name}" result:`,
@@ -356,7 +533,10 @@ export async function POST(request: Request) {
                     },
                   });
                 } catch (error) {
-                  console.error(`❌ Error creating tool ${mcpTool.name}:`, error);
+                  console.error(
+                    `❌ Error creating tool ${mcpTool.name}:`,
+                    error,
+                  );
                   // Fallback - skip this tool
                   continue;
                 }
@@ -375,7 +555,7 @@ export async function POST(request: Request) {
                   `   This may be a protocol version issue - try updating your MCP server`,
                 );
               }
-              
+
               if (mcpClient) {
                 try {
                   await mcpClient.close();
@@ -386,7 +566,10 @@ export async function POST(request: Request) {
             }
           }
         } catch (dbError: any) {
-          console.error('❌ Failed to fetch MCP servers from database:', dbError.message);
+          console.error(
+            '❌ Failed to fetch MCP servers from database:',
+            dbError.message,
+          );
         }
 
         // Log all available tools before calling streamText

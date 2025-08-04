@@ -2,7 +2,6 @@
 
 import { z } from 'zod';
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 // import { getUser } from '@/lib/db/queries'; // No longer needed - Better Auth handles user checks
 import { auth } from '@/lib/auth';
 

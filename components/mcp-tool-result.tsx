@@ -3,6 +3,13 @@
 import { memo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
+
+interface ProgressUpdate {
+  progress?: number;
+  total?: number;
+  description?: string;
+}
 
 interface MCPToolResultProps {
   toolName: string;
@@ -11,6 +18,7 @@ interface MCPToolResultProps {
   state: 'call' | 'result';
   className?: string;
   serverName?: string;
+  progress?: ProgressUpdate;
 }
 
 const MCPToolResult = memo(function MCPToolResult({
@@ -20,6 +28,7 @@ const MCPToolResult = memo(function MCPToolResult({
   state,
   className,
   serverName = 'unknown',
+  progress,
 }: MCPToolResultProps) {
   const [showResult, setShowResult] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -56,6 +65,9 @@ const MCPToolResult = memo(function MCPToolResult({
 
   // Extract display result for inline preview
   const getDisplayResult = () => {
+    if (typeof result === 'string') {
+      return result.length > 50 ? `${result.substring(0, 50)}...` : result;
+    }
     if (typeof result === 'object' && result !== null) {
       if (result.content && Array.isArray(result.content)) {
         const textContent = result.content
@@ -65,11 +77,23 @@ const MCPToolResult = memo(function MCPToolResult({
         return textContent || 'No result';
       }
       if (result.structuredContent?.result !== undefined) {
-        return String(result.structuredContent.result);
+        const structuredResult = result.structuredContent.result;
+        return typeof structuredResult === 'string'
+          ? structuredResult.substring(0, 50) +
+              (structuredResult.length > 50 ? '...' : '')
+          : String(structuredResult);
       }
       if (result.isError) {
         return `Error: ${result.content?.[0]?.text || 'Unknown error'}`;
       }
+      // Try to extract any text content from the object
+      const stringValue = String(result);
+      if (stringValue !== '[object Object]') {
+        return stringValue.length > 50
+          ? `${stringValue.substring(0, 50)}...`
+          : stringValue;
+      }
+      return 'Object result (click to expand)';
     }
     return result ? String(result) : 'No result';
   };
@@ -96,7 +120,7 @@ const MCPToolResult = memo(function MCPToolResult({
             <code className="text-xs font-mono text-foreground bg-muted/40 px-2 py-1 rounded border border-input">
               {headingText}
             </code>
-            {state === 'call' && (
+            {state === 'call' && !progress && (
               <motion.div
                 className="size-3 border-2 border-current border-t-transparent rounded-full text-muted-foreground"
                 animate={{ rotate: 360 }}
@@ -107,15 +131,37 @@ const MCPToolResult = memo(function MCPToolResult({
                 }}
               />
             )}
+            {state === 'call' && progress && (
+              <div className="flex items-center gap-2">
+                {progress.total !== undefined && progress.progress !== undefined && (
+                  <>
+                    <Progress 
+                      value={(progress.progress / progress.total) * 100} 
+                      className="h-2 w-20"
+                    />
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {Math.round((progress.progress / progress.total) * 100)}%
+                    </span>
+                  </>
+                )}
+                {progress.total === undefined && progress.progress !== undefined && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {progress.progress} items
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           {state === 'result' && showResult && (
             <div className="flex items-center gap-2">
-              <span className={cn(
-                "text-xs font-mono truncate max-w-32",
-                isError 
-                  ? "text-red-700 dark:text-red-400" 
-                  : "text-green-700 dark:text-green-400"
-              )}>
+              <span
+                className={cn(
+                  'text-xs font-mono truncate max-w-32',
+                  isError
+                    ? 'text-red-700 dark:text-red-400'
+                    : 'text-green-700 dark:text-green-400',
+                )}
+              >
                 {getDisplayResult()}
               </span>
               <motion.div
@@ -123,14 +169,25 @@ const MCPToolResult = memo(function MCPToolResult({
                 animate={{ rotate: isExpanded ? 180 : 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg
+                  className="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </motion.div>
             </div>
           )}
         </div>
       </div>
+
 
       {/* Expanded Result Section - Only show when clicked and expanded */}
       <AnimatePresence>
@@ -166,16 +223,20 @@ const MCPToolResult = memo(function MCPToolResult({
               {/* Raw Output Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className={cn(
-                    "size-2 rounded-full",
-                    isError ? "bg-red-500" : "bg-green-500"
-                  )} />
-                  <h4 className={cn(
-                    "text-xs font-semibold",
-                    isError 
-                      ? "text-red-700 dark:text-red-400"
-                      : "text-green-700 dark:text-green-400"
-                  )}>
+                  <div
+                    className={cn(
+                      'size-2 rounded-full',
+                      isError ? 'bg-red-500' : 'bg-green-500',
+                    )}
+                  />
+                  <h4
+                    className={cn(
+                      'text-xs font-semibold',
+                      isError
+                        ? 'text-red-700 dark:text-red-400'
+                        : 'text-green-700 dark:text-green-400',
+                    )}
+                  >
                     Raw Output
                   </h4>
                 </div>

@@ -319,9 +319,13 @@ const PurePreviewMessage = ({
                 const { toolCallId, state } = part as any;
                 const toolName = type.replace('tool-', ''); // Remove 'tool-' prefix
                 
+                // Extract server name from tool name (format: serverName__toolName)
+                const serverName = toolName.includes('__') ? toolName.split('__')[0] : 'unknown';
+                
                 console.log(`🎨 Rendering MCP tool in message:`, {
                   type,
                   toolName,
+                  serverName,
                   toolCallId,
                   state,
                   part,
@@ -337,7 +341,7 @@ const PurePreviewMessage = ({
                         args={input}
                         state="call"
                         isReadonly={isReadonly}
-                        serverName="mcp"
+                        serverName={serverName}
                       />
                     </div>
                   );
@@ -354,7 +358,7 @@ const PurePreviewMessage = ({
                         result={output}
                         state="result"
                         isReadonly={isReadonly}
-                        serverName="mcp"
+                        serverName={serverName}
                       />
                     </div>
                   );

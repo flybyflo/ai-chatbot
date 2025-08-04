@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm lint` - Run Next.js ESLint and Biome linter with auto-fix
 - `pnpm lint:fix` - Run linters with fixes
 - `pnpm format` - Format code with Biome
+- After implementing something, make a `npx tsc` check
 
 ### Database Operations
 - `pnpm db:generate` - Generate Drizzle migrations
