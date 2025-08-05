@@ -24,7 +24,7 @@ export async function GET() {
         if (!isConnectionActive) return;
 
         try {
-          let message;
+          let message: any;
           if (toolProgressInfo.isCleanup) {
             message = {
               type: 'cleanup',

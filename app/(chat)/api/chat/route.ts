@@ -371,7 +371,7 @@ export async function POST(request: Request) {
 
                     // Request user approval (this would integrate with UI in a full implementation)
                     const approval =
-                      await samplingManager.requestApproval(samplingRequest);
+                      await samplingManager.requestApproval();
 
                     if (!approval.approved) {
                       console.log('❌ Sampling request denied by user');

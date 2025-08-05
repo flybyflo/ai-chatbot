@@ -22,8 +22,6 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
-import { SamplingApprovalDialog, type SamplingRequest } from './sampling-approval-dialog';
-import { samplingManager } from '@/lib/sampling-manager';
 
 export function Chat({
   id,
@@ -54,9 +52,6 @@ export function Chat({
   const [selectedModelId, setSelectedModelId] =
     useState<string>(initialChatModel);
   
-  // Sampling approval state
-  const [samplingRequest, setSamplingRequest] = useState<SamplingRequest | null>(null);
-  const [isSamplingDialogOpen, setIsSamplingDialogOpen] = useState(false);
 
   const {
     messages,
@@ -134,50 +129,7 @@ export function Chat({
     setMessages,
   });
 
-  // Set up sampling approval handler
-  useEffect(() => {
-    const handleSamplingApproval = async (request: SamplingRequest) => {
-      return new Promise<{ approved: boolean; modifiedSystemPrompt?: string }>((resolve) => {
-        setSamplingRequest(request);
-        setIsSamplingDialogOpen(true);
-        
-        // Store the resolve function to be called when user makes a decision
-        (window as any).samplingResolve = resolve;
-      });
-    };
 
-    samplingManager.setApprovalHandler(handleSamplingApproval);
-    
-    return () => {
-      samplingManager.setApprovalHandler(null);
-    };
-  }, []);
-
-  // Handle sampling approval/denial
-  const handleSamplingApprove = (modifiedPrompt?: string) => {
-    if ((window as any).samplingResolve) {
-      (window as any).samplingResolve({ 
-        approved: true, 
-        modifiedSystemPrompt: modifiedPrompt 
-      });
-      (window as any).samplingResolve = null;
-    }
-    setIsSamplingDialogOpen(false);
-    setSamplingRequest(null);
-  };
-
-  const handleSamplingDeny = () => {
-    if ((window as any).samplingResolve) {
-      (window as any).samplingResolve({ approved: false });
-      (window as any).samplingResolve = null;
-    }
-    setIsSamplingDialogOpen(false);
-    setSamplingRequest(null);
-  };
-
-  const handleSamplingClose = () => {
-    handleSamplingDeny(); // Default to deny when dialog is closed
-  };
 
   return (
     <>
@@ -266,13 +218,6 @@ export function Chat({
         selectedModelId={selectedModelId}
       />
 
-      <SamplingApprovalDialog
-        request={samplingRequest}
-        isOpen={isSamplingDialogOpen}
-        onApprove={handleSamplingApprove}
-        onDeny={handleSamplingDeny}
-        onClose={handleSamplingClose}
-      />
     </>
   );
 }

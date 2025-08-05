@@ -103,4 +103,8 @@ const globalForProgressManager = globalThis as unknown as {
   progressManager: ProgressManager | undefined;
 };
 
-export const progressManager = globalForProgressManager.progressManager ?? (globalForProgressManager.progressManager = new ProgressManager());
+if (!globalForProgressManager.progressManager) {
+  globalForProgressManager.progressManager = new ProgressManager();
+}
+
+export const progressManager = globalForProgressManager.progressManager;

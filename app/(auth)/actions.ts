@@ -61,8 +61,6 @@ export const login = async (
       });
       return { status: 'failed' };
     }
-  
-    return { status: 'success' };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { status: 'invalid_data' };
@@ -134,8 +132,6 @@ export const register = async (
       
       return { status: 'failed' };
     }
-
-    return { status: 'success' };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { status: 'invalid_data' };

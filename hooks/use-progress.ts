@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { progressManager, type ToolProgressInfo } from '@/lib/progress-manager';
+import type { ToolProgressInfo } from '@/lib/progress-manager';
 
 export function useProgress() {
   const [activeProgress, setActiveProgress] = useState<ToolProgressInfo[]>([]);
