@@ -1,0 +1,20 @@
+[project]
+name = "mcp-multiply"
+version = "0.1.0"
+description = "MCP server that generates and proxies a managed multiply server"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp",
+]
+
+[project.scripts]
+start = "main:main"
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+fastmcp = { git = "https://github.com/jlowin/fastmcp.git" }
+
+

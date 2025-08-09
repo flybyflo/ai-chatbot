@@ -27,15 +27,19 @@ class ProgressManager {
     this.updateHandlers.delete(handler);
   }
 
-  registerToolExecution(progressToken: string, toolName: string, serverName: string) {
+  registerToolExecution(
+    progressToken: string,
+    toolName: string,
+    serverName: string,
+  ) {
     const toolProgressInfo: ToolProgressInfo = {
       toolName,
       serverName,
       progressToken,
       updates: [],
-      currentProgress: undefined
+      currentProgress: undefined,
     };
-    
+
     this.progressUpdates.set(progressToken, toolProgressInfo);
   }
 
@@ -47,20 +51,38 @@ class ProgressManager {
 
     const timestampedUpdate = {
       ...update,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     toolProgressInfo.updates.push(timestampedUpdate);
     toolProgressInfo.currentProgress = timestampedUpdate;
 
     // Notify all handlers
-    this.updateHandlers.forEach(handler => {
+    this.updateHandlers.forEach((handler) => {
       try {
         handler(toolProgressInfo);
       } catch (error) {
         console.error('Error in progress update handler:', error);
       }
     });
+
+    // Publish to Redis for external realtime gateway
+    void (async () => {
+      try {
+        const { getRedisPub } = await import('@/lib/realtime/redis');
+        const pub = await getRedisPub();
+        await pub.publish(
+          'rt:events',
+          JSON.stringify({
+            type: 'progress',
+            toolName: toolProgressInfo.toolName,
+            serverName: toolProgressInfo.serverName,
+            progressToken,
+            currentProgress: timestampedUpdate,
+          }),
+        );
+      } catch {}
+    })();
   }
 
   getProgressInfo(progressToken: string): ToolProgressInfo | undefined {
@@ -76,13 +98,33 @@ class ProgressManager {
     const deleted = this.progressUpdates.delete(progressToken);
     if (deleted && toolProgressInfo) {
       // Notify handlers about cleanup
-      this.updateHandlers.forEach(handler => {
+      this.updateHandlers.forEach((handler) => {
         try {
-          handler({ ...toolProgressInfo, currentProgress: undefined, isCleanup: true } as any);
+          handler({
+            ...toolProgressInfo,
+            currentProgress: undefined,
+            isCleanup: true,
+          } as any);
         } catch (error) {
           console.error('Error in cleanup handler:', error);
         }
       });
+
+      // Publish cleanup to Redis
+      void (async () => {
+        try {
+          const { getRedisPub } = await import('@/lib/realtime/redis');
+          const pub = await getRedisPub();
+          await pub.publish(
+            'rt:events',
+            JSON.stringify({
+              type: 'cleanup',
+              kind: 'progress',
+              token: progressToken,
+            }),
+          );
+        } catch {}
+      })();
     }
   }
 

@@ -103,11 +103,8 @@ const PurePreviewMessage = ({
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
-              
-              // Debug all message parts
-              if (type.startsWith('tool-')) {
-                console.log(`🔍 Message part ${index}:`, { type, part });
-              }
+
+              //
 
               if (type === 'reasoning' && part.text?.trim().length > 0) {
                 return (
@@ -315,22 +312,25 @@ const PurePreviewMessage = ({
               }
 
               // Handle MCP tool calls - any tool that's not one of the built-in ones
-              if (type.startsWith('tool-') && !['tool-getWeather', 'tool-createDocument', 'tool-updateDocument', 'tool-requestSuggestions'].includes(type)) {
+              if (
+                type.startsWith('tool-') &&
+                ![
+                  'tool-getWeather',
+                  'tool-createDocument',
+                  'tool-updateDocument',
+                  'tool-requestSuggestions',
+                ].includes(type)
+              ) {
                 const { toolCallId, state } = part as any;
                 const toolName = type.replace('tool-', ''); // Remove 'tool-' prefix
-                
+
                 // Extract server name from tool name (format: serverName__toolName)
-                const serverName = toolName.includes('__') ? toolName.split('__')[0] : 'unknown';
-                
-                console.log(`🎨 Rendering MCP tool in message:`, {
-                  type,
-                  toolName,
-                  serverName,
-                  toolCallId,
-                  state,
-                  part,
-                });
-                
+                const serverName = toolName.includes('__')
+                  ? toolName.split('__')[0]
+                  : 'unknown';
+
+                //
+
                 if (state === 'input-available') {
                   const { input } = part as any;
                   return (

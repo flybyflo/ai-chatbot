@@ -47,11 +47,9 @@ const filterChatsBySearch = (chats: Chat[], searchQuery: string): Chat[] => {
   if (!searchQuery.trim()) {
     return chats;
   }
-  
+
   const query = searchQuery.toLowerCase().trim();
-  return chats.filter(chat => 
-    chat.title.toLowerCase().includes(query)
-  );
+  return chats.filter((chat) => chat.title.toLowerCase().includes(query));
 };
 
 const groupChatsByDate = (chats: Chat[]): GroupedChats => {
@@ -104,9 +102,20 @@ export function getChatHistoryPaginationKey(
   return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
 }
 
-export function SidebarHistory({ user, searchQuery }: { user: User | undefined; searchQuery?: string }) {
+export function SidebarHistory({
+  user,
+  searchQuery,
+}: { user: User | undefined; searchQuery?: string }) {
   const { setOpenMobile } = useSidebar();
-  const { id } = useParams();
+  // Guard against null and array values from useParams
+  const params = useParams() as Record<string, string | string[]> | null;
+  const id = params
+    ? typeof params.id === 'string'
+      ? params.id
+      : Array.isArray(params.id)
+        ? params.id[0]
+        : undefined
+    : undefined;
 
   const {
     data: paginatedChatHistories,
@@ -223,7 +232,10 @@ export function SidebarHistory({ user, searchQuery }: { user: User | undefined; 
                   (paginatedChatHistory) => paginatedChatHistory.chats,
                 );
 
-                const filteredChats = filterChatsBySearch(chatsFromHistory, searchQuery || '');
+                const filteredChats = filterChatsBySearch(
+                  chatsFromHistory,
+                  searchQuery || '',
+                );
                 const groupedChats = groupChatsByDate(filteredChats);
 
                 // Show "no results" message when searching but no matches found

@@ -111,12 +111,14 @@
     "remark-gfm": "^4.0.0",
     "resumable-stream": "^2.0.0",
     "server-only": "^0.0.1",
+    "socket.io-client": "^4.8.1",
     "sonner": "^1.7.4",
     "swr": "^2.2.5",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "usehooks-ts": "^3.1.0",
     "vaul": "^1.1.2",
+    "ws": "^8.18.3",
     "zod": "^3.25.68"
   },
   "devDependencies": {
@@ -129,6 +131,7 @@
     "@types/pdf-parse": "^1.1.4",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.25.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
@@ -136,6 +139,7 @@
     "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-tailwindcss": "^3.17.5",
     "postcss": "^8",
+    "socket.io": "^4.8.1",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"

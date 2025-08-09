@@ -1,8 +1,6 @@
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 from fastmcp.server.auth.verifiers import JWTVerifier, RSAKeyPair
-from fastmcp import Context
 import asyncio
-import time
 
 # Generate a new key pair
 key_pair = RSAKeyPair.generate()
@@ -27,11 +25,12 @@ token = key_pair.create_token(
 print(f"🔐 Test token: {token}", flush=True)
 
 @mcp.tool
-def hello(name: str) -> str:
-    return f"Hello, {name}!"
+def add(a: float, b: float) -> float:
+    """Return the sum of two numbers."""
+    return a + b
 
 @mcp.tool
-async def ask(question: str, ctx: Context) -> str:
+async def ask(question: str, *, ctx: Context) -> str:
     """Ask AI a question using sampling"""
     try:
         response = await ctx.sample(
@@ -45,40 +44,9 @@ async def ask(question: str, ctx: Context) -> str:
         return f"Sampling error: {str(e)}"
 
 @mcp.tool
-def echo(message: str) -> str:
-    """Echo back the message"""
-    return f"Echo: {message}"
-
-@mcp.tool
-async def long_task(task_name: str = "Processing", steps: int = 5, ctx: Context = None) -> str:
-    """Demonstrate progress reporting with a long-running task"""
-    
-    if not ctx:
-        return "Error: Context not available"
-    
-    # Report initial progress
-    await ctx.report_progress(progress=0, total=steps)
-    
-    for i in range(steps):
-        # Simulate work with sleep
-        await asyncio.sleep(1)
-        
-        # Report progress
-        current_step = i + 1
-        
-        await ctx.report_progress(
-            progress=current_step, 
-            total=steps
-        )
-    
-    return f"✅ {task_name} completed successfully! Processed {steps} steps."
-
-@mcp.tool
-async def download_simulation(file_size_mb: int = 10, ctx: Context = None) -> str:
+async def download_simulation(file_size_mb: int = 10, *, ctx: Context) -> str:
     """Simulate a file download with progress updates"""
     
-    if not ctx:
-        return "Error: Context not available"
     
     # Simulate download in chunks
     chunk_size = 1  # MB per chunk
@@ -100,27 +68,32 @@ async def download_simulation(file_size_mb: int = 10, ctx: Context = None) -> st
     return f"📁 Download complete! {file_size_mb}MB file downloaded successfully."
 
 @mcp.tool
-async def batch_process(items: int = 20, ctx: Context = None) -> str:
-    """Simulate batch processing with indeterminate progress"""
-    
-    if not ctx:
-        return "Error: Context not available"
-    
-    await ctx.report_progress(progress=0)
-    
-    for i in range(items):
-        # Variable processing time
-        delay = 0.2 + (i % 3) * 0.1  # 0.2-0.4 seconds
-        await asyncio.sleep(delay)
-        
-        processed = i + 1
-        
-        # For batch processing, we can show items processed
-        await ctx.report_progress(progress=processed)
-    
-    return f"🔄 Batch processing complete! Processed {items} items successfully."
+async def ask_confirmation(action: str, *, ctx: Context) -> str:
+    """Ask for user confirmation using elicitation."""
+    try:
+        result = await ctx.elicit(
+            message=f"Do you want to proceed with: {action}?",
+            response_type=bool,
+        )
+
+        if result.action == "accept":
+            return (
+                f"✅ Proceeding with: {action}"
+                if result.data
+                else f"❌ Not proceeding with: {action}"
+            )
+        elif result.action == "decline":
+            return "❌ User declined to answer"
+        else:
+            return "🚫 User cancelled the confirmation"
+    except Exception as e:
+        return f"Elicitation error: {str(e)}"
 
 def main():
+    # Debug: List all registered tools
+    print("🔧 Available tools: add, ask, ask_confirmation, download_simulation", flush=True)
+    print("🔧 Total: 4 tools", flush=True)
+    
     mcp.run(transport="http", host="0.0.0.0", port=8000)
 
 if __name__ == "__main__":

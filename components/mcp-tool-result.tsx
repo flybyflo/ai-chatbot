@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -19,6 +19,7 @@ interface MCPToolResultProps {
   className?: string;
   serverName?: string;
   progress?: ProgressUpdate;
+  children?: ReactNode;
 }
 
 const MCPToolResult = memo(function MCPToolResult({
@@ -29,6 +30,7 @@ const MCPToolResult = memo(function MCPToolResult({
   className,
   serverName = 'unknown',
   progress,
+  children,
 }: MCPToolResultProps) {
   const [showResult, setShowResult] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -133,22 +135,25 @@ const MCPToolResult = memo(function MCPToolResult({
             )}
             {state === 'call' && progress && (
               <div className="flex items-center gap-2">
-                {progress.total !== undefined && progress.progress !== undefined && (
-                  <>
-                    <Progress 
-                      value={(progress.progress / progress.total) * 100} 
-                      className="h-2 w-20"
-                    />
+                {progress.total !== undefined &&
+                  progress.progress !== undefined && (
+                    <>
+                      <Progress
+                        value={(progress.progress / progress.total) * 100}
+                        className="h-2 w-20"
+                      />
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {Math.round((progress.progress / progress.total) * 100)}
+                        %
+                      </span>
+                    </>
+                  )}
+                {progress.total === undefined &&
+                  progress.progress !== undefined && (
                     <span className="text-xs text-muted-foreground font-mono">
-                      {Math.round((progress.progress / progress.total) * 100)}%
+                      {progress.progress} items
                     </span>
-                  </>
-                )}
-                {progress.total === undefined && progress.progress !== undefined && (
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {progress.progress} items
-                  </span>
-                )}
+                  )}
               </div>
             )}
           </div>
@@ -188,6 +193,10 @@ const MCPToolResult = memo(function MCPToolResult({
         </div>
       </div>
 
+      {/* Inline extra content (e.g., elicitation UI) */}
+      {state === 'call' && children ? (
+        <div className="px-3 pb-2">{children}</div>
+      ) : null}
 
       {/* Expanded Result Section - Only show when clicked and expanded */}
       <AnimatePresence>

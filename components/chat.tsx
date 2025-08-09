@@ -22,6 +22,8 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { useRealtime } from '@/hooks/use-realtime';
+import type { OutboundMessage } from '@/lib/realtime/schema';
 
 export function Chat({
   id,
@@ -47,11 +49,14 @@ export function Chat({
 
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
+  // Proactively open a WebSocket connection even on new/empty chat
+  useRealtime((_m: OutboundMessage) => {});
 
   const [input, setInput] = useState<string>('');
   const [selectedModelId, setSelectedModelId] =
     useState<string>(initialChatModel);
-  
+
+  // Elicitation handled inline in MCP tool container
 
   const {
     messages,
@@ -98,7 +103,7 @@ export function Chat({
   });
 
   const searchParams = useSearchParams();
-  const query = searchParams.get('query');
+  const query = searchParams?.get('query') ?? null;
 
   const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
 
@@ -129,7 +134,7 @@ export function Chat({
     setMessages,
   });
 
-
+  // No global elicitation dialog; handled inline per tool
 
   return (
     <>
@@ -218,6 +223,7 @@ export function Chat({
         selectedModelId={selectedModelId}
       />
 
+      {/* Elicitation dialog removed; inline UI lives in MCP tool container */}
     </>
   );
 }

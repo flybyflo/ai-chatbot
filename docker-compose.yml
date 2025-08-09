@@ -35,12 +35,18 @@ services:
     restart: always
     ports:
       - '3000:3000'
+    environment:
+      - REDIS_URL=redis://redis:6379
+      # Expose the realtime gateway URL to the browser (defaults to http://localhost:3030 in code)
+      # - NEXT_PUBLIC_REALTIME_URL=http://localhost:3030
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       mcp-test-server:
+        condition: service_started
+      realtime-gateway:
         condition: service_started
     env_file:
       - .env.local
@@ -50,6 +56,15 @@ services:
     restart: always
     ports:
       - '8000:8000'
+
+  realtime-gateway:
+    build: ./realtime-gateway
+    restart: always
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=http://localhost:3000
+    ports:
+      - '3030:3030'
 
 volumes:
   postgres_data:

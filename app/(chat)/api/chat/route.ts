@@ -45,6 +45,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { samplingManager } from '@/lib/sampling-manager';
 import { progressManager } from '@/lib/progress-manager';
+import { elicitationManager } from '@/lib/elicitation-manager';
 
 export const maxDuration = 60;
 
@@ -265,6 +266,7 @@ export async function POST(request: Request) {
                   capabilities: {
                     tools: {},
                     sampling: {},
+                    elicitation: {},
                   },
                 },
               );
@@ -275,31 +277,43 @@ export async function POST(request: Request) {
               // Set up progress notification handler
               const progressNotificationSchema = z.object({
                 method: z.literal('notifications/progress'),
-                params: z.object({
-                  progressToken: z.string(),
-                  progress: z.number().optional(),
-                  total: z.number().optional(),
-                  description: z.string().optional()
-                }).optional()
+                params: z
+                  .object({
+                    progressToken: z.string(),
+                    progress: z.number().optional(),
+                    total: z.number().optional(),
+                    description: z.string().optional(),
+                  })
+                  .optional(),
               });
 
-              mcpClient.setNotificationHandler(progressNotificationSchema, async (notification) => {
-                console.log('📊 Received progress notification:', notification);
-                
-                const { progressToken, progress, total, description } = notification.params || {};
-                
-                // Update progress directly through the progress manager
-                if (progressToken) {
-                  progressManager.updateProgress(progressToken, {
-                    progress,
-                    total,
-                    description,
-                    timestamp: Date.now()
-                  });
-                  
-                  console.log(`📈 Progress update for token ${progressToken}:`, { progress, total, description });
-                }
-              });
+              mcpClient.setNotificationHandler(
+                progressNotificationSchema,
+                async (notification) => {
+                  console.log(
+                    '📊 Received progress notification:',
+                    notification,
+                  );
+
+                  const { progressToken, progress, total, description } =
+                    notification.params || {};
+
+                  // Update progress directly through the progress manager
+                  if (progressToken) {
+                    progressManager.updateProgress(progressToken, {
+                      progress,
+                      total,
+                      description,
+                      timestamp: Date.now(),
+                    });
+
+                    console.log(
+                      `📈 Progress update for token ${progressToken}:`,
+                      { progress, total, description },
+                    );
+                  }
+                },
+              );
 
               // Set up sampling handler using correct Zod schema
               const samplingRequestSchema = z.object({
@@ -349,9 +363,8 @@ export async function POST(request: Request) {
                   } = request.params || {};
 
                   try {
-                    // Create sampling request for approval
-                    const samplingRequest = {
-                      id: samplingManager.generateRequestId(),
+                    // Ask UI for approval via realtime gateway
+                    const approval = await samplingManager.requestApproval({
                       serverName: server.name,
                       messages: messages.map((msg) => ({
                         role: msg.role,
@@ -367,11 +380,7 @@ export async function POST(request: Request) {
                       maxTokens,
                       temperature,
                       modelPreferences,
-                    };
-
-                    // Request user approval (this would integrate with UI in a full implementation)
-                    const approval =
-                      await samplingManager.requestApproval();
+                    });
 
                     if (!approval.approved) {
                       console.log('❌ Sampling request denied by user');
@@ -424,10 +433,114 @@ export async function POST(request: Request) {
                 },
               );
 
+              // Set up elicitation handler using Zod schema
+              const elicitationRequestSchema = z.object({
+                method: z.literal('elicitation/create'),
+                params: z
+                  .object({
+                    message: z.string(),
+                    requestedSchema: z.object({
+                      type: z.literal('object'),
+                      properties: z.record(z.any()),
+                      required: z.array(z.string()).optional(),
+                    }),
+                  })
+                  .optional(),
+              });
+
+              mcpClient.setRequestHandler(
+                elicitationRequestSchema,
+                async (request, extra) => {
+                  console.log(
+                    '🎯 Received elicitation/create request:',
+                    request,
+                  );
+
+                  const { message, requestedSchema } = request.params || {};
+
+                  try {
+                    // Convert MCP schema to our elicitation format
+                    let responseType: any = 'string'; // default
+
+                    if (requestedSchema?.properties) {
+                      // Check if it's a wrapped scalar (single 'value' property)
+                      const props = Object.keys(requestedSchema.properties);
+                      if (props.length === 1 && props[0] === 'value') {
+                        const valueType =
+                          requestedSchema.properties.value?.type;
+                        responseType = valueType || 'string';
+                      } else {
+                        // Multiple properties - structured object
+                        responseType = {
+                          name: 'StructuredData',
+                          properties: requestedSchema.properties,
+                        };
+                      }
+                    }
+
+                    // Create elicitation request for our UI
+                    const elicitationRequest = {
+                      id: elicitationManager.generateRequestId(),
+                      serverName: server.name,
+                      message: message || 'Please provide input',
+                      responseType,
+                    };
+
+                    // Get user input through our dialog system
+                    const result = await elicitationManager.requestUserInput(
+                      server.name,
+                      message || 'Please provide input',
+                      responseType,
+                    );
+
+                    console.log('✅ Elicitation response:', result);
+
+                    // Convert our response format to MCP format
+                    if (result.action === 'accept') {
+                      // If it was a scalar wrapper, wrap the data in 'value' property
+                      let content = result.data;
+                      if (
+                        requestedSchema?.properties &&
+                        Object.keys(requestedSchema.properties).length === 1 &&
+                        Object.keys(requestedSchema.properties)[0] === 'value'
+                      ) {
+                        content = { value: result.data };
+                      }
+
+                      return {
+                        action: 'accept',
+                        content: content,
+                      };
+                    } else {
+                      return {
+                        action: result.action, // 'decline' or 'cancel'
+                      };
+                    }
+                  } catch (error) {
+                    console.error('❌ Elicitation error:', error);
+                    return {
+                      action: 'cancel',
+                      error:
+                        error instanceof Error
+                          ? error.message
+                          : 'Unknown elicitation error',
+                    };
+                  }
+                },
+              );
+
               mcpClients.push(mcpClient);
 
               // Get available tools from MCP server
+              console.log(`🔍 Listing tools from MCP server: ${server.name}`);
               const toolsResult = await mcpClient.listTools();
+              console.log(
+                `📋 Found ${toolsResult.tools.length} tools from ${server.name}:`,
+                toolsResult.tools.map((t) => ({
+                  name: t.name,
+                  description: t.description,
+                })),
+              );
 
               // Convert MCP tools to AI SDK format
               for (const mcpTool of toolsResult.tools) {
@@ -503,18 +616,22 @@ export async function POST(request: Request) {
                       try {
                         // Generate a unique progress token for this tool call
                         const progressToken = `progress-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                        
+
                         // Register the tool execution with progress manager
-                        progressManager.registerToolExecution(progressToken, mcpTool.name, server.name);
-                        
+                        progressManager.registerToolExecution(
+                          progressToken,
+                          mcpTool.name,
+                          server.name,
+                        );
+
                         const result = await mcpClient.callTool({
                           name: mcpTool.name,
                           arguments: args,
                           _meta: {
-                            progressToken: progressToken
-                          }
+                            progressToken: progressToken,
+                          },
                         });
-                        
+
                         // Clean up progress tracking when tool completes
                         progressManager.cleanupProgress(progressToken);
 
@@ -522,6 +639,93 @@ export async function POST(request: Request) {
                           `✅ MCP tool "${mcpTool.name}" result:`,
                           result,
                         );
+
+                        // Check if result is a fallback elicitation request
+                        if (
+                          typeof result.content === 'string' &&
+                          result.content.startsWith('ELICIT_REQUEST:')
+                        ) {
+                          const parts = result.content.split(':');
+                          if (parts.length >= 4) {
+                            const [
+                              ,
+                              toolName,
+                              message,
+                              responseType,
+                              ...extraData
+                            ] = parts;
+
+                            console.log(
+                              `🎯 Handling fallback elicitation request from tool: ${toolName}`,
+                            );
+
+                            // Create elicitation request
+                            const elicitationRequest = {
+                              id: elicitationManager.generateRequestId(),
+                              serverName: server.name,
+                              message: message,
+                              responseType:
+                                responseType === 'choices' &&
+                                extraData.length > 0
+                                  ? extraData[0].split(',').map((s) => s.trim())
+                                  : responseType === 'UserInfo'
+                                    ? { name: 'UserInfo' }
+                                    : responseType === 'TaskPreferences'
+                                      ? { name: 'TaskPreferences' }
+                                      : responseType,
+                            };
+
+                            // Get user input
+                            const processedResponseType =
+                              responseType === 'choices' && extraData.length > 0
+                                ? extraData[0].split(',').map((s) => s.trim())
+                                : responseType === 'UserInfo'
+                                  ? { name: 'UserInfo' }
+                                  : responseType === 'TaskPreferences'
+                                    ? { name: 'TaskPreferences' }
+                                    : responseType;
+
+                            const elicitationResult =
+                              await elicitationManager.requestUserInput(
+                                server.name,
+                                message,
+                                processedResponseType,
+                              );
+
+                            console.log(
+                              '✅ Fallback elicitation completed:',
+                              elicitationResult,
+                            );
+
+                            // Return a formatted result based on the elicitation response
+                            if (elicitationResult.action === 'accept') {
+                              if (toolName === 'collect_user_info') {
+                                const user = elicitationResult.data;
+                                return `✅ Hello ${user.name}! You are ${user.age} years old and your email is ${user.email}`;
+                              } else if (toolName === 'create_task') {
+                                const prefs = elicitationResult.data;
+                                const notificationStr = prefs.notification
+                                  ? 'enabled'
+                                  : 'disabled';
+                                return `📋 Task created with ${prefs.priority} priority, notifications ${notificationStr}, deadline: ${prefs.deadline}`;
+                              } else if (toolName === 'ask_confirmation') {
+                                return elicitationResult.data
+                                  ? `✅ Proceeding with: ${parts[1]?.split(' ').slice(-1)[0] || 'the action'}`
+                                  : `❌ Action cancelled by user`;
+                              } else if (toolName === 'choose_option') {
+                                return `✅ You selected: ${elicitationResult.data}`;
+                              } else if (toolName === 'survey_feedback') {
+                                return `📊 Feedback received: ${elicitationResult.data}`;
+                              }
+                              return `✅ User provided: ${JSON.stringify(elicitationResult.data)}`;
+                            } else if (elicitationResult.action === 'decline') {
+                              return `❌ User declined to provide input`;
+                            } else {
+                              return `🚫 User cancelled the request`;
+                            }
+                          }
+                        }
+
                         return result.content;
                       } catch (error) {
                         console.error(
