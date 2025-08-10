@@ -95,7 +95,13 @@ const MCPToolResult = memo(function MCPToolResult({
           ? `${stringValue.substring(0, 50)}...`
           : stringValue;
       }
-      return 'Object result (click to expand)';
+      // Fallback: show a compact JSON preview
+      try {
+        const preview = JSON.stringify(result, null, 0);
+        return preview.length > 50 ? `${preview.substring(0, 50)}...` : preview;
+      } catch {
+        return 'Result (click to expand)';
+      }
     }
     return result ? String(result) : 'No result';
   };
