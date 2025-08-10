@@ -24,6 +24,8 @@ import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
 import { useRealtime } from '@/hooks/use-realtime';
 import type { OutboundMessage } from '@/lib/realtime/schema';
+import { useElicitation } from '@/hooks/use-elicitation';
+import { useSampling } from '@/hooks/use-sampling';
 
 export function Chat({
   id,
@@ -51,6 +53,9 @@ export function Chat({
   const { setDataStream } = useDataStream();
   // Proactively open a WebSocket connection even on new/empty chat
   useRealtime((_m: OutboundMessage) => {});
+  // Mount listeners early so events are captured before tool containers render
+  useElicitation();
+  useSampling();
 
   const [input, setInput] = useState<string>('');
   const [selectedModelId, setSelectedModelId] =

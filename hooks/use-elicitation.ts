@@ -1,12 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { ElicitationInfo } from '@/lib/elicitation-manager';
 import { useRealtime } from '@/hooks/use-realtime';
 import type { OutboundMessage } from '@/lib/realtime/schema';
+import {
+  addOrUpdateElicitation,
+  removeElicitation,
+  subscribeElicitations,
+} from '@/lib/elicitation-store';
 
 export function useElicitation() {
   const [activeElicitations, setActiveElicitations] = useState<
     ElicitationInfo[]
   >([]);
+
+  // Keep state in sync with a small module-level store, so late mounts don't miss events
+  useEffect(() => {
+    return subscribeElicitations(setActiveElicitations);
+  }, []);
 
   const onRealtimeMessage = useCallback((data: OutboundMessage) => {
     if (process.env.NODE_ENV !== 'production') {
@@ -18,29 +28,15 @@ export function useElicitation() {
       }
     }
     if (data.type === 'elicitation') {
-      setActiveElicitations((current) => {
-        const updated = [...current];
-        const existingIndex = updated.findIndex(
-          (e) => e.elicitationToken === data.elicitationToken,
-        );
-        const entry = {
-          elicitationToken: data.elicitationToken,
-          serverName: data.serverName,
-          message: data.message,
-          responseType: data.responseType as any,
-          timestamp: data.timestamp,
-        } satisfies ElicitationInfo;
-        if (existingIndex >= 0) {
-          updated[existingIndex] = entry;
-        } else {
-          updated.push(entry);
-        }
-        return updated;
+      addOrUpdateElicitation({
+        elicitationToken: data.elicitationToken,
+        serverName: data.serverName,
+        message: data.message,
+        responseType: data.responseType as any,
+        timestamp: data.timestamp,
       });
     } else if (data.type === 'cleanup' && data.kind === 'elicitation') {
-      setActiveElicitations((current) =>
-        current.filter((e) => e.elicitationToken !== data.token),
-      );
+      removeElicitation(data.token);
     }
   }, []);
 

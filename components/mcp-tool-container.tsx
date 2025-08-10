@@ -33,6 +33,9 @@ const MCPToolContainer = memo(function MCPToolContainer({
   const [samplingDraftSystem, setSamplingDraftSystem] = useState<
     Record<string, string>
   >({});
+  const [elicitationDraftByToken, setElicitationDraftByToken] = useState<
+    Record<string, any>
+  >({});
   const mountedRef = useRef(true);
   const { getProgressForTool } = useProgress();
   const { activeElicitations, respondToElicitation } = useElicitation();
@@ -104,6 +107,181 @@ const MCPToolContainer = memo(function MCPToolContainer({
             Elicitation requested by {serverName}
           </div>
           <div className="text-sm mb-2">{elicitationForServer.message}</div>
+          {/* Dynamic inputs based on responseType */}
+          <div className="mb-2 space-y-2">
+            {(() => {
+              const token = elicitationForServer.elicitationToken;
+              const rt = elicitationForServer.responseType as any;
+              const draft = elicitationDraftByToken[token] ?? {};
+
+              const setDraft = (updater: (prev: any) => any) =>
+                setElicitationDraftByToken((prev) => ({
+                  ...prev,
+                  [token]: updater(prev[token] ?? {}),
+                }));
+
+              // Scalar types
+              if (rt === 'boolean') {
+                const current =
+                  typeof draft.value === 'boolean' ? draft.value : false;
+                return (
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      className="accent-primary"
+                      checked={current}
+                      onChange={(e) =>
+                        setDraft(() => ({ value: e.target.checked }))
+                      }
+                    />
+                    Value (true/false)
+                  </label>
+                );
+              }
+              if (rt === 'number' || rt === 'integer') {
+                const current =
+                  typeof draft.value === 'number' ? draft.value : undefined;
+                return (
+                  <input
+                    type="number"
+                    className="w-full text-xs p-2 border border-input rounded bg-transparent"
+                    value={current ?? ''}
+                    onChange={(e) =>
+                      setDraft(() => ({
+                        value:
+                          e.target.value === ''
+                            ? undefined
+                            : Number(e.target.value),
+                      }))
+                    }
+                    placeholder="Enter number"
+                  />
+                );
+              }
+              if (rt === 'string') {
+                const current =
+                  typeof draft.value === 'string' ? draft.value : '';
+                return (
+                  <input
+                    type="text"
+                    className="w-full text-xs p-2 border border-input rounded bg-transparent"
+                    value={current}
+                    onChange={(e) =>
+                      setDraft(() => ({ value: e.target.value }))
+                    }
+                    placeholder="Enter text"
+                  />
+                );
+              }
+
+              // Structured data
+              if (
+                rt &&
+                rt.name === 'StructuredData' &&
+                rt.properties &&
+                typeof rt.properties === 'object'
+              ) {
+                const entries = Object.entries(
+                  rt.properties as Record<string, any>,
+                );
+                return (
+                  <div className="space-y-2">
+                    {entries.map(([field, schema]) => {
+                      const t = schema?.type || 'string';
+                      const val =
+                        draft[field] ?? (t === 'boolean' ? false : '');
+                      const enumVals = Array.isArray(schema?.enum)
+                        ? schema.enum
+                        : undefined;
+
+                      return (
+                        <div key={field} className="space-y-1">
+                          <label
+                            className="text-xs block"
+                            htmlFor={`elic-${toolCallId}-${field}`}
+                          >
+                            {field}
+                          </label>
+                          {enumVals ? (
+                            <select
+                              id={`elic-${toolCallId}-${field}`}
+                              className="w-full text-xs p-2 border border-input rounded bg-transparent"
+                              value={val === undefined ? '' : String(val)}
+                              onChange={(e) =>
+                                setDraft((d) => ({
+                                  ...d,
+                                  [field]: e.target.value,
+                                }))
+                              }
+                            >
+                              <option value="" disabled>
+                                Select an option
+                              </option>
+                              {enumVals.map((opt: any) => (
+                                <option key={String(opt)} value={String(opt)}>
+                                  {String(opt)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : t === 'boolean' ? (
+                            <label
+                              className="flex items-center gap-2 text-xs"
+                              htmlFor={`elic-${toolCallId}-${field}`}
+                            >
+                              <input
+                                id={`elic-${toolCallId}-${field}`}
+                                type="checkbox"
+                                className="accent-primary"
+                                checked={Boolean(val ?? false)}
+                                onChange={(e) =>
+                                  setDraft((d) => ({
+                                    ...d,
+                                    [field]: e.target.checked,
+                                  }))
+                                }
+                              />
+                              {field}
+                            </label>
+                          ) : t === 'number' || t === 'integer' ? (
+                            <input
+                              type="number"
+                              className="w-full text-xs p-2 border border-input rounded bg-transparent"
+                              value={val ?? ''}
+                              onChange={(e) =>
+                                setDraft((d) => ({
+                                  ...d,
+                                  [field]:
+                                    e.target.value === ''
+                                      ? undefined
+                                      : Number(e.target.value),
+                                }))
+                              }
+                              placeholder={`Enter ${field}`}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              className="w-full text-xs p-2 border border-input rounded bg-transparent"
+                              value={val ?? ''}
+                              onChange={(e) =>
+                                setDraft((d) => ({
+                                  ...d,
+                                  [field]: e.target.value,
+                                }))
+                              }
+                              placeholder={`Enter ${field}`}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -133,12 +311,21 @@ const MCPToolContainer = memo(function MCPToolContainer({
               type="button"
               className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
               onClick={() => {
-                const value = prompt(elicitationForServer.message) ?? '';
-                respondToElicitation(
-                  elicitationForServer.elicitationToken,
-                  'accept',
-                  value,
-                );
+                const token = elicitationForServer.elicitationToken;
+                const rt = elicitationForServer.responseType as any;
+                const draft = elicitationDraftByToken[token];
+                let data: any = undefined;
+                if (
+                  rt === 'boolean' ||
+                  rt === 'string' ||
+                  rt === 'number' ||
+                  rt === 'integer'
+                ) {
+                  data = draft?.value;
+                } else if (rt && rt.name === 'StructuredData') {
+                  data = draft ?? {};
+                }
+                respondToElicitation(token, 'accept', data);
               }}
             >
               Accept
