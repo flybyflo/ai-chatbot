@@ -112,8 +112,8 @@ const MCPToolResult = memo(function MCPToolResult({
   return (
     <motion.div
       className={cn(
-        'rounded-lg border border-input bg-transparent my-2',
-        'cursor-pointer hover:bg-muted/20 transition-colors',
+        'rounded-md border border-border/50 bg-transparent my-1',
+        'cursor-pointer hover:bg-muted/10 transition-colors',
         className,
       )}
       initial={{ opacity: 0, y: 10 }}
@@ -122,23 +122,12 @@ const MCPToolResult = memo(function MCPToolResult({
       onClick={() => state === 'result' && setIsExpanded(!isExpanded)}
     >
       {/* Compact Tool Call Header */}
-      <div className="px-3 py-2">
+      <div className="px-2 py-1">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <code className="text-xs font-mono text-foreground bg-muted/40 px-2 py-1 rounded border border-input">
+          <div className="flex items-center min-w-0 flex-1">
+            <span className="text-xs font-mono text-foreground truncate">
               {headingText}
-            </code>
-            {state === 'call' && !progress && (
-              <motion.div
-                className="size-3 border-2 border-current border-t-transparent rounded-full text-muted-foreground"
-                animate={{ rotate: 360 }}
-                transition={{
-                  duration: 1,
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: 'linear',
-                }}
-              />
-            )}
+            </span>
             {state === 'call' && progress && (
               <div className="flex items-center gap-2">
                 {progress.total !== undefined &&
@@ -146,7 +135,7 @@ const MCPToolResult = memo(function MCPToolResult({
                     <>
                       <Progress
                         value={(progress.progress / progress.total) * 100}
-                        className="h-2 w-20"
+                        className="h-1.5 w-16"
                       />
                       <span className="text-xs text-muted-foreground font-mono">
                         {Math.round((progress.progress / progress.total) * 100)}
@@ -164,37 +153,25 @@ const MCPToolResult = memo(function MCPToolResult({
             )}
           </div>
           {state === 'result' && showResult && (
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  'text-xs font-mono truncate max-w-32',
-                  isError
-                    ? 'text-red-700 dark:text-red-400'
-                    : 'text-green-700 dark:text-green-400',
-                )}
+            <motion.div
+              className="text-muted-foreground ml-2"
+              animate={{ rotate: isExpanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <svg
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {getDisplayResult()}
-              </span>
-              <motion.div
-                className="text-muted-foreground"
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <svg
-                  className="size-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </motion.div>
-            </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </motion.div>
           )}
         </div>
       </div>

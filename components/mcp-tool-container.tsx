@@ -122,21 +122,9 @@ const MCPToolContainer = memo(function MCPToolContainer({
 
               // Scalar types
               if (rt === 'boolean') {
-                const current =
-                  typeof draft.value === 'boolean' ? draft.value : false;
-                return (
-                  <label className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={current}
-                      onChange={(e) =>
-                        setDraft(() => ({ value: e.target.checked }))
-                      }
-                    />
-                    Value (true/false)
-                  </label>
-                );
+                // For boolean confirmation, we do not render a checkbox input.
+                // The action buttons below provide Yes/No/Cancel directly.
+                return null;
               }
               if (rt === 'number' || rt === 'integer') {
                 const current =
@@ -283,53 +271,97 @@ const MCPToolContainer = memo(function MCPToolContainer({
             })()}
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
-              onClick={() =>
-                respondToElicitation(
-                  elicitationForServer.elicitationToken,
-                  'decline',
-                )
-              }
-            >
-              Decline
-            </button>
-            <button
-              type="button"
-              className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
-              onClick={() =>
-                respondToElicitation(
-                  elicitationForServer.elicitationToken,
-                  'cancel',
-                )
-              }
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
-              onClick={() => {
-                const token = elicitationForServer.elicitationToken;
-                const rt = elicitationForServer.responseType as any;
-                const draft = elicitationDraftByToken[token];
-                let data: any = undefined;
-                if (
-                  rt === 'boolean' ||
-                  rt === 'string' ||
-                  rt === 'number' ||
-                  rt === 'integer'
-                ) {
-                  data = draft?.value;
-                } else if (rt && rt.name === 'StructuredData') {
-                  data = draft ?? {};
-                }
-                respondToElicitation(token, 'accept', data);
-              }}
-            >
-              Accept
-            </button>
+            {elicitationForServer.responseType === 'boolean' ? (
+              <>
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
+                  onClick={() =>
+                    respondToElicitation(
+                      elicitationForServer.elicitationToken,
+                      'accept',
+                      false,
+                    )
+                  }
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
+                  onClick={() =>
+                    respondToElicitation(
+                      elicitationForServer.elicitationToken,
+                      'cancel',
+                    )
+                  }
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
+                  onClick={() =>
+                    respondToElicitation(
+                      elicitationForServer.elicitationToken,
+                      'accept',
+                      true,
+                    )
+                  }
+                >
+                  Yes
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
+                  onClick={() =>
+                    respondToElicitation(
+                      elicitationForServer.elicitationToken,
+                      'decline',
+                    )
+                  }
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
+                  onClick={() =>
+                    respondToElicitation(
+                      elicitationForServer.elicitationToken,
+                      'cancel',
+                    )
+                  }
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-input hover:bg-muted"
+                  onClick={() => {
+                    const token = elicitationForServer.elicitationToken;
+                    const rt = elicitationForServer.responseType as any;
+                    const draft = elicitationDraftByToken[token];
+                    let data: any = undefined;
+                    if (
+                      rt === 'string' ||
+                      rt === 'number' ||
+                      rt === 'integer'
+                    ) {
+                      data = draft?.value;
+                    } else if (rt && rt.name === 'StructuredData') {
+                      data = draft ?? {};
+                    }
+                    respondToElicitation(token, 'accept', data);
+                  }}
+                >
+                  Accept
+                </button>
+              </>
+            )}
           </div>
         </div>
       ) : null}
