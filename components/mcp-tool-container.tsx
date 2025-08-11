@@ -19,6 +19,26 @@ interface MCPToolContainerProps {
 // Store active tool calls globally to manage their state
 const toolCallsMap = new Map();
 
+// Registry of mounted containers in "call" state per server for anchoring elicitation UI
+const serverActiveContainerCounts = new Map<string, number>();
+function incServerCount(serverName?: string) {
+  if (!serverName) return;
+  serverActiveContainerCounts.set(
+    serverName,
+    (serverActiveContainerCounts.get(serverName) ?? 0) + 1,
+  );
+}
+function decServerCount(serverName?: string) {
+  if (!serverName) return;
+  const next = (serverActiveContainerCounts.get(serverName) ?? 0) - 1;
+  if (next <= 0) serverActiveContainerCounts.delete(serverName);
+  else serverActiveContainerCounts.set(serverName, next);
+}
+export function hasContainerForServer(serverName?: string): boolean {
+  if (!serverName) return serverActiveContainerCounts.size > 0;
+  return (serverActiveContainerCounts.get(serverName) ?? 0) > 0;
+}
+
 const MCPToolContainer = memo(function MCPToolContainer({
   toolName,
   toolCallId,
@@ -48,9 +68,11 @@ const MCPToolContainer = memo(function MCPToolContainer({
   const progressInfo = serverName
     ? getProgressForTool(originalToolName, serverName)
     : undefined;
+  // Prefer matching elicitation by server; if none found, fall back to most recent
   const elicitationForServer = serverName
-    ? activeElicitations.find((e) => e.serverName === serverName)
-    : undefined;
+    ? activeElicitations.find((e) => e.serverName === serverName) ||
+      activeElicitations[activeElicitations.length - 1]
+    : activeElicitations[activeElicitations.length - 1];
   const samplingForServer = serverName
     ? [...activeSampling]
         .reverse()
@@ -91,6 +113,15 @@ const MCPToolContainer = memo(function MCPToolContainer({
       toolCallsMap.delete(toolCallId);
     };
   }, [toolCallId, toolName, args, state, result]);
+
+  // Track container presence for a server while in call state
+  useEffect(() => {
+    if (currentState === 'call') {
+      incServerCount(serverName);
+      return () => decServerCount(serverName);
+    }
+    return;
+  }, [currentState, serverName]);
 
   return (
     <MCPToolResult
@@ -162,6 +193,34 @@ const MCPToolContainer = memo(function MCPToolContainer({
                 );
               }
 
+              // Enum as top-level constrained choices (array of strings) → show as buttons
+              if (Array.isArray(rt)) {
+                const current =
+                  typeof draft.value === 'string' ? draft.value : undefined;
+                return (
+                  <div className="flex flex-wrap gap-1">
+                    {rt.map((opt: any) => {
+                      const val = String(opt);
+                      const isSelected = current === val;
+                      return (
+                        <button
+                          key={val}
+                          type="button"
+                          className={`px-2 py-1 text-xs rounded border ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'border-input hover:bg-muted'
+                          }`}
+                          onClick={() => setDraft(() => ({ value: val }))}
+                        >
+                          {val}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
               // Structured data
               if (
                 rt &&
@@ -191,26 +250,28 @@ const MCPToolContainer = memo(function MCPToolContainer({
                             {field}
                           </label>
                           {enumVals ? (
-                            <select
-                              id={`elic-${toolCallId}-${field}`}
-                              className="w-full text-xs p-2 border border-input rounded bg-transparent"
-                              value={val === undefined ? '' : String(val)}
-                              onChange={(e) =>
-                                setDraft((d) => ({
-                                  ...d,
-                                  [field]: e.target.value,
-                                }))
-                              }
-                            >
-                              <option value="" disabled>
-                                Select an option
-                              </option>
-                              {enumVals.map((opt: any) => (
-                                <option key={String(opt)} value={String(opt)}>
-                                  {String(opt)}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="flex flex-wrap gap-1">
+                              {enumVals.map((opt: any) => {
+                                const sval = String(opt);
+                                const isSelected = String(val) === sval;
+                                return (
+                                  <button
+                                    key={sval}
+                                    type="button"
+                                    className={`px-2 py-1 text-xs rounded border ${
+                                      isSelected
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'border-input hover:bg-muted'
+                                    }`}
+                                    onClick={() =>
+                                      setDraft((d) => ({ ...d, [field]: sval }))
+                                    }
+                                  >
+                                    {sval}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           ) : t === 'boolean' ? (
                             <label
                               className="flex items-center gap-2 text-xs"
@@ -352,6 +413,9 @@ const MCPToolContainer = memo(function MCPToolContainer({
                       rt === 'integer'
                     ) {
                       data = draft?.value;
+                    } else if (Array.isArray(rt)) {
+                      data =
+                        draft?.value ?? (rt.length > 0 ? rt[0] : undefined);
                     } else if (rt && rt.name === 'StructuredData') {
                       data = draft ?? {};
                     }

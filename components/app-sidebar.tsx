@@ -35,29 +35,38 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               onClick={() => {
                 setOpenMobile(false);
               }}
-              className="flex flex-row gap-3 items-center"
+              className="flex flex-row  items-center"
             >
+              <img
+                src="/images/header.png"
+                alt="Chatbot icon"
+                width={32}
+                height={32}
+                className="rounded-md"
+              />
               <span className="text-lg font-semibold px-2 hover:bg-muted rounded-md cursor-pointer">
                 Chatbot
               </span>
             </Link>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  className="p-2 h-fit"
-                  onClick={() => {
-                    setOpenMobile(false);
-                    router.push('/');
-                    router.refresh();
-                  }}
-                >
-                  <Plus />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent align="end">New Chat</TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    className="p-2 h-fit"
+                    onClick={() => {
+                      setOpenMobile(false);
+                      router.push('/');
+                      router.refresh();
+                    }}
+                  >
+                    <Plus />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent align="end">New Chat</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </SidebarMenu>
         <div className="px-2 pb-2">

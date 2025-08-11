@@ -1,5 +1,8 @@
+import { config } from 'dotenv';
 import { createClient } from 'redis';
 import { Server } from 'socket.io';
+
+config({ path: '.env.local' });
 
 const PORT = Number(process.env.PORT || 3030);
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';

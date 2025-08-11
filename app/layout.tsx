@@ -7,8 +7,11 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://chat.vercel.ai'),
-  title: 'Next.js Chatbot Template',
+  title: 'Chatbot',
   description: 'Next.js chatbot template using the AI SDK.',
+  icons: {
+    icon: '/icon.png',
+  },
 };
 
 export const viewport = {
@@ -27,8 +30,8 @@ const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
 });
 
-const LIGHT_THEME_COLOR = 'hsl(0 0% 100%)';
-const DARK_THEME_COLOR = 'hsl(240deg 10% 3.92%)';
+const LIGHT_THEME_COLOR = 'hsl(195 25% 97%)';
+const DARK_THEME_COLOR = 'hsl(200 20% 8%)';
 const THEME_COLOR_SCRIPT = `\
 (function() {
   var html = document.documentElement;
@@ -39,11 +42,20 @@ const THEME_COLOR_SCRIPT = `\
     document.head.appendChild(meta);
   }
   function updateThemeColor() {
-    var isDark = html.classList.contains('dark');
-    meta.setAttribute('content', isDark ? '${DARK_THEME_COLOR}' : '${LIGHT_THEME_COLOR}');
+    try {
+      var styles = getComputedStyle(html);
+      var bg = styles.getPropertyValue('--background').trim();
+      var color = bg ? ('hsl(' + bg + ')') : (html.classList.contains('dark') ? '${DARK_THEME_COLOR}' : '${LIGHT_THEME_COLOR}');
+      meta.setAttribute('content', color);
+    } catch (e) {
+      var isDark = html.classList.contains('dark');
+      meta.setAttribute('content', isDark ? '${DARK_THEME_COLOR}' : '${LIGHT_THEME_COLOR}');
+    }
   }
   var observer = new MutationObserver(updateThemeColor);
   observer.observe(html, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('DOMContentLoaded', updateThemeColor);
+  window.addEventListener('load', updateThemeColor);
   updateThemeColor();
 })();`;
 
@@ -77,7 +89,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <Toaster position="top-center" />
-{children}
+          {children}
         </ThemeProvider>
       </body>
     </html>
