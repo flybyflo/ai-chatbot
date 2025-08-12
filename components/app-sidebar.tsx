@@ -41,8 +41,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               <Image
                 src="/images/header.png"
                 alt="Chatbot icon"
-                width={32}
-                height={32}
+                width={24}
+                height={24}
                 className="rounded-md"
                 unoptimized
               />

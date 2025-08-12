@@ -68,7 +68,7 @@ export function VisibilitySelector({
           data-testid="visibility-selector"
           variant="outline"
           className="hidden md:flex md:px-2 md:h-[34px]"
-          id={id}
+          suppressHydrationWarning
         >
           {selectedVisibility?.icon}
           {selectedVisibility?.label}

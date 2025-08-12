@@ -9,6 +9,7 @@ import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
 import { Weather } from './weather';
+import { TableTool } from './table-tool';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -184,6 +185,24 @@ const PurePreviewMessage = ({
                   return (
                     <div key={toolCallId}>
                       <Weather weatherAtLocation={output} />
+                    </div>
+                  );
+                }
+              }
+
+              if (type === 'tool-renderTable') {
+                const { toolCallId, state } = part as any;
+
+                if (state === 'input-available') {
+                  // Do not render a placeholder for renderTable to avoid double UI
+                  return <div key={toolCallId} />;
+                }
+
+                if (state === 'output-available') {
+                  const { output } = part as any;
+                  return (
+                    <div key={toolCallId}>
+                      <TableTool data={output} />
                     </div>
                   );
                 }

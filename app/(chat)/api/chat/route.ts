@@ -27,6 +27,7 @@ import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
+import { renderTable } from '@/lib/ai/tools/render-table';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlements } from '@/lib/ai/entitlements';
@@ -779,6 +780,7 @@ export async function POST(request: Request) {
         // Log all available tools before calling streamText
         const allTools = {
           getWeather,
+          renderTable,
           createDocument: createDocument({ session, dataStream }),
           updateDocument: updateDocument({ session, dataStream }),
           requestSuggestions: requestSuggestions({
@@ -790,6 +792,7 @@ export async function POST(request: Request) {
 
         const activeToolNames = [
           'getWeather',
+          'renderTable',
           'createDocument',
           'updateDocument',
           'requestSuggestions',

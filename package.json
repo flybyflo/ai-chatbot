@@ -120,6 +120,7 @@
     "usehooks-ts": "^3.1.0",
     "vaul": "^1.1.2",
     "ws": "^8.18.3",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.68"
   },
   "devDependencies": {

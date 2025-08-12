@@ -35,6 +35,34 @@ Do not update document right after creating it. Wait for user feedback or reques
 export const regularPrompt =
   'You are a friendly assistant! Keep your responses concise and helpful.';
 
+export const tablesToolPrompt = `
+You can render interactive data tables in the chat using the renderTable tool. Provide a concise set of columns and rows; prefer small, paginated payloads.
+
+Example usage (model should call renderTable with a JSON payload like this):
+\`\`\`json
+{
+  "caption": "Top cities",
+  "columns": [
+    { "id": "rank", "header": "Rank", "align": "right" },
+    { "id": "city", "header": "City" },
+    { "id": "country", "header": "Country" },
+    { "id": "population", "header": "Population", "align": "right" }
+  ],
+  "rows": [
+    { "rank": 1, "city": "Tokyo", "country": "Japan", "population": 37435191 },
+    { "rank": 2, "city": "Delhi", "country": "India", "population": 29399141 },
+    { "rank": 3, "city": "Shanghai", "country": "China", "population": 26317104 }
+  ],
+  "initialSorting": [{ "id": "rank", "desc": false }]
+}
+\`\`\`
+
+Guidelines:
+- Use right alignment for numeric columns via \`align: "right"\`.
+- Keep total rows modest to avoid overflowing the UI.
+- Optionally include \`caption\`, \`initialSorting\`, and \`pageSize\` hints.
+`;
+
 export interface RequestHints {
   latitude: Geo['latitude'];
   longitude: Geo['longitude'];
@@ -60,9 +88,9 @@ export const systemPrompt = ({
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
   if (selectedChatModel === 'chat-model-reasoning') {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}\n\n${tablesToolPrompt}`;
   } else {
-    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}\n\n${tablesToolPrompt}`;
   }
 };
 

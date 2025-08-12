@@ -8,6 +8,7 @@
       "lib/editor/react-renderer.tsx",
       "node_modules",
       ".next",
+      "realtime-gateway/dist/**",
       "public",
       ".vercel",
       "mcp-test-server/**"
