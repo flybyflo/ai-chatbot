@@ -50,6 +50,8 @@ services:
         condition: service_started
     env_file:
       - .env.local
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
 
   mcp-test-server:
     build: ./mcp-test-server
