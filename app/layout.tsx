@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'Chatbot',
   description: 'Next.js chatbot template using the AI SDK.',
   icons: {
-    icon: '/icon.png',
+    icon: '/favicon.ico',
   },
 };
 

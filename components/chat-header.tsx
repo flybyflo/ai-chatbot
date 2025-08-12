@@ -34,12 +34,6 @@ function PureChatHeader({
 
       {(!open || windowWidth < 768) && (
         <div className="order-2 md:order-1 flex items-center gap-2 ml-auto md:ml-0">
-          <img
-            src="/images/header.png"
-            alt="Chatbot icon"
-            width={20}
-            height={20}
-          />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

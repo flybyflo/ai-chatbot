@@ -3,6 +3,7 @@
 import type { User } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import Image from 'next/image';
 
 import { Plus, Search } from 'lucide-react';
 import { SidebarHistory } from '@/components/sidebar-history';
@@ -37,12 +38,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               }}
               className="flex flex-row  items-center"
             >
-              <img
+              <Image
                 src="/images/header.png"
                 alt="Chatbot icon"
                 width={32}
                 height={32}
                 className="rounded-md"
+                unoptimized
               />
               <span className="text-lg font-semibold px-2 hover:bg-muted rounded-md cursor-pointer">
                 Chatbot
