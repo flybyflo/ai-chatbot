@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Image from 'next/image';
 
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Settings } from 'lucide-react';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
@@ -71,7 +73,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </div>
           </div>
         </SidebarMenu>
-        <div className="px-2 pb-2">
+        <div className="pb-2 space-y-2">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -81,6 +83,28 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               className="pl-8 h-8 text-sm"
             />
           </div>
+
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarMenuButton asChild>
+                    <Link
+                      href="/settings/mcp"
+                      onClick={() => setOpenMobile(false)}
+                      className="text-xs"
+                    >
+                      <Settings className="size-3" />
+                      <span>MCP Servers</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </TooltipTrigger>
+                <TooltipContent align="start">
+                  Manage Model Context Protocol servers
+                </TooltipContent>
+              </Tooltip>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </div>
       </SidebarHeader>
       <SidebarContent>

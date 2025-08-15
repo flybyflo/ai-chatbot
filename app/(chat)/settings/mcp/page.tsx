@@ -1,31 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { MCPServers } from './mcp-servers';
-import { MCPServerDetailDialog } from './mcp-server-detail-dialog';
-import { MCPServerSkeleton } from './mcp-server-skeleton';
+import { MCPServerDataTable, type mcpServerSchema } from '@/components/mcp-server-data-table';
+import { useMCPServers, type MCPServerWithStatus } from '@/hooks/use-mcp-servers';
+import { Suspense, useState } from 'react';
+import type { z } from 'zod';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { useMCPServers } from '@/hooks/use-mcp-servers';
+import { SettingsHeader } from '@/components/settings-header';
 
-interface MCPServerFormData {
-  name: string;
-  url: string;
-  authToken: string;
-  description: string;
-}
-
-export function MCPServersWithDialog() {
-  const { servers, isInitialLoading, refetch } = useMCPServers();
-  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+function MCPServersContent() {
+  const { servers, isInitialLoading, refetch, forceRefresh } = useMCPServers();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<MCPServerFormData>({
+  const [formData, setFormData] = useState({
     name: '',
     url: '',
     authToken: '',
@@ -33,29 +23,24 @@ export function MCPServersWithDialog() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const handleServerSelect = (serverId: string) => {
-    setSelectedServerId(serverId);
-    setIsDetailDialogOpen(true);
-  };
-
-  const handleCloseDetailDialog = () => {
-    setIsDetailDialogOpen(false);
-    setSelectedServerId(null);
-  };
-
-  const handleServerDeleted = () => {
-    // Refresh the server list when a server is deleted
-    refetch();
-  };
-
-  const resetForm = () => {
-    setFormData({ name: '', url: '', authToken: '', description: '' });
-  };
-
-  const openAddDialog = () => {
-    resetForm();
-    setIsAddDialogOpen(true);
-  };
+  // Convert servers to match the schema format
+  const dataTableServers: z.infer<typeof mcpServerSchema>[] = servers.map(server => {
+    return {
+      id: server.id,
+      name: server.name,
+      url: server.url,
+      status: server.status || 'disabled',
+      description: server.description,
+      authToken: server.authToken,
+      tools: server.tools?.map(tool => ({
+        name: tool.name,
+        description: tool.description
+      })),
+      isEnabled: server.isEnabled,
+      createdAt: server.createdAt,
+      updatedAt: server.updatedAt,
+    };
+  });
 
   const handleAddServer = async () => {
     if (!formData.name.trim() || !formData.url.trim()) {
@@ -83,9 +68,7 @@ export function MCPServersWithDialog() {
 
       toast.success('MCP server added successfully');
       setIsAddDialogOpen(false);
-      resetForm();
-      
-      // Refresh the server list
+      setFormData({ name: '', url: '', authToken: '', description: '' });
       refetch();
     } catch (err) {
       console.error('Error adding MCP server:', err);
@@ -95,45 +78,22 @@ export function MCPServersWithDialog() {
     }
   };
 
-  // Show skeleton loading while data is being fetched initially
-  if (isInitialLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">MCP Servers</h3>
-          <div className="h-6 w-12 bg-muted rounded animate-pulse" />
-        </div>
-        <div className="grid gap-2">
-          {[1, 2, 3].map((i) => (
-            <MCPServerSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Show data table immediately if we have any servers (including cached)
+  // Only show loading skeleton if we have no data at all
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">MCP Servers</h3>
-        <Button
-          size="sm"
-          onClick={openAddDialog}
-          className="h-6 px-2 text-xs"
-        >
-          <Plus className="size-3 mr-1" />
-          Add
-        </Button>
-      </div>
-
-      <MCPServers onServerSelect={handleServerSelect} />
-
-      {/* Server Detail Dialog */}
-      <MCPServerDetailDialog
-        serverId={selectedServerId}
-        isOpen={isDetailDialogOpen}
-        onClose={handleCloseDetailDialog}
-        onServerDeleted={handleServerDeleted}
+    <>
+      <MCPServerDataTable 
+        data={dataTableServers}
+        onServerAdd={() => setIsAddDialogOpen(true)}
+        onServerUpdate={(server) => {
+          // Handle server update
+          console.log('Update server:', server);
+        }}
+        onServerDelete={(serverId) => {
+          // Handle server delete
+          console.log('Delete server:', serverId);
+        }}
       />
 
       {/* Add Server Dialog */}
@@ -194,6 +154,51 @@ export function MCPServersWithDialog() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+function MCPServersLoading() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-4 lg:px-6">
+        <h2 className="text-lg font-semibold">MCP Servers</h2>
+        <div className="h-8 w-24 bg-muted rounded animate-pulse" />
+      </div>
+      <div className="px-4 lg:px-6">
+        <div className="overflow-hidden rounded-lg border">
+          <div className="bg-muted p-4">
+            <div className="flex gap-4">
+              {['Drag', 'Select', 'Name', 'URL', 'Status', 'Tools', 'Enabled', 'Actions'].map((header) => (
+                <div key={header} className="h-4 bg-muted-foreground/20 rounded flex-1" />
+              ))}
+            </div>
+          </div>
+          <div className="divide-y">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-4 flex gap-4">
+                {Array.from({ length: 8 }).map((_, j) => (
+                  <div key={`skeleton-row-${i}-col-${j}`} className="h-4 bg-muted rounded flex-1" />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function MCPSettingsPage() {
+  return (
+    <div className="flex flex-col h-full">
+      <SettingsHeader title="MCP Servers" />
+      
+      <div className="flex-1 overflow-auto">
+        <div className="py-6">
+          <MCPServersContent />
+        </div>
+      </div>
     </div>
   );
 }

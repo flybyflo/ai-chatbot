@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useMCPServers } from '@/hooks/use-mcp-servers';
 import { Card, CardContent, CardHeader, } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,9 +49,7 @@ interface MCPServersContentProps {
 }
 
 function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
-  const [servers, setServers] = useState<MCPServerWithStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { servers, isInitialLoading, error, loadingTools, fetchServerTools, refetch } = useMCPServers();
   const [editingServer, setEditingServer] = useState<MCPServer | null>(null);
   const [formData, setFormData] = useState<MCPServerFormData>({
     name: '',
@@ -59,103 +58,15 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
     description: ''
   });
   const [submitting, setSubmitting] = useState(false);
-  const [loadingTools, setLoadingTools] = useState<Set<string>>(new Set());
   const [authRequiredServer, setAuthRequiredServer] = useState<MCPServer | null>(null);
   const [authToken, setAuthToken] = useState('');
 
-  // Fetch tools for a specific server
-  const fetchServerTools = useCallback(async (serverId: string) => {
-    setLoadingTools(prev => new Set(prev).add(serverId));
-    
-    try {
-      const response = await fetch(`/api/mcp-servers/${serverId}/tools`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch tools');
-      }
-      
-      const data = await response.json();
-      
-      setServers(prev => prev.map(server => {
-        if (server.id === serverId) {
-          const newStatus = data.status as 'connected' | 'disabled' | 'error' | 'auth_required';
-          
-          // If auth is required, open the auth dialog
-          if (newStatus === 'auth_required') {
-            setAuthRequiredServer(server);
-            setAuthToken(server.authToken || '');
-          }
-          
-          return {
-            ...server,
-            status: newStatus,
-            tools: data.tools || [],
-            lastChecked: data.lastChecked ? new Date(data.lastChecked) : undefined,
-            error: data.error
-          };
-        }
-        return server;
-      }));
-    } catch (err) {
-      console.error(`Error fetching tools for server ${serverId}:`, err);
-      setServers(prev => prev.map(server => {
-        if (server.id === serverId) {
-          return {
-            ...server,
-            status: 'error',
-            error: err instanceof Error ? err.message : 'Failed to fetch tools'
-          };
-        }
-        return server;
-      }));
-    } finally {
-      setLoadingTools(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(serverId);
-        return newSet;
-      });
-    }
+  // Handle auth required servers
+  const handleAuthRequired = useCallback((server: MCPServerWithStatus) => {
+    setAuthRequiredServer(server as MCPServer);
+    setAuthToken(server.authToken || '');
   }, []);
 
-  // Fetch saved MCP servers from database
-  const fetchMCPServers = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/mcp-servers');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch MCP servers: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      const serversWithStatus: MCPServerWithStatus[] = (data.servers || []).map((server: MCPServer) => ({
-        ...server,
-        status: server.isEnabled ? 'loading' : 'disabled',
-        tools: [],
-        createdAt: new Date(server.createdAt),
-        updatedAt: new Date(server.updatedAt)
-      }));
-      
-      setServers(serversWithStatus);
-      
-      // Fetch tools for enabled servers
-      serversWithStatus.forEach(server => {
-        if (server.isEnabled) {
-          fetchServerTools(server.id);
-        }
-      });
-    } catch (err) {
-      console.error('Error fetching MCP servers:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch MCP servers');
-      setServers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchServerTools]);
-
-  useEffect(() => {
-    fetchMCPServers();
-  }, [fetchMCPServers]);
 
   const resetForm = () => {
     setFormData({ name: '', url: '', authToken: '', description: '' });
@@ -199,7 +110,7 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
       toast.success('MCP server updated successfully');
       setEditingServer(null);
       resetForm();
-      fetchMCPServers();
+      refetch();
     } catch (err) {
       console.error('Error updating MCP server:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to update server');
@@ -224,7 +135,7 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
       }
 
       toast.success('MCP server deleted successfully');
-      fetchMCPServers();
+      refetch();
     } catch (err) {
       console.error('Error deleting MCP server:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to delete server');
@@ -279,18 +190,6 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
     }
   };
 
-  const refreshServerStatus = useCallback((serverId: string) => {
-    setServers(prev => {
-      const server = prev.find(s => s.id === serverId);
-      if (server?.isEnabled) {
-        fetchServerTools(serverId);
-        return prev.map(s => 
-          s.id === serverId ? { ...s, status: 'loading' } : s
-        );
-      }
-      return prev;
-    });
-  }, [fetchServerTools]);
 
   const handleUpdateAuthToken = useCallback(async () => {
     if (!authRequiredServer) return;
@@ -325,12 +224,7 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
       setAuthToken('');
       
       // Refresh the server status immediately
-      fetchMCPServers();
-      
-      // Also try to fetch tools for this server
-      setTimeout(() => {
-        fetchServerTools(authRequiredServer.id);
-      }, 500);
+      refetch();
       
     } catch (err) {
       console.error('Error updating auth token:', err);
@@ -338,31 +232,10 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [authRequiredServer, authToken, fetchMCPServers, fetchServerTools]);
+  }, [authRequiredServer, authToken, refetch]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">MCP Servers</h1>
-          <p className="text-muted-foreground">Loading connected MCP servers...</p>
-        </div>
-        <div className="grid gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-6 bg-muted rounded w-1/3" />
-                <div className="h-4 bg-muted rounded w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-4 bg-muted rounded w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // The loading state is now handled by the parent component
+  // This component will only render when data is available
 
   if (error) {
     return (
@@ -441,7 +314,7 @@ function MCPServersContent({ onServerSelect }: MCPServersContentProps) {
         ))}
       </div>
 
-      {servers.length === 0 && !loading && (
+      {servers.length === 0 && !isInitialLoading && (
         <Card>
           <CardContent className="text-center py-12">
             <Server className="size-12 mx-auto text-muted-foreground mb-4" />

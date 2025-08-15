@@ -1,30 +1,31 @@
 from fastmcp import FastMCP, Context
-from fastmcp.server.auth.verifiers import JWTVerifier, RSAKeyPair
+# from fastmcp.server.auth.verifiers import JWTVerifier, RSAKeyPair
 import asyncio
 from dataclasses import dataclass
 from typing import Literal
 
 # Generate a new key pair
-key_pair = RSAKeyPair.generate()
+# key_pair = RSAKeyPair.generate()
 
 # Configure the auth verifier with the public key
-auth = JWTVerifier(
-    public_key=key_pair.public_key,
-    issuer="https://dev.example.com",
-    audience="my-dev-server"
-)
+# auth = JWTVerifier(
+#     public_key=key_pair.public_key,
+#     issuer="https://dev.example.com",
+#     audience="my-dev-server"
+# )
 
-mcp = FastMCP(name="Development Server", auth=auth)
+mcp = FastMCP(name="Development Server")
+# mcp = FastMCP(name="Development Server", auth=auth)
 
 # Generate a token for testing
-token = key_pair.create_token(
-    subject="dev-user",
-    issuer="https://dev.example.com",
-    audience="my-dev-server",
-    scopes=["read", "write"]
-)
+# token = key_pair.create_token(
+#     subject="dev-user",
+#     issuer="https://dev.example.com",
+#     audience="my-dev-server",
+#     scopes=["read", "write"]
+# )
 
-print(f"🔐 Test token: {token}", flush=True)
+# print(f"🔐 Test token: {token}", flush=True)
 
 @mcp.tool
 def add(a: float, b: float) -> float:

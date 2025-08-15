@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Button } from './ui/button';
-import { Sliders } from 'lucide-react';
 import { ExpandablePanel } from './expandable-panel';
-import { InputOptions } from './input-options';
 import { ModelSelectorPanel } from './model-selector-panel';
 import type { Session } from '@/lib/auth';
 
@@ -27,12 +25,7 @@ export function InputExpandableContent({
   sendButton,
   onModelSelect,
 }: InputExpandableContentProps) {
-  const [activePanel, setActivePanel] = useState<'options' | 'models' | null>(
-    null,
-  );
-  const [panelTitle, setPanelTitle] = useState<React.ReactNode>('Options');
-  const [panelHeaderAction, setPanelHeaderAction] = useState<React.ReactNode>(null);
-  const [isInSubpage, setIsInSubpage] = useState(false);
+  const [activePanel, setActivePanel] = useState<'models' | null>(null);
 
   // Handle ESC key to close panel
   useEffect(() => {
@@ -58,42 +51,20 @@ export function InputExpandableContent({
     },
   });
 
-  const [resetTrigger, setResetTrigger] = useState(false);
-
   const handleBackClick = () => {
-    // Since we only have MCP Servers now, back button always closes the panel
     setActivePanel(null);
-    setIsInSubpage(false);
-    setPanelTitle('Options');
   };
-
-  const handleTitleChange = useCallback((title: React.ReactNode, headerAction?: React.ReactNode) => {
-    setPanelTitle(title);
-    setPanelHeaderAction(headerAction || null);
-    
-    // Only update isInSubpage if it's actually changing to prevent infinite loops
-    const isSubpage = title !== 'Options';
-    setIsInSubpage(prev => prev !== isSubpage ? isSubpage : prev);
-  }, []);
 
   return (
     <>
       <ExpandablePanel
         isOpen={activePanel !== null}
         onClose={handleBackClick}
-        title={activePanel === 'options' ? panelTitle : 'Model Selection'}
+        title="Model Selection"
         normalContent={normalContent}
         className={className}
-        headerAction={activePanel === 'options' ? panelHeaderAction : undefined}
       >
-        {activePanel === 'options' ? (
-          <InputOptions
-            onTitleChange={handleTitleChange}
-            resetTrigger={resetTrigger}
-          />
-        ) : (
-          modelSelectorData.panel
-        )}
+        {modelSelectorData.panel}
       </ExpandablePanel>
 
       {!activePanel && (
@@ -107,14 +78,6 @@ export function InputExpandableContent({
               onClick={() => setActivePanel('models')}
             >
               {modelSelectorData.selectedChatModel?.name || 'Select Model'}
-            </Button>
-            <Button
-              className="p-1.5 h-fit border dark:border-zinc-600 bg-transparent"
-              variant="outline"
-              size="sm"
-              onClick={() => setActivePanel('options')}
-            >
-              <Sliders size={14} />
             </Button>
           </div>
           <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
