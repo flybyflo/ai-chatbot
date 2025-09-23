@@ -99,7 +99,6 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
     case "offline:chat":
       return "We're having trouble sending your message. Please check your internet connection and try again.";
 
-
     default:
       return "Something went wrong. Please try again later.";
   }

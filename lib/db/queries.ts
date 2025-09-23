@@ -273,12 +273,6 @@ export async function getVotesByChatId({ id }: { id: string }) {
   }
 }
 
-
-
-
-
-
-
 export async function getMessageById({ id }: { id: string }) {
   try {
     return await db.select().from(message).where(eq(message.id, id));

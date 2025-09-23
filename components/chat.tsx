@@ -61,18 +61,46 @@ export function Chat({
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const currentModelIdRef = useRef(currentModelId);
-  const [currentReasoningEffort, setCurrentReasoningEffort] = useState<"low" | "medium" | "high">("high");
+  const [currentReasoningEffort, setCurrentReasoningEffort] = useState<
+    "low" | "medium" | "high"
+  >("high");
+  const [selectedTools, setSelectedTools] = useState<string[]>(["getWeather"]);
+  const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
+  const selectedToolsRef = useRef(selectedTools);
 
   useEffect(() => {
     const stored = localStorage.getItem("reasoning-effort");
     if (stored === "low" || stored === "medium" || stored === "high") {
       setCurrentReasoningEffort(stored);
     }
+
+    // Load selected tools from localStorage after hydration
+    const storedTools = localStorage.getItem("selected-tools");
+    if (storedTools) {
+      try {
+        const parsedTools = JSON.parse(storedTools);
+        if (Array.isArray(parsedTools) && parsedTools.length > 0) {
+          setSelectedTools(parsedTools);
+        }
+      } catch (error) {
+        console.warn("Failed to parse stored tools:", error);
+        localStorage.removeItem("selected-tools");
+      }
+    }
+    setHasLoadedFromStorage(true);
   }, []);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
+
+  useEffect(() => {
+    selectedToolsRef.current = selectedTools;
+    // Only save to localStorage after we've loaded from storage initially
+    if (hasLoadedFromStorage) {
+      localStorage.setItem("selected-tools", JSON.stringify(selectedTools));
+    }
+  }, [selectedTools, hasLoadedFromStorage]);
 
   const {
     messages,
@@ -91,6 +119,7 @@ export function Chat({
       api: "/api/chat",
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest(request) {
+        console.log('🔧 Frontend: Sending tools to API:', selectedToolsRef.current);
         return {
           body: {
             id: request.id,
@@ -98,6 +127,7 @@ export function Chat({
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
             selectedReasoningEffort: currentReasoningEffort,
+            selectedTools: selectedToolsRef.current,
             ...request.body,
           },
         };
@@ -188,10 +218,12 @@ export function Chat({
               input={input}
               messages={messages}
               onModelChange={setCurrentModelId}
-              selectedModelId={currentModelId}
-              selectedVisibilityType={visibilityType}
-              selectedReasoningEffort={currentReasoningEffort}
               onReasoningEffortChange={setCurrentReasoningEffort}
+              onToolsChange={setSelectedTools}
+              selectedModelId={currentModelId}
+              selectedReasoningEffort={currentReasoningEffort}
+              selectedTools={selectedTools}
+              selectedVisibilityType={visibilityType}
               sendMessage={sendMessage}
               setAttachments={setAttachments}
               setInput={setInput}
@@ -203,7 +235,6 @@ export function Chat({
           )}
         </div>
       </div>
-
 
       <AlertDialog
         onOpenChange={setShowCreditCardAlert}

@@ -1,5 +1,6 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
+import type { MCPToolRegistry } from "./ai/mcp/types";
 import type { getWeather } from "./ai/tools/get-weather";
 import type { AppUsage } from "./usage";
 
@@ -15,10 +16,13 @@ type weatherTool = InferUITool<typeof getWeather>;
 
 export type ChatTools = {
   getWeather: weatherTool;
+  // MCP tools will be dynamically added with pattern: [serverName_toolName]: any
+  [key: string]: any;
 };
 
 export type CustomUIDataTypes = {
   usage: AppUsage;
+  mcpRegistry?: MCPToolRegistry;
 };
 
 export type ChatMessage = UIMessage<

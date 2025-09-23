@@ -23,7 +23,7 @@ import type { ChatModel } from "@/lib/ai/models";
 import { chatModels } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
-import { getWeather } from "@/lib/ai/tools/get-weather";
+import { getAllTools, getActiveTools } from "@/lib/ai/tools";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -99,12 +99,14 @@ export async function POST(request: Request) {
       selectedChatModel,
       selectedVisibilityType,
       selectedReasoningEffort,
+      selectedTools,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
       selectedReasoningEffort?: "low" | "medium" | "high";
+      selectedTools?: string[];
     } = requestBody;
 
     const session = await auth();
@@ -179,6 +181,12 @@ export async function POST(request: Request) {
     const reasoningEffort =
       selectedReasoningEffort || selectedModel?.reasoningEffort || "medium";
 
+    // Load all tools (local + MCP) and filter by selected tools
+    const { mcpRegistry } = await getAllTools();
+    console.log('🔧 Backend: Received selectedTools:', selectedTools);
+    const tools = await getActiveTools(selectedTools);
+    console.log('🔧 Backend: Active tools after filtering:', Object.keys(tools));
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({
@@ -186,10 +194,33 @@ export async function POST(request: Request) {
           system: systemPrompt({ requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools: ["getWeather"],
+          experimental_activeTools: Object.keys(tools),
           experimental_transform: smoothStream({ chunking: "word" }),
-          tools: {
-            getWeather,
+          tools,
+          onStepFinish: ({ toolCalls, toolResults }) => {
+            // Log tool usage
+            if (toolCalls.length > 0) {
+              console.log('🔧 Tools Called:');
+              toolCalls.forEach((toolCall) => {
+                const toolType = toolCall.toolName.includes('_') ? 'MCP' : 'Local';
+                console.log(`  📋 ${toolType} Tool: ${toolCall.toolName}`);
+                console.log(`     🔧 Tool ID: ${toolCall.toolCallId}`);
+                console.log(`     📝 Parameters:`, JSON.stringify(toolCall.input, null, 2));
+              });
+            }
+
+            if (toolResults.length > 0) {
+              console.log('📊 Tool Results:');
+              toolResults.forEach((result) => {
+                console.log(`  ✅ Tool: ${result.toolName}`);
+                console.log(`     📊 Result:`, typeof result.output === 'object'
+                  ? JSON.stringify(result.output, null, 2)
+                  : result.output);
+                if (result.errorText) {
+                  console.log(`     ❌ Error: ${result.errorText}`);
+                }
+              });
+            }
           },
           providerOptions: {
             openai: {
@@ -231,6 +262,14 @@ export async function POST(request: Request) {
               console.warn("TokenLens enrichment failed", err);
               finalMergedUsage = usage;
               dataStream.write({ type: "data-usage", data: finalMergedUsage });
+            }
+
+            // Send MCP registry data if available
+            if (mcpRegistry) {
+              dataStream.write({
+                type: "data-mcp-registry",
+                data: mcpRegistry,
+              });
             }
           },
         });

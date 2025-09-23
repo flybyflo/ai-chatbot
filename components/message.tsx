@@ -22,6 +22,7 @@ import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
+import { MCPToolRenderer } from "./mcp-tool-renderer";
 
 const PurePreviewMessage = ({
   chatId,
@@ -167,15 +168,16 @@ const PurePreviewMessage = ({
                     reasoning={mergedPart.content}
                   />
                 );
-              } else {
-                return null; // Will handle text parts below
               }
+              return null; // Will handle text parts below
             });
           })()}
 
           {message.parts?.map((part, index) => {
             const { type } = part;
             const key = `message-${message.id}-part-${index}`;
+
+            console.log('🔍 Processing message part:', { type, part });
 
             if (type === "reasoning") {
               // Skip reasoning parts as they're handled above
@@ -248,6 +250,69 @@ const PurePreviewMessage = ({
               );
             }
 
+            // Handle dynamic tools (MCP tools come through as dynamic-tool type)
+            if (type === "dynamic-tool") {
+              console.log('🔧 Rendering dynamic tool:', type, part);
+              const { toolCallId, state, toolName: fullToolName } = part;
+
+              // Check if it's an MCP tool (contains underscores indicating server_tool format)
+              if (fullToolName.includes("_")) {
+                // Parse server name and tool name from the full tool name
+                const parts = fullToolName.split("_");
+                const serverName = parts.slice(0, -1).join("_"); // Everything except the last part
+                const toolName = parts[parts.length - 1]; // Last part is the tool name
+
+                console.log('🔧 Parsed MCP tool:', { serverName, toolName, state, fullToolName });
+
+                return (
+                  <Tool defaultOpen={true} key={toolCallId}>
+                    <ToolHeader state={state} type={`${serverName} • ${toolName}`} />
+                    <ToolContent>
+                      {state === "input-available" && (
+                        <ToolInput input={part.input} />
+                      )}
+                      {state === "output-available" && (
+                        <div className="space-y-2 p-4">
+                          <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                            {part.errorText ? "Error" : "Result"}
+                          </h4>
+                          {part.errorText && (
+                            <div className="text-destructive text-sm">{part.errorText}</div>
+                          )}
+                          <MCPToolRenderer
+                            toolName={toolName}
+                            serverName={serverName}
+                            output={part.output}
+                          />
+                        </div>
+                      )}
+                    </ToolContent>
+                  </Tool>
+                );
+              }
+            }
+
+            // Handle regular tools (like getWeather) - keep existing logic
+            if (type === "tool-getWeather") {
+              const { toolCallId, state } = part;
+
+              return (
+                <Tool defaultOpen={true} key={toolCallId}>
+                  <ToolHeader state={state} type="tool-getWeather" />
+                  <ToolContent>
+                    {state === "input-available" && (
+                      <ToolInput input={part.input} />
+                    )}
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={undefined}
+                        output={<Weather weatherAtLocation={part.output} />}
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
 
             return null;
           })}

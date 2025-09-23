@@ -25,6 +25,7 @@ import { myProvider } from "@/lib/ai/providers";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
+import { useDataStream } from "./data-stream-provider";
 import { Context } from "./elements/context";
 import {
   PromptInput,
@@ -64,6 +65,8 @@ function PureMultimodalInput({
   selectedReasoningEffort,
   onReasoningEffortChange,
   usage,
+  selectedTools,
+  onToolsChange,
 }: {
   chatId: string;
   input: string;
@@ -82,6 +85,8 @@ function PureMultimodalInput({
   selectedReasoningEffort: "low" | "medium" | "high";
   onReasoningEffortChange?: (effort: "low" | "medium" | "high") => void;
   usage?: AppUsage;
+  selectedTools?: string[];
+  onToolsChange?: (tools: string[]) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -131,6 +136,89 @@ function PureMultimodalInput({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
+  const { mcpRegistry } = useDataStream();
+  const [availableTools, setAvailableTools] = useState<any[]>([]);
+
+  // Fetch available tools on component mount
+  useEffect(() => {
+    const fetchTools = async () => {
+      try {
+        const response = await fetch("/api/tools");
+        const data = await response.json();
+        console.log("🔧 Frontend: Fetched tools data:", data);
+
+        const localTools = [
+          {
+            id: "getWeather",
+            name: "Get Weather",
+            description: "Get current weather information for a location",
+            type: "local" as const,
+          },
+        ];
+
+        const mcpTools = data.mcpRegistry?.metadata
+          ? Object.entries(data.mcpRegistry.metadata).map(
+              ([toolId, metadata]: [string, any]) => ({
+                id: toolId,
+                name: metadata.toolName || toolId,
+                description: metadata.description || "MCP tool",
+                type: "mcp" as const,
+                serverName: metadata.serverName,
+              })
+            )
+          : [];
+
+        const allTools = [...localTools, ...mcpTools];
+        console.log("🔧 Frontend: Setting available tools:", allTools);
+        setAvailableTools(allTools);
+      } catch (error) {
+        console.error("Failed to fetch tools:", error);
+        setAvailableTools([
+          {
+            id: "getWeather",
+            name: "Get Weather",
+            description: "Get current weather information for a location",
+            type: "local" as const,
+          },
+        ]);
+      }
+    };
+
+    fetchTools();
+  }, []);
+
+  // Validate selected tools against available tools (fail-safe cleanup)
+  useEffect(() => {
+    if (
+      availableTools.length > 0 &&
+      selectedTools &&
+      selectedTools.length > 0 &&
+      onToolsChange
+    ) {
+      const availableToolIds = availableTools.map((tool) => tool.id);
+      const validSelectedTools = selectedTools.filter((toolId) =>
+        availableToolIds.includes(toolId)
+      );
+
+      // If some tools are no longer available, update the selection
+      if (validSelectedTools.length !== selectedTools.length) {
+        console.log("🔧 Frontend: Removing unavailable tools from selection:", {
+          previous: selectedTools,
+          valid: validSelectedTools,
+          removed: selectedTools.filter(
+            (toolId) => !availableToolIds.includes(toolId)
+          ),
+        });
+        onToolsChange(validSelectedTools);
+
+        // Update localStorage
+        localStorage.setItem(
+          "selected-tools",
+          JSON.stringify(validSelectedTools)
+        );
+      }
+    }
+  }, [availableTools, selectedTools, onToolsChange]);
 
   const submitForm = useCallback(() => {
     window.history.replaceState({}, "", `/chat/${chatId}`);
@@ -242,7 +330,6 @@ function PureMultimodalInput({
 
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
-
       <input
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
         multiple
@@ -324,8 +411,14 @@ function PureMultimodalInput({
               selectedModelId={selectedModelId}
             />
             <ReasoningEffortSelector
-              selectedReasoningEffort={selectedReasoningEffort}
               onReasoningEffortChange={onReasoningEffortChange}
+              selectedReasoningEffort={selectedReasoningEffort}
+            />
+            <ToolsSelector
+              availableTools={availableTools}
+              mcpRegistry={mcpRegistry}
+              onToolsChange={onToolsChange}
+              selectedTools={selectedTools}
             />
           </PromptInputTools>
 
@@ -364,7 +457,12 @@ export const MultimodalInput = memo(
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
       return false;
     }
-    if (prevProps.selectedReasoningEffort !== nextProps.selectedReasoningEffort) {
+    if (
+      prevProps.selectedReasoningEffort !== nextProps.selectedReasoningEffort
+    ) {
+      return false;
+    }
+    if (!equal(prevProps.selectedTools, nextProps.selectedTools)) {
       return false;
     }
 
@@ -467,7 +565,9 @@ function PureReasoningEffortSelector({
   selectedReasoningEffort: "low" | "medium" | "high";
   onReasoningEffortChange?: (effort: "low" | "medium" | "high") => void;
 }) {
-  const [optimisticEffort, setOptimisticEffort] = useState(selectedReasoningEffort);
+  const [optimisticEffort, setOptimisticEffort] = useState(
+    selectedReasoningEffort
+  );
 
   useEffect(() => {
     setOptimisticEffort(selectedReasoningEffort);
@@ -476,7 +576,7 @@ function PureReasoningEffortSelector({
   const effortOptions = [
     { value: "low", label: "Low" },
     { value: "medium", label: "Medium" },
-    { value: "high", label: "High" }
+    { value: "high", label: "High" },
   ] as const;
 
   return (
@@ -497,9 +597,7 @@ function PureReasoningEffortSelector({
         className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         type="button"
       >
-        <span className="font-medium text-xs">
-          {effortOptions.find((e) => e.value === optimisticEffort)?.label}
-        </span>
+        <span className="font-medium text-xs">Reasoning Effort</span>
         <ChevronDownIcon size={16} />
       </Trigger>
       <PromptInputModelSelectContent>
@@ -538,3 +636,135 @@ function PureStopButton({
 }
 
 const StopButton = memo(PureStopButton);
+
+function PureToolsSelector({
+  selectedTools = [],
+  onToolsChange,
+  mcpRegistry,
+  availableTools = [],
+}: {
+  selectedTools?: string[];
+  onToolsChange?: (tools: string[]) => void;
+  mcpRegistry?: any;
+  availableTools?: any[];
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const allTools =
+    availableTools.length > 0
+      ? availableTools
+      : [
+          {
+            id: "getWeather",
+            name: "Get Weather",
+            description: "Get current weather information for a location",
+            type: "local" as const,
+          },
+        ];
+
+  // Filter tools based on search term
+  const filteredTools = allTools.filter(
+    (tool) =>
+      tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tool.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tool.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleTool = (toolId: string) => {
+    if (!onToolsChange) return;
+
+    const newSelectedTools = selectedTools.includes(toolId)
+      ? selectedTools.filter((id) => id !== toolId)
+      : [...selectedTools, toolId];
+
+    console.log(
+      "🔧 Frontend: Tool toggled:",
+      toolId,
+      "New selection:",
+      newSelectedTools
+    );
+    onToolsChange(newSelectedTools);
+  };
+
+  return (
+    <PromptInputModelSelect
+      onValueChange={() => {}} // Handled by individual tool clicks
+    >
+      <Trigger
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        type="button"
+      >
+        <span className="font-medium text-xs">Tools</span>
+        <ChevronDownIcon size={14} />
+      </Trigger>
+      <PromptInputModelSelectContent className="min-w-[320px] p-0">
+        {/* Search Input */}
+        <div className="border-border">
+          <input
+            autoComplete="off"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search tools..."
+            type="text"
+            value={searchTerm}
+          />
+        </div>
+
+        {/* Scrollable Tools List */}
+        <div className="max-h-[300px] overflow-y-auto">
+          <div className="flex flex-col gap-px">
+            {filteredTools.length === 0 ? (
+              <div className="p-3 text-center text-muted-foreground text-xs">
+                {searchTerm
+                  ? "No tools match your search"
+                  : "No tools available"}
+              </div>
+            ) : (
+              filteredTools.map((tool) => (
+                <div
+                  className="flex cursor-pointer items-center gap-2 p-2 hover:bg-accent"
+                  key={tool.id}
+                  onClick={() => toggleTool(tool.id)}
+                >
+                  <input
+                    checked={selectedTools.includes(tool.id)}
+                    className="size-3 rounded border border-border"
+                    onChange={() => {}} // Handled by parent onClick
+                    type="checkbox"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium text-xs">
+                        {tool.name}
+                      </span>
+                      {tool.type === "mcp" && (
+                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                          MCP
+                        </span>
+                      )}
+                      {tool.type === "local" && (
+                        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700 dark:bg-green-900 dark:text-green-300">
+                          Local
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">
+                      {tool.description}
+                      {tool.type === "mcp" && tool.serverName && (
+                        <span className="ml-2 text-blue-600 dark:text-blue-400">
+                          ({tool.serverName})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </PromptInputModelSelectContent>
+    </PromptInputModelSelect>
+  );
+}
+
+const ToolsSelector = memo(PureToolsSelector);

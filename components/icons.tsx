@@ -1192,3 +1192,21 @@ export const WarningIcon = ({ size = 16 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const WrenchIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    data-testid="geist-icon"
+    height={size}
+    strokeLinejoin="round"
+    style={{ color: "currentcolor" }}
+    viewBox="0 0 16 16"
+    width={size}
+  >
+    <path
+      clipRule="evenodd"
+      d="M10.5 3C11.3 3 12 2.3 12 1.5S11.3 0 10.5 0 9 0.7 9 1.5c0 0.3 0.1 0.6 0.2 0.8L6.6 4.9c-0.2-0.1-0.5-0.1-0.8-0.1-0.8 0-1.5 0.7-1.5 1.5s0.7 1.5 1.5 1.5c0.3 0 0.6-0.1 0.8-0.2l2.6 2.6c-0.1 0.2-0.2 0.5-0.2 0.8 0 0.8 0.7 1.5 1.5 1.5s1.5-0.7 1.5-1.5-0.7-1.5-1.5-1.5c-0.3 0-0.6 0.1-0.8 0.2L7.1 6.6c0.1-0.2 0.2-0.5 0.2-0.8S7.2 5.2 7.1 5L9.7 2.4C10 2.8 10.3 3 10.5 3z"
+      fill="currentColor"
+      fillRule="evenodd"
+    />
+  </svg>
+);
