@@ -63,15 +63,14 @@ export function Chat({
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const currentModelIdRef = useRef(currentModelId);
-  const [currentReasoningEffort, setCurrentReasoningEffort] = useState<"low" | "medium" | "high">(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("reasoning-effort");
-      if (stored === "low" || stored === "medium" || stored === "high") {
-        return stored;
-      }
+  const [currentReasoningEffort, setCurrentReasoningEffort] = useState<"low" | "medium" | "high">("high");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("reasoning-effort");
+    if (stored === "low" || stored === "medium" || stored === "high") {
+      setCurrentReasoningEffort(stored);
     }
-    return "high";
-  });
+  }, []);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
