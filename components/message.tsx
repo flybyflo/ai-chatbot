@@ -7,8 +7,6 @@ import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
-import { DocumentToolResult } from "./document";
-import { DocumentPreview } from "./document-preview";
 import { MessageContent } from "./elements/message";
 import { Response } from "./elements/response";
 import {
@@ -106,18 +104,82 @@ const PurePreviewMessage = ({
             </div>
           )}
 
+          {(() => {
+            const mergedParts: Array<{
+              type: string;
+              content: string;
+              originalIndex: number;
+              isLast: boolean;
+            }> = [];
+
+            let currentReasoning = "";
+            let firstReasoningIndex = -1;
+
+            message.parts?.forEach((part, index) => {
+              if (part.type === "reasoning" && part.text?.trim().length > 0) {
+                if (currentReasoning === "") {
+                  firstReasoningIndex = index;
+                }
+                currentReasoning += part.text;
+              } else {
+                // If we have accumulated reasoning, add it to merged parts
+                if (currentReasoning) {
+                  mergedParts.push({
+                    type: "reasoning",
+                    content: currentReasoning,
+                    originalIndex: firstReasoningIndex,
+                    isLast: false,
+                  });
+                  currentReasoning = "";
+                  firstReasoningIndex = -1;
+                }
+
+                // Add the non-reasoning part
+                if (part.type === "text" && part.text?.trim()) {
+                  mergedParts.push({
+                    type: part.type,
+                    content: part.text,
+                    originalIndex: index,
+                    isLast: false,
+                  });
+                }
+              }
+            });
+
+            // Don't forget any trailing reasoning
+            if (currentReasoning) {
+              mergedParts.push({
+                type: "reasoning",
+                content: currentReasoning,
+                originalIndex: firstReasoningIndex,
+                isLast: true,
+              });
+            }
+
+            return mergedParts.map((mergedPart, index) => {
+              const key = `message-${message.id}-merged-${mergedPart.originalIndex}`;
+
+              if (mergedPart.type === "reasoning") {
+                return (
+                  <MessageReasoning
+                    isLoading={isLoading && mergedPart.isLast}
+                    key={key}
+                    reasoning={mergedPart.content}
+                  />
+                );
+              } else {
+                return null; // Will handle text parts below
+              }
+            });
+          })()}
+
           {message.parts?.map((part, index) => {
             const { type } = part;
             const key = `message-${message.id}-part-${index}`;
 
-            if (type === "reasoning" && part.text?.trim().length > 0) {
-              return (
-                <MessageReasoning
-                  isLoading={isLoading}
-                  key={key}
-                  reasoning={part.text}
-                />
-              );
+            if (type === "reasoning") {
+              // Skip reasoning parts as they're handled above
+              return null;
             }
 
             if (type === "text") {
@@ -186,86 +248,6 @@ const PurePreviewMessage = ({
               );
             }
 
-            if (type === "tool-createDocument") {
-              const { toolCallId } = part;
-
-              if (part.output && "error" in part.output) {
-                return (
-                  <div
-                    className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
-                    key={toolCallId}
-                  >
-                    Error creating document: {String(part.output.error)}
-                  </div>
-                );
-              }
-
-              return (
-                <DocumentPreview
-                  isReadonly={isReadonly}
-                  key={toolCallId}
-                  result={part.output}
-                />
-              );
-            }
-
-            if (type === "tool-updateDocument") {
-              const { toolCallId } = part;
-
-              if (part.output && "error" in part.output) {
-                return (
-                  <div
-                    className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
-                    key={toolCallId}
-                  >
-                    Error updating document: {String(part.output.error)}
-                  </div>
-                );
-              }
-
-              return (
-                <div className="relative" key={toolCallId}>
-                  <DocumentPreview
-                    args={{ ...part.output, isUpdate: true }}
-                    isReadonly={isReadonly}
-                    result={part.output}
-                  />
-                </div>
-              );
-            }
-
-            if (type === "tool-requestSuggestions") {
-              const { toolCallId, state } = part;
-
-              return (
-                <Tool defaultOpen={true} key={toolCallId}>
-                  <ToolHeader state={state} type="tool-requestSuggestions" />
-                  <ToolContent>
-                    {state === "input-available" && (
-                      <ToolInput input={part.input} />
-                    )}
-                    {state === "output-available" && (
-                      <ToolOutput
-                        errorText={undefined}
-                        output={
-                          "error" in part.output ? (
-                            <div className="rounded border p-2 text-red-500">
-                              Error: {String(part.output.error)}
-                            </div>
-                          ) : (
-                            <DocumentToolResult
-                              isReadonly={isReadonly}
-                              result={part.output}
-                              type="request-suggestions"
-                            />
-                          )
-                        }
-                      />
-                    )}
-                  </ToolContent>
-                </Tool>
-              );
-            }
 
             return null;
           })}
