@@ -62,6 +62,8 @@ function PureMultimodalInput({
   selectedVisibilityType,
   selectedModelId,
   onModelChange,
+  selectedReasoningEffort,
+  onReasoningEffortChange,
   usage,
 }: {
   chatId: string;
@@ -78,6 +80,8 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
+  selectedReasoningEffort: "low" | "medium" | "high";
+  onReasoningEffortChange?: (effort: "low" | "medium" | "high") => void;
   usage?: AppUsage;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -196,7 +200,12 @@ function PureMultimodalInput({
   }, []);
 
   const _modelResolver = useMemo(() => {
-    return myProvider.languageModel(selectedModelId);
+    try {
+      return myProvider.languageModel(selectedModelId);
+    } catch (error) {
+      // Fallback to default model if selectedModelId doesn't exist
+      return myProvider.languageModel("chat-model");
+    }
   }, [selectedModelId]);
 
   const contextProps = useMemo(
@@ -324,6 +333,10 @@ function PureMultimodalInput({
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
             />
+            <ReasoningEffortSelector
+              selectedReasoningEffort={selectedReasoningEffort}
+              onReasoningEffortChange={onReasoningEffortChange}
+            />
           </PromptInputTools>
 
           {status === "submitted" ? (
@@ -359,6 +372,9 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+      return false;
+    }
+    if (prevProps.selectedReasoningEffort !== nextProps.selectedReasoningEffort) {
       return false;
     }
 
@@ -453,6 +469,61 @@ function PureModelSelectorCompact({
 }
 
 const ModelSelectorCompact = memo(PureModelSelectorCompact);
+
+function PureReasoningEffortSelector({
+  selectedReasoningEffort,
+  onReasoningEffortChange,
+}: {
+  selectedReasoningEffort: "low" | "medium" | "high";
+  onReasoningEffortChange?: (effort: "low" | "medium" | "high") => void;
+}) {
+  const [optimisticEffort, setOptimisticEffort] = useState(selectedReasoningEffort);
+
+  useEffect(() => {
+    setOptimisticEffort(selectedReasoningEffort);
+  }, [selectedReasoningEffort]);
+
+  const effortOptions = [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" }
+  ] as const;
+
+  return (
+    <PromptInputModelSelect
+      onValueChange={(effortLabel) => {
+        const effort = effortOptions.find((e) => e.label === effortLabel);
+        if (effort) {
+          setOptimisticEffort(effort.value);
+          onReasoningEffortChange?.(effort.value);
+          startTransition(() => {
+            localStorage.setItem("reasoning-effort", effort.value);
+          });
+        }
+      }}
+      value={effortOptions.find((e) => e.value === optimisticEffort)?.label}
+    >
+      <Trigger
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        type="button"
+      >
+        <span className="font-medium text-xs">
+          {effortOptions.find((e) => e.value === optimisticEffort)?.label}
+        </span>
+        <ChevronDownIcon size={16} />
+      </Trigger>
+      <PromptInputModelSelectContent>
+        {effortOptions.map((effort) => (
+          <SelectItem key={effort.value} value={effort.label}>
+            {effort.label}
+          </SelectItem>
+        ))}
+      </PromptInputModelSelectContent>
+    </PromptInputModelSelect>
+  );
+}
+
+const ReasoningEffortSelector = memo(PureReasoningEffortSelector);
 
 function PureStopButton({
   stop,

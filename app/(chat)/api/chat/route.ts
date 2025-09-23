@@ -20,6 +20,7 @@ import { auth, type UserType } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import type { ChatModel } from "@/lib/ai/models";
+import { chatModels } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
@@ -100,12 +101,16 @@ export async function POST(request: Request) {
       message,
       selectedChatModel,
       selectedVisibilityType,
+      selectedReasoningEffort,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
+      selectedReasoningEffort?: "low" | "medium" | "high";
     } = requestBody;
+
+
 
     const session = await auth();
 
@@ -173,6 +178,9 @@ export async function POST(request: Request) {
 
     let finalMergedUsage: AppUsage | undefined;
 
+    const selectedModel = chatModels.find(model => model.id === selectedChatModel);
+    const reasoningEffort = selectedReasoningEffort || selectedModel?.reasoningEffort || "medium";
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({
@@ -180,15 +188,12 @@ export async function POST(request: Request) {
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools:
-            selectedChatModel === "chat-model-reasoning"
-              ? []
-              : [
-                  "getWeather",
-                  "createDocument",
-                  "updateDocument",
-                  "requestSuggestions",
-                ],
+          experimental_activeTools: [
+            "getWeather",
+            "createDocument",
+            "updateDocument",
+            "requestSuggestions",
+          ],
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
             getWeather,
@@ -198,6 +203,12 @@ export async function POST(request: Request) {
               session,
               dataStream,
             }),
+          },
+          providerOptions: {
+            openai: {
+              reasoningSummary: "detailed",
+              reasoningEffort: reasoningEffort,
+            },
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
