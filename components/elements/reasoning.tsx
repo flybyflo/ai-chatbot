@@ -127,7 +127,7 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            {isStreaming || duration === 0 ? (
+            {isStreaming ? (
               <LoadingText>Thinking...</LoadingText>
             ) : (
               <p>Thought for {duration}s</p>

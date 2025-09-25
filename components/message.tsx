@@ -7,6 +7,7 @@ import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
+import { CodeBlock } from "./elements/code-block";
 import { MessageContent } from "./elements/message";
 import { Response } from "./elements/response";
 import {
@@ -16,12 +17,10 @@ import {
   ToolInput,
   ToolOutput,
 } from "./elements/tool";
-import { MCPToolRenderer } from "./mcp-tool-renderer";
 import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
-import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
   chatId,
@@ -70,12 +69,8 @@ const PurePreviewMessage = ({
               (p) => p.type === "text" && p.text?.trim()
             ),
             "min-h-96": message.role === "assistant" && requiresScrollPadding,
-            "w-full":
-              (message.role === "assistant" &&
-                message.parts?.some(
-                  (p) => p.type === "text" && p.text?.trim()
-                )) ||
-              mode === "edit",
+            // Always full-width for assistant messages so tools don't resize dynamically
+            "w-full": message.role === "assistant" || mode === "edit",
             "max-w-[min(fit-content,80%)]":
               message.role === "user" && mode !== "edit",
           })}
@@ -125,8 +120,10 @@ const PurePreviewMessage = ({
               if (part.type === "reasoning" && part.text?.trim()) {
                 if (currentReasoning === "") {
                   firstReasoningIndex = index;
+                  currentReasoning = part.text;
+                } else {
+                  currentReasoning += `\n\n${part.text}`;
                 }
-                currentReasoning += part.text;
                 return;
               }
 
@@ -182,7 +179,10 @@ const PurePreviewMessage = ({
                 if (mode === "view") {
                   return (
                     <div
-                      className={needsTopMargin ? "mt-3" : undefined}
+                      className={cn(
+                        "w-full",
+                        needsTopMargin ? "mt-3" : undefined
+                      )}
                       key={key}
                     >
                       <MessageContent
@@ -235,7 +235,10 @@ const PurePreviewMessage = ({
                 const { toolCallId, state } = item.part;
                 return (
                   <div
-                    className={needsTopMargin ? "mt-3" : undefined}
+                    className={cn(
+                      "w-full",
+                      needsTopMargin ? "mt-3" : undefined
+                    )}
                     key={toolCallId}
                   >
                     <Tool defaultOpen={false}>
@@ -248,7 +251,16 @@ const PurePreviewMessage = ({
                           <ToolOutput
                             errorText={undefined}
                             output={
-                              <Weather weatherAtLocation={item.part.output} />
+                              <div className="rounded-md bg-muted/50">
+                                <CodeBlock
+                                  code={JSON.stringify(
+                                    item.part.output,
+                                    null,
+                                    2
+                                  )}
+                                  language="json"
+                                />
+                              </div>
                             }
                           />
                         )}
@@ -267,7 +279,10 @@ const PurePreviewMessage = ({
 
                   return (
                     <div
-                      className={needsTopMargin ? "mt-3" : undefined}
+                      className={cn(
+                        "w-full",
+                        needsTopMargin ? "mt-3" : undefined
+                      )}
                       key={toolCallId}
                     >
                       <Tool defaultOpen={false}>
@@ -280,24 +295,25 @@ const PurePreviewMessage = ({
                             <ToolInput input={item.part.input} />
                           )}
                           {state === "output-available" && (
-                            <div className="space-y-2 p-4">
-                              <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                                {"errorText" in item.part && item.part.errorText
-                                  ? "Error"
-                                  : "Result"}
-                              </h4>
-                              {"errorText" in item.part &&
-                                item.part.errorText && (
-                                  <div className="text-destructive text-sm">
-                                    {(item.part as any).errorText}
-                                  </div>
-                                )}
-                              <MCPToolRenderer
-                                output={item.part.output}
-                                serverName={serverName}
-                                toolName={toolName || ""}
-                              />
-                            </div>
+                            <ToolOutput
+                              errorText={
+                                "errorText" in item.part
+                                  ? item.part.errorText
+                                  : undefined
+                              }
+                              output={
+                                <div className="rounded-md bg-muted/50">
+                                  <CodeBlock
+                                    code={JSON.stringify(
+                                      item.part.output,
+                                      null,
+                                      2
+                                    )}
+                                    language="json"
+                                  />
+                                </div>
+                              }
+                            />
                           )}
                         </ToolContent>
                       </Tool>
