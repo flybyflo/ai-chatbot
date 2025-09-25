@@ -1,12 +1,8 @@
 import { MCPClientWrapper } from "./client";
-import type {
-  MCPServerConfig,
-  MCPToolMetadata,
-  MCPToolRegistry,
-} from "./types";
+import type { MCPServerConfig, MCPToolRegistry } from "./types";
 
 export class MCPManager {
-  private clients: Map<string, MCPClientWrapper> = new Map();
+  private readonly clients: Map<string, MCPClientWrapper> = new Map();
   private registry: MCPToolRegistry = {
     tools: {},
     metadata: {},
@@ -15,7 +11,7 @@ export class MCPManager {
 
   static parseServerConfig(configString: string): MCPServerConfig[] {
     if (!configString?.trim()) {
-      console.log('⚠️ No MCP_SERVERS configured');
+      console.log("⚠️ No MCP_SERVERS configured");
       return [];
     }
 
@@ -31,7 +27,7 @@ export class MCPManager {
           const url = entry;
           try {
             const urlObj = new URL(url);
-            const name = urlObj.hostname.replace(/\./g, "_") + "_" + urlObj.port;
+            const name = `${urlObj.hostname.replace(/\./g, "_")}_${urlObj.port}`;
             return { name, url };
           } catch (error) {
             console.error(`❌ Invalid URL: ${url}`, error);
@@ -54,7 +50,7 @@ export class MCPManager {
     await this.cleanup();
 
     if (configs.length === 0) {
-      console.log('⚠️ No MCP servers to initialize');
+      console.log("⚠️ No MCP servers to initialize");
       return;
     }
 
@@ -68,7 +64,6 @@ export class MCPManager {
 
       if (connected) {
         await this.loadToolsFromServer(config.name, client);
-      } else {
       }
     });
 
@@ -84,7 +79,7 @@ export class MCPManager {
       const config = client.getConfig();
 
       // Add tools with server namespace
-      Object.entries(tools).forEach(([toolName, tool]) => {
+      for (const [toolName, tool] of Object.entries(tools)) {
         const namespacedName = `${serverName}_${toolName}`;
         this.registry.tools[namespacedName] = tool;
         this.registry.metadata[namespacedName] = {
@@ -94,14 +89,13 @@ export class MCPManager {
           description: tool.description,
           isHealthy: client.isHealthy(),
         };
-      });
+      }
 
       // Update server status with tool count
       if (this.registry.serverStatus[serverName]) {
         this.registry.serverStatus[serverName].toolCount =
           Object.keys(tools).length;
       }
-
     } catch (error) {
       console.warn(`Failed to load tools from server ${serverName}:`, error);
     }
@@ -130,12 +124,12 @@ export class MCPManager {
     }
 
     // Remove existing tools from this server
-    Object.keys(this.registry.tools).forEach((toolName) => {
+    for (const toolName of Object.keys(this.registry.tools)) {
       if (this.registry.metadata[toolName]?.serverName === serverName) {
         delete this.registry.tools[toolName];
         delete this.registry.metadata[toolName];
       }
-    });
+    }
 
     // Reconnect and reload tools
     const connected = await client.connect();

@@ -1,27 +1,27 @@
-export interface MCPServerConfig {
+export type MCPServerConfig = {
   name: string;
   url: string;
   headers?: Record<string, string>;
-}
+};
 
-export interface MCPToolMetadata {
+export type MCPToolMetadata = {
   serverName: string;
   serverUrl: string;
   toolName: string;
   description?: string;
   isHealthy: boolean;
-}
+};
 
-export interface MCPServerStatus {
+export type MCPServerStatus = {
   name: string;
   url: string;
   isConnected: boolean;
   lastError?: string;
   toolCount: number;
-}
+};
 
-export interface MCPToolRegistry {
+export type MCPToolRegistry = {
   tools: Record<string, any>;
   metadata: Record<string, MCPToolMetadata>;
   serverStatus: Record<string, MCPServerStatus>;
-}
+};

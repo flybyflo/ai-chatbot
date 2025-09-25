@@ -6,23 +6,30 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { useWindowSize } from "usehooks-ts";
-import { useArtifact } from "@/hooks/use-artifact";
-import type { Document } from "@/lib/db/schema";
-import { getDocumentTimestampByIndex } from "@/lib/utils";
+// Document type removed with artifacts
+type Document = {
+  id: string;
+  createdAt: Date;
+};
+// Utility function stub for removed document system
+const getDocumentTimestampByIndex = (documents: Document[] | undefined, index: number) => {
+  return documents?.[index]?.createdAt?.toISOString() || new Date().toISOString();
+};
 import { Button } from "./ui/button";
 
 type VersionFooterProps = {
   handleVersionChange: (type: "next" | "prev" | "toggle" | "latest") => void;
   documents: Document[] | undefined;
   currentVersionIndex: number;
+  documentId?: string;
 };
 
 export const VersionFooter = ({
   handleVersionChange,
   documents,
   currentVersionIndex,
+  documentId,
 }: VersionFooterProps) => {
-  const { artifact } = useArtifact();
 
   const { width } = useWindowSize();
   const isMobile = width < 768;
@@ -56,9 +63,9 @@ export const VersionFooter = ({
             setIsMutating(true);
 
             mutate(
-              `/api/document?id=${artifact.documentId}`,
+              `/api/document?id=${documentId}`,
               await fetch(
-                `/api/document?id=${artifact.documentId}&timestamp=${getDocumentTimestampByIndex(
+                `/api/document?id=${documentId}&timestamp=${getDocumentTimestampByIndex(
                   documents,
                   currentVersionIndex
                 )}`,

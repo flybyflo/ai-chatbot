@@ -10,9 +10,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Failed to fetch tools:", error);
-    return Response.json(
-      { error: "Failed to fetch tools" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Failed to fetch tools" }, { status: 500 });
   }
 }

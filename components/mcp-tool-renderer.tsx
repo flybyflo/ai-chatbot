@@ -1,26 +1,28 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-
-interface MCPToolRendererProps {
+type MCPToolRendererProps = {
   toolName: string;
   serverName: string;
   output: any;
-}
+};
 
-export function MCPToolRenderer({ toolName, serverName, output }: MCPToolRendererProps) {
-  console.log('🎨 MCPToolRenderer:', { toolName, serverName, output });
+export function MCPToolRenderer({
+  toolName,
+  serverName,
+  output,
+}: MCPToolRendererProps) {
+  console.log("🎨 MCPToolRenderer:", { toolName, serverName, output });
 
   // Handle different MCP tool types with custom UI
   const renderToolOutput = () => {
     switch (toolName) {
       case "greet":
-        console.log('🎨 Rendering GreetingToolUI');
+        console.log("🎨 Rendering GreetingToolUI");
         return <GreetingToolUI output={output} />;
 
       default:
-        console.log('🎨 Rendering GenericToolUI');
-        return <GenericToolUI toolName={toolName} output={output} />;
+        console.log("🎨 Rendering GenericToolUI");
+        return <GenericToolUI output={output} toolName={toolName} />;
     }
   };
 
@@ -29,9 +31,10 @@ export function MCPToolRenderer({ toolName, serverName, output }: MCPToolRendere
 
 function GreetingToolUI({ output }: { output: any }) {
   // Extract the greeting message from the MCP output
-  const message = output?.structuredContent?.result ||
-                  output?.content?.[0]?.text ||
-                  (typeof output === "string" ? output : "Hello!");
+  const message =
+    output?.structuredContent?.result ||
+    output?.content?.[0]?.text ||
+    (typeof output === "string" ? output : "Hello!");
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -40,25 +43,25 @@ function GreetingToolUI({ output }: { output: any }) {
           <span className="text-sm">👋</span>
         </div>
         <div>
-          <h3 className="font-medium text-foreground text-sm">
-            Greeting
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            MCP Tool Response
-          </p>
+          <h3 className="font-medium text-foreground text-sm">Greeting</h3>
+          <p className="text-muted-foreground text-xs">MCP Tool Response</p>
         </div>
       </div>
 
       <div className="w-full">
-        <p className="text-foreground">
-          {message}
-        </p>
+        <p className="text-foreground">{message}</p>
       </div>
     </div>
   );
 }
 
-function GenericToolUI({ toolName, output }: { toolName: string; output: any }) {
+function GenericToolUI({
+  toolName,
+  output,
+}: {
+  toolName: string;
+  output: any;
+}) {
   const displayOutput = () => {
     if (typeof output === "string") {
       return output;
@@ -87,9 +90,7 @@ function GenericToolUI({ toolName, output }: { toolName: string; output: any }) 
           <h3 className="font-medium text-foreground text-sm capitalize">
             {toolName}
           </h3>
-          <p className="text-muted-foreground text-xs">
-            MCP Tool Response
-          </p>
+          <p className="text-muted-foreground text-xs">MCP Tool Response</p>
         </div>
       </div>
 
@@ -98,7 +99,7 @@ function GenericToolUI({ toolName, output }: { toolName: string; output: any }) 
           {typeof displayOutput() === "string" ? (
             <p className="whitespace-pre-wrap">{displayOutput()}</p>
           ) : (
-            <pre className="text-xs overflow-x-auto font-mono text-muted-foreground">
+            <pre className="overflow-x-auto font-mono text-muted-foreground text-xs">
               {JSON.stringify(displayOutput(), null, 2)}
             </pre>
           )}

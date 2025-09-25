@@ -23,7 +23,7 @@ import type { ChatModel } from "@/lib/ai/models";
 import { chatModels } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
-import { getAllTools, getActiveTools } from "@/lib/ai/tools";
+import { getActiveTools, getAllTools } from "@/lib/ai/tools";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -183,9 +183,12 @@ export async function POST(request: Request) {
 
     // Load all tools (local + MCP) and filter by selected tools
     const { mcpRegistry } = await getAllTools();
-    console.log('🔧 Backend: Received selectedTools:', selectedTools);
+    console.log("🔧 Backend: Received selectedTools:", selectedTools);
     const tools = await getActiveTools(selectedTools);
-    console.log('🔧 Backend: Active tools after filtering:', Object.keys(tools));
+    console.log(
+      "🔧 Backend: Active tools after filtering:",
+      Object.keys(tools)
+    );
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
@@ -200,26 +203,34 @@ export async function POST(request: Request) {
           onStepFinish: ({ toolCalls, toolResults }) => {
             // Log tool usage
             if (toolCalls.length > 0) {
-              console.log('🔧 Tools Called:');
-              toolCalls.forEach((toolCall) => {
-                const toolType = toolCall.toolName.includes('_') ? 'MCP' : 'Local';
+              console.log("🔧 Tools Called:");
+              for (const toolCall of toolCalls) {
+                const toolType = toolCall.toolName.includes("_")
+                  ? "MCP"
+                  : "Local";
                 console.log(`  📋 ${toolType} Tool: ${toolCall.toolName}`);
                 console.log(`     🔧 Tool ID: ${toolCall.toolCallId}`);
-                console.log(`     📝 Parameters:`, JSON.stringify(toolCall.input, null, 2));
-              });
+                console.log(
+                  "     📝 Parameters:",
+                  JSON.stringify(toolCall.input, null, 2)
+                );
+              }
             }
 
             if (toolResults.length > 0) {
-              console.log('📊 Tool Results:');
-              toolResults.forEach((result) => {
-                console.log(`  ✅ Tool: ${result.toolName}`);
-                console.log(`     📊 Result:`, typeof result.output === 'object'
-                  ? JSON.stringify(result.output, null, 2)
-                  : result.output);
-                if (result.errorText) {
-                  console.log(`     ❌ Error: ${result.errorText}`);
+              console.log("📊 Tool Results:");
+              for (const toolResult of toolResults) {
+                console.log(`  ✅ Tool: ${toolResult.toolName}`);
+                console.log(
+                  "     📊 Result:",
+                  typeof toolResult.output === "object"
+                    ? JSON.stringify(toolResult.output, null, 2)
+                    : toolResult.output
+                );
+                if ("errorText" in toolResult && toolResult.errorText) {
+                  console.log(`     ❌ Error: ${toolResult.errorText}`);
                 }
-              });
+              }
             }
           },
           providerOptions: {

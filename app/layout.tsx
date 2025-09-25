@@ -1,5 +1,6 @@
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -14,20 +15,6 @@ export const metadata: Metadata = {
 export const viewport = {
   maximumScale: 1, // Disable auto-zoom on mobile Safari
 };
-
-const geist = localFont({
-  src: "./fonts/Geist-Variable.woff2",
-  display: "swap",
-  variable: "--font-geist",
-  fallback: ["system-ui", "-apple-system", "sans-serif"],
-});
-
-const geistMono = localFont({
-  src: "./fonts/Geist-Regular.woff2",
-  display: "swap",
-  variable: "--font-geist-mono",
-  fallback: ["ui-monospace", "SFMono-Regular", "monospace"],
-});
 
 const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
 const DARK_THEME_COLOR = "hsl(240deg 10% 3.92%)";
@@ -56,12 +43,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${geist.variable} ${geistMono.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      lang="en"
       // `next-themes` injects an extra classname to the body element to avoid
       // visual flicker before hydration. Hence the `suppressHydrationWarning`
       // prop is necessary to avoid the React hydration mismatch warning.
       // https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
-      lang="en"
       suppressHydrationWarning
     >
       <head>

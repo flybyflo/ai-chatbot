@@ -157,7 +157,7 @@ const PurePreviewMessage = ({
               });
             }
 
-            return mergedParts.map((mergedPart, index) => {
+            return mergedParts.map((mergedPart, _index) => {
               const key = `message-${message.id}-merged-${mergedPart.originalIndex}`;
 
               if (mergedPart.type === "reasoning") {
@@ -260,7 +260,7 @@ const PurePreviewMessage = ({
                 // Parse server name and tool name from the full tool name
                 const parts = fullToolName.split("_");
                 const serverName = parts.slice(0, -1).join("_"); // Everything except the last part
-                const toolName = parts[parts.length - 1]; // Last part is the tool name
+                const toolName = parts.at(-1); // Last part is the tool name
 
                 console.log("🔧 Parsed MCP tool:", {
                   serverName,
@@ -273,7 +273,7 @@ const PurePreviewMessage = ({
                   <Tool defaultOpen={true} key={toolCallId}>
                     <ToolHeader
                       state={state}
-                      type={`${serverName} • ${toolName}`}
+                      type={`tool-${serverName}-${toolName}`}
                     />
                     <ToolContent>
                       {state === "input-available" && (
@@ -282,17 +282,17 @@ const PurePreviewMessage = ({
                       {state === "output-available" && (
                         <div className="space-y-2 p-4">
                           <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                            {part.errorText ? "Error" : "Result"}
+                            {"errorText" in part && part.errorText ? "Error" : "Result"}
                           </h4>
-                          {part.errorText && (
+                          {"errorText" in part && part.errorText && (
                             <div className="text-destructive text-sm">
-                              {part.errorText}
+                              {(part as any).errorText}
                             </div>
                           )}
                           <MCPToolRenderer
                             output={part.output}
                             serverName={serverName}
-                            toolName={toolName}
+                            toolName={toolName || ""}
                           />
                         </div>
                       )}

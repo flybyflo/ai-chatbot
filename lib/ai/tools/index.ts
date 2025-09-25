@@ -2,15 +2,15 @@ import { MCPManager } from "../mcp";
 import type { MCPToolRegistry } from "../mcp/types";
 import { getWeather } from "./get-weather";
 
-interface LocalTools {
+type LocalTools = {
   getWeather: typeof getWeather;
-}
+};
 
-interface CombinedToolsResult {
+type CombinedToolsResult = {
   tools: Record<string, any>;
   mcpRegistry?: MCPToolRegistry;
   localTools: LocalTools;
-}
+};
 
 const localTools: LocalTools = {
   getWeather,
@@ -42,7 +42,6 @@ export async function getAllTools(): Promise<CombinedToolsResult> {
           ...mcpTools,
         };
         result.mcpRegistry = mcpRegistry;
-
       }
     } catch (error) {
       console.warn(
@@ -65,11 +64,11 @@ export async function getActiveTools(
   }
 
   const activatedTools: Record<string, any> = {};
-  activeToolNames.forEach((toolName) => {
+  for (const toolName of activeToolNames) {
     if (tools[toolName]) {
       activatedTools[toolName] = tools[toolName];
     }
-  });
+  }
 
   return activatedTools;
 }

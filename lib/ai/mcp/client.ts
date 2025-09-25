@@ -1,11 +1,11 @@
-import type { MCPClient } from "@modelcontextprotocol/sdk/client/mcp.js";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { experimental_createMCPClient } from "ai";
 import type { MCPServerConfig, MCPServerStatus } from "./types";
 
 export class MCPClientWrapper {
-  private client: MCPClient | null = null;
-  private config: MCPServerConfig;
+  private client: any | null = null;
+  private readonly config: MCPServerConfig;
   private isConnected = false;
   private lastError: string | undefined;
 
@@ -16,10 +16,7 @@ export class MCPClientWrapper {
   async connect(): Promise<boolean> {
     try {
       const transport = new StreamableHTTPClientTransport(
-        new URL(this.config.url),
-        {
-          headers: this.config.headers || {},
-        }
+        new URL(this.config.url)
       );
 
       this.client = await experimental_createMCPClient({

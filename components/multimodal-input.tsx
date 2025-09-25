@@ -49,11 +49,11 @@ function PureMultimodalInput({
   stop,
   attachments,
   setAttachments,
-  messages,
+  messages: _messages,
   setMessages,
   sendMessage,
   className,
-  selectedVisibilityType,
+  selectedVisibilityType: _selectedVisibilityType,
   selectedModelId,
   onModelChange,
   selectedReasoningEffort,
@@ -283,7 +283,7 @@ function PureMultimodalInput({
   const _modelResolver = useMemo(() => {
     try {
       return myProvider.languageModel(selectedModelId);
-    } catch (error) {
+    } catch (_error) {
       // Fallback to default model if selectedModelId doesn't exist
       return myProvider.languageModel("chat-model");
     }
@@ -634,7 +634,7 @@ const StopButton = memo(PureStopButton);
 function PureToolsSelector({
   selectedTools = [],
   onToolsChange,
-  mcpRegistry,
+  mcpRegistry: _mcpRegistry,
   availableTools = [],
 }: {
   selectedTools?: string[];
@@ -665,7 +665,9 @@ function PureToolsSelector({
   );
 
   const toggleTool = (toolId: string) => {
-    if (!onToolsChange) return;
+    if (!onToolsChange) {
+      return;
+    }
 
     const newSelectedTools = selectedTools.includes(toolId)
       ? selectedTools.filter((id) => id !== toolId)
@@ -682,14 +684,16 @@ function PureToolsSelector({
 
   return (
     <PromptInputModelSelect
-      onValueChange={() => {}} // Handled by individual tool clicks
+      onValueChange={() => {
+        // Handled by individual tool clicks
+      }}
     >
       <Trigger
         className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         type="button"
       >
         <span className="font-medium text-xs">Tools</span>
-        <ChevronDownIcon size={14} />
+        <ChevronDown size={14} />
       </Trigger>
       <PromptInputModelSelectContent className="min-w-[320px] p-0">
         {/* Search Input */}
@@ -715,15 +719,18 @@ function PureToolsSelector({
               </div>
             ) : (
               filteredTools.map((tool) => (
-                <div
-                  className="flex cursor-pointer items-center gap-2 p-2 hover:bg-accent"
+                <button
+                  className="flex w-full cursor-pointer items-center gap-2 p-2 text-left hover:bg-accent"
                   key={tool.id}
                   onClick={() => toggleTool(tool.id)}
+                  type="button"
                 >
                   <input
                     checked={selectedTools.includes(tool.id)}
                     className="size-3 rounded border border-border"
-                    onChange={() => {}} // Handled by parent onClick
+                    onChange={() => {
+                      // Handled by parent onClick
+                    }}
                     type="checkbox"
                   />
                   <div className="flex-1">
@@ -751,7 +758,7 @@ function PureToolsSelector({
                       )}
                     </div>
                   </div>
-                </div>
+                </button>
               ))
             )}
           </div>

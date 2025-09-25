@@ -6,7 +6,20 @@
       "**/*",
       "!components/ui",
       "!lib/utils.ts",
-      "!hooks/use-mobile.ts"
+      "!hooks/use-mobile.ts",
+      "!test-mcp",
+      "!**/.venv",
+      "!**/venv",
+      "!**/__pycache__",
+      "!**/.git"
+    ],
+    "experimentalScannerIgnores": [
+      "node_modules",
+      ".next",
+      ".claude",
+      "dist",
+      "build",
+      "test-mcp"
     ]
   },
   "linter": {
@@ -29,7 +42,10 @@
         "noMagicNumbers": "off",
 
         /* Needs more work to fix */
-        "noNestedTernary": "off"
+        "noNestedTernary": "off",
+
+        /* Allow import/export pattern for this project */
+        "noExportedImports": "off"
       },
       "nursery": {
         /* Too many false positives */
@@ -45,6 +61,10 @@
       "a11y": {
         /* Needs more work to fix */
         "noSvgWithoutTitle": "off"
+      },
+      "performance": {
+        /* Barrel files are acceptable for this project */
+        "noBarrelFile": "off"
       }
     }
   }

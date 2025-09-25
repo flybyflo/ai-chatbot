@@ -119,7 +119,10 @@ export function Chat({
       api: "/api/chat",
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest(request) {
-        console.log('🔧 Frontend: Sending tools to API:', selectedToolsRef.current);
+        console.log(
+          "🔧 Frontend: Sending tools to API:",
+          selectedToolsRef.current
+        );
         return {
           body: {
             id: request.id,

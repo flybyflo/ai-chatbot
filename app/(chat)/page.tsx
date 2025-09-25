@@ -19,31 +19,27 @@ export default async function Page() {
 
   if (!modelIdFromCookie) {
     return (
-      <>
-        <Chat
-          autoResume={false}
-          id={id}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialMessages={[]}
-          initialVisibilityType="private"
-          isReadonly={false}
-          key={id}
-        />
-      </>
-    );
-  }
-
-  return (
-    <>
       <Chat
         autoResume={false}
         id={id}
-        initialChatModel={modelIdFromCookie.value}
+        initialChatModel={DEFAULT_CHAT_MODEL}
         initialMessages={[]}
         initialVisibilityType="private"
         isReadonly={false}
         key={id}
       />
-    </>
+    );
+  }
+
+  return (
+    <Chat
+      autoResume={false}
+      id={id}
+      initialChatModel={modelIdFromCookie.value}
+      initialMessages={[]}
+      initialVisibilityType="private"
+      isReadonly={false}
+      key={id}
+    />
   );
 }
