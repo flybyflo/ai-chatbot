@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Brain } from "lucide-react";
+import { Brain, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";

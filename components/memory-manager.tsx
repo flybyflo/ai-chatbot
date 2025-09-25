@@ -1,25 +1,28 @@
 "use client";
 
+import { Brain, Plus } from "lucide-react";
 import { useState } from "react";
-import { Plus, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { useMemories } from "@/hooks/use-memories";
 import { MemoryItem } from "./memory-item";
 import { toast } from "./toast";
 
 export function MemoryManager() {
-  const { memories, isLoading, createMemory, updateMemory, deleteMemory } = useMemories();
+  const { memories, isLoading, createMemory, updateMemory, deleteMemory } =
+    useMemories();
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleCreate = async () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -37,14 +40,20 @@ export function MemoryManager() {
     } catch (error) {
       toast({
         type: "error",
-        description: error instanceof Error ? error.message : "Failed to create memory",
+        description:
+          error instanceof Error ? error.message : "Failed to create memory",
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUpdate = async (data: { id: string; title?: string; content?: string; isActive?: boolean }) => {
+  const handleUpdate = async (data: {
+    id: string;
+    title?: string;
+    content?: string;
+    isActive?: boolean;
+  }) => {
     try {
       await updateMemory(data);
       toast({
@@ -54,7 +63,8 @@ export function MemoryManager() {
     } catch (error) {
       toast({
         type: "error",
-        description: error instanceof Error ? error.message : "Failed to update memory",
+        description:
+          error instanceof Error ? error.message : "Failed to update memory",
       });
     }
   };
@@ -69,13 +79,14 @@ export function MemoryManager() {
     } catch (error) {
       toast({
         type: "error",
-        description: error instanceof Error ? error.message : "Failed to delete memory",
+        description:
+          error instanceof Error ? error.message : "Failed to delete memory",
       });
     }
   };
 
-  const activeMemories = memories.filter(memory => memory.isActive);
-  const inactiveMemories = memories.filter(memory => !memory.isActive);
+  const activeMemories = memories.filter((memory) => memory.isActive);
+  const inactiveMemories = memories.filter((memory) => !memory.isActive);
 
   return (
     <div className="space-y-6">
@@ -90,9 +101,10 @@ export function MemoryManager() {
         </CardHeader>
         <CardContent className="text-muted-foreground text-sm">
           <p>
-            Memories help the AI assistant remember important information about you,
-            your preferences, and context that should guide future conversations.
-            Only active memories will be used to personalize responses.
+            Memories help the AI assistant remember important information about
+            you, your preferences, and context that should guide future
+            conversations. Only active memories will be used to personalize
+            responses.
           </p>
         </CardContent>
       </Card>
@@ -105,23 +117,23 @@ export function MemoryManager() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
+              onChange={(e) => setNewTitle(e.target.value)}
               placeholder="Memory title (e.g., 'Favorite Programming Language')"
               value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
             />
             <Textarea
-              placeholder="Memory content (e.g., 'Prefers TypeScript and React for web development')"
-              value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
+              placeholder="Memory content (e.g., 'Prefers TypeScript and React for web development')"
               rows={3}
+              value={newContent}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsCreating(false)}>
+              <Button onClick={() => setIsCreating(false)} variant="outline">
                 Cancel
               </Button>
               <Button
-                onClick={handleCreate}
                 disabled={!newTitle.trim() || isSaving}
+                onClick={handleCreate}
               >
                 {isSaving ? "Creating..." : "Create Memory"}
               </Button>
@@ -129,7 +141,7 @@ export function MemoryManager() {
           </CardContent>
         </Card>
       ) : (
-        <Button onClick={() => setIsCreating(true)} className="w-full">
+        <Button className="w-full" onClick={() => setIsCreating(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add New Memory
         </Button>
@@ -137,14 +149,16 @@ export function MemoryManager() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="text-muted-foreground text-sm">Loading memories...</div>
+          <div className="text-muted-foreground text-sm">
+            Loading memories...
+          </div>
         </div>
       ) : (
         <>
           {/* Active Memories */}
           {activeMemories.length > 0 && (
             <div>
-              <h2 className="mb-3 font-medium text-sm text-foreground">
+              <h2 className="mb-3 font-medium text-foreground text-sm">
                 Active Memories ({activeMemories.length})
               </h2>
               <div className="space-y-3">
@@ -152,8 +166,8 @@ export function MemoryManager() {
                   <MemoryItem
                     key={memory.id}
                     memory={memory}
-                    onUpdate={handleUpdate}
                     onDelete={handleDelete}
+                    onUpdate={handleUpdate}
                   />
                 ))}
               </div>
@@ -165,7 +179,7 @@ export function MemoryManager() {
             <>
               {activeMemories.length > 0 && <Separator />}
               <div>
-                <h2 className="mb-3 font-medium text-sm text-muted-foreground">
+                <h2 className="mb-3 font-medium text-muted-foreground text-sm">
                   Disabled Memories ({inactiveMemories.length})
                 </h2>
                 <div className="space-y-3">
@@ -173,8 +187,8 @@ export function MemoryManager() {
                     <MemoryItem
                       key={memory.id}
                       memory={memory}
-                      onUpdate={handleUpdate}
                       onDelete={handleDelete}
+                      onUpdate={handleUpdate}
                     />
                   ))}
                 </div>
@@ -188,7 +202,8 @@ export function MemoryManager() {
                 <Brain className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="mb-2 font-medium">No memories yet</h3>
                 <p className="mb-4 text-muted-foreground text-sm">
-                  Create your first memory to help the AI assistant remember important information about you.
+                  Create your first memory to help the AI assistant remember
+                  important information about you.
                 </p>
                 <Button onClick={() => setIsCreating(true)}>
                   <Plus className="mr-2 h-4 w-4" />

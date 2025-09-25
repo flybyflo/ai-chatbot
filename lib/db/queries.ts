@@ -25,8 +25,8 @@ import {
   message,
   stream,
   type User,
-  user,
   type UserMemory,
+  user,
   userMemory,
   vote,
 } from "./schema";
@@ -449,7 +449,9 @@ export async function getUserMemories(userId: string): Promise<UserMemory[]> {
   }
 }
 
-export async function getActiveUserMemories(userId: string): Promise<UserMemory[]> {
+export async function getActiveUserMemories(
+  userId: string
+): Promise<UserMemory[]> {
   try {
     return await db
       .select()
@@ -502,9 +504,15 @@ export async function updateUserMemory({
 }): Promise<UserMemory | null> {
   try {
     const updateData: Partial<UserMemory> = { updatedAt: new Date() };
-    if (title !== undefined) updateData.title = title;
-    if (content !== undefined) updateData.content = content;
-    if (isActive !== undefined) updateData.isActive = isActive;
+    if (title !== undefined) {
+      updateData.title = title;
+    }
+    if (content !== undefined) {
+      updateData.content = content;
+    }
+    if (isActive !== undefined) {
+      updateData.isActive = isActive;
+    }
 
     const [memory] = await db
       .update(userMemory)

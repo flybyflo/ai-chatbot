@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/app/(auth)/auth";
 import { MemoryManager } from "@/components/memory-manager";
-import { redirect } from "next/navigation";
 
 export default async function MemoriesPage() {
   const session = await auth();

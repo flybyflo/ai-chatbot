@@ -1,8 +1,9 @@
 "use client";
 
+import { Edit, Eye, EyeOff, MoreVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Edit, MoreVertical, Trash2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,25 +13,31 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { UserMemory } from "@/hooks/use-memories";
 import { cn } from "@/lib/utils";
 
 type MemoryItemProps = {
   memory: UserMemory;
-  onUpdate: (data: { id: string; title?: string; content?: string; isActive?: boolean }) => Promise<void>;
+  onUpdate: (data: {
+    id: string;
+    title?: string;
+    content?: string;
+    isActive?: boolean;
+  }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   isUpdating?: boolean;
 };
 
-export function MemoryItem({ memory, onUpdate, onDelete, isUpdating = false }: MemoryItemProps) {
+export function MemoryItem({ memory, onUpdate, onDelete }: MemoryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(memory.title);
   const [content, setContent] = useState(memory.content);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -75,17 +82,16 @@ export function MemoryItem({ memory, onUpdate, onDelete, isUpdating = false }: M
   };
 
   return (
-    <Card className={cn(
-      "transition-opacity",
-      !memory.isActive && "opacity-60"
-    )}>
+    <Card
+      className={cn("transition-opacity", !memory.isActive && "opacity-60")}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         {isEditing ? (
           <Input
-            value={title}
+            className="font-semibold"
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Memory title..."
-            className="font-semibold"
+            value={title}
           />
         ) : (
           <h3 className="font-semibold text-sm">{memory.title}</h3>
@@ -93,7 +99,7 @@ export function MemoryItem({ memory, onUpdate, onDelete, isUpdating = false }: M
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button className="h-8 w-8 p-0" size="sm" variant="ghost">
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -116,7 +122,10 @@ export function MemoryItem({ memory, onUpdate, onDelete, isUpdating = false }: M
               )}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={handleDelete}
+            >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
@@ -128,19 +137,19 @@ export function MemoryItem({ memory, onUpdate, onDelete, isUpdating = false }: M
         {isEditing ? (
           <div className="space-y-3">
             <Textarea
-              value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Memory content..."
               rows={3}
+              value={content}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleCancel}>
+              <Button onClick={handleCancel} size="sm" variant="outline">
                 Cancel
               </Button>
               <Button
-                size="sm"
-                onClick={handleSave}
                 disabled={!title.trim() || isSaving}
+                onClick={handleSave}
+                size="sm"
               >
                 {isSaving ? "Saving..." : "Save"}
               </Button>

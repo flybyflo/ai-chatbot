@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/app/(auth)/auth";
-import { ChatSDKError } from "@/lib/errors";
 import {
   createUserMemory,
   deleteUserMemory,
   getUserMemories,
   updateUserMemory,
 } from "@/lib/db/queries";
+import { ChatSDKError } from "@/lib/errors";
 
 const createMemorySchema = z.object({
   title: z.string().min(1).max(255),
-  content: z.string().min(1).max(10000),
+  content: z.string().min(1).max(10_000),
 });
 
 const updateMemorySchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1).max(255).optional(),
-  content: z.string().min(1).max(10000).optional(),
+  content: z.string().min(1).max(10_000).optional(),
   isActive: z.boolean().optional(),
 });
 

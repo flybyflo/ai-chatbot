@@ -155,6 +155,13 @@ function PureMultimodalInput({
               "Render a side-by-side comparison given filename, before and after code",
             type: "local" as const,
           },
+          {
+            id: "plantuml",
+            name: "PlantUML Diagram",
+            description:
+              "Create and render PlantUML diagrams with source code viewer",
+            type: "local" as const,
+          },
         ];
 
         const mcpTools = data.mcpRegistry?.metadata
@@ -186,6 +193,13 @@ function PureMultimodalInput({
             name: "Code Compare",
             description:
               "Render a side-by-side comparison given filename, before and after code",
+            type: "local" as const,
+          },
+          {
+            id: "plantuml",
+            name: "PlantUML Diagram",
+            description:
+              "Create and render PlantUML diagrams with source code viewer",
             type: "local" as const,
           },
         ]);
@@ -681,6 +695,13 @@ function PureToolsSelector({
             name: "Code Compare",
             description:
               "Render a side-by-side comparison given filename, before and after code",
+            type: "local" as const,
+          },
+          {
+            id: "plantuml",
+            name: "PlantUML Diagram",
+            description:
+              "Create and render PlantUML diagrams with source code viewer",
             type: "local" as const,
           },
         ];

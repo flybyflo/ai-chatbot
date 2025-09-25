@@ -54,12 +54,16 @@ export function useMemories() {
       const newMemory = await response.json();
 
       // Optimistically update the cache
-      mutate("/api/memories", (currentMemories: UserMemory[] = []) =>
-        [newMemory, ...currentMemories], false);
+      mutate(
+        "/api/memories",
+        (currentMemories: UserMemory[] = []) => [newMemory, ...currentMemories],
+        false
+      );
 
       return newMemory;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create memory";
+      const message =
+        err instanceof Error ? err.message : "Failed to create memory";
       setError(message);
       throw new Error(message);
     } finally {
@@ -86,14 +90,19 @@ export function useMemories() {
       const updatedMemory = await response.json();
 
       // Optimistically update the cache
-      mutate("/api/memories", (currentMemories: UserMemory[] = []) =>
-        currentMemories.map(memory =>
-          memory.id === data.id ? updatedMemory : memory
-        ), false);
+      mutate(
+        "/api/memories",
+        (currentMemories: UserMemory[] = []) =>
+          currentMemories.map((memory) =>
+            memory.id === data.id ? updatedMemory : memory
+          ),
+        false
+      );
 
       return updatedMemory;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update memory";
+      const message =
+        err instanceof Error ? err.message : "Failed to update memory";
       setError(message);
       throw new Error(message);
     } finally {
@@ -118,12 +127,17 @@ export function useMemories() {
       }
 
       // Optimistically update the cache
-      mutate("/api/memories", (currentMemories: UserMemory[] = []) =>
-        currentMemories.filter(memory => memory.id !== id), false);
+      mutate(
+        "/api/memories",
+        (currentMemories: UserMemory[] = []) =>
+          currentMemories.filter((memory) => memory.id !== id),
+        false
+      );
 
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete memory";
+      const message =
+        err instanceof Error ? err.message : "Failed to delete memory";
       setError(message);
       throw new Error(message);
     } finally {

@@ -4,6 +4,7 @@ import equal from "fast-deep-equal";
 import { motion } from "framer-motion";
 import { memo, useState } from "react";
 import { CodeComparison } from "@/components/ui/code-comparison";
+import { PlantUMLViewer } from "@/components/ui/plantuml-viewer";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
@@ -97,6 +98,7 @@ const PurePreviewMessage = ({
               | { kind: "text"; index: number }
               | { kind: "tool-getWeather"; part: any }
               | { kind: "tool-codeCompare"; part: any }
+              | { kind: "tool-plantuml"; part: any }
               | { kind: "dynamic-tool"; part: any }
             > = [];
 
@@ -141,6 +143,11 @@ const PurePreviewMessage = ({
 
               if (part.type === "tool-codeCompare") {
                 flowItems.push({ kind: "tool-codeCompare", part });
+                return;
+              }
+
+              if (part.type === "tool-plantuml") {
+                flowItems.push({ kind: "tool-plantuml", part });
                 return;
               }
 
@@ -329,6 +336,37 @@ const PurePreviewMessage = ({
                       highlightColor={highlightColor}
                       language={language}
                       lightTheme={lightTheme}
+                    />
+                  </div>
+                );
+              }
+
+              if (item.kind === "tool-plantuml") {
+                const { toolCallId } = item.part;
+                const input = item.part.input || {};
+                const output = item.part.output || {};
+                // Merge output over input so final values override while preserving streamed input
+                const payload = {
+                  ...(typeof input === "object" && input ? input : {}),
+                  ...(typeof output === "object" && output ? output : {}),
+                } as any;
+                const code = payload.code ?? "";
+                const title = payload.title ?? "PlantUML Diagram";
+                const language = payload.language ?? "plantuml";
+                const lightTheme = payload.lightTheme ?? "github-light";
+                const darkTheme = payload.darkTheme ?? "github-dark";
+                const needsMargin = hasRenderedBeforeFlow || flowIndex > 0;
+                return (
+                  <div
+                    className={cn("w-full", needsMargin ? "mt-3" : undefined)}
+                    key={toolCallId}
+                  >
+                    <PlantUMLViewer
+                      code={code}
+                      darkTheme={darkTheme}
+                      language={language}
+                      lightTheme={lightTheme}
+                      title={title}
                     />
                   </div>
                 );

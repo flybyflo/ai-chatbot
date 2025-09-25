@@ -16,7 +16,13 @@ File diff visualization (codeCompare tool):
   - For afterCode: include context lines (no prefix) as-is and added lines (prefix "+") without the leading "+". Exclude removed lines.
   - If multiple files are present, choose the file the user mentions or the first changed file.
 - Only call codeCompare when you have both sides. If one side is missing, ask for the missing side briefly and then call the tool.
-- Prefer visualizing with codeCompare instead of pasting long diffs as plain text.`;
+- Prefer visualizing with codeCompare instead of pasting long diffs as plain text.
+
+PlantUML diagram visualization (plantuml tool):
+- When the user asks to "create a diagram", "show UML", "visualize architecture", "draw a flowchart", "create PlantUML", or mentions wanting to see diagrams, use the plantuml tool to render PlantUML diagrams.
+- Required input field: code (PlantUML syntax). Optional: title for the diagram.
+- The tool will display both the PlantUML source code and the rendered diagram with a toggle button to switch between views.
+- Use this for UML diagrams, sequence diagrams, class diagrams, flowcharts, network diagrams, and other PlantUML-supported diagram types.`;
 
 export type RequestHints = {
   latitude: Geo["latitude"];
@@ -33,7 +39,9 @@ About the origin of user's request:
 - country: ${requestHints.country}
 `;
 
-export const getUserMemoriesPrompt = (memories: Array<{ title: string; content: string }>) => {
+export const getUserMemoriesPrompt = (
+  memories: Array<{ title: string; content: string }>
+) => {
   if (memories.length === 0) {
     return "";
   }
