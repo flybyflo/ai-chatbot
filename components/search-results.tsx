@@ -7,12 +7,12 @@ import { useSidebar } from "@/components/ui/sidebar";
 import type { SearchResult } from "@/hooks/use-message-search";
 import { cn } from "@/lib/utils";
 
-interface SearchResultsProps {
+type SearchResultsProps = {
   currentChatResults: SearchResult[];
   historyResults: SearchResult[];
   searchQuery: string;
   onResultClick?: () => void;
-}
+};
 
 export function SearchResults({
   currentChatResults,
@@ -23,7 +23,9 @@ export function SearchResults({
   const { setOpenMobile } = useSidebar();
 
   const highlightText = (text: string, query: string) => {
-    if (!query.trim()) return text;
+    if (!query.trim()) {
+      return text;
+    }
 
     const regex = new RegExp(
       `(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
@@ -35,12 +37,18 @@ export function SearchResults({
       regex.test(part) ? (
         <mark
           className="rounded bg-yellow-200 px-0.5 dark:bg-yellow-900"
+          // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for text highlighting
           key={index}
         >
           {part}
         </mark>
       ) : (
-        <span key={index}>{part}</span>
+        <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for text highlighting
+          key={index}
+        >
+          {part}
+        </span>
       )
     );
   };
@@ -67,12 +75,13 @@ export function SearchResults({
           </div>
           <div className="space-y-1">
             {currentChatResults.map((result, index) => (
-              <div
+              <button
                 className={cn(
-                  "group flex cursor-pointer items-start gap-2 rounded-md p-2 text-sm hover:bg-sidebar-accent"
+                  "group flex w-full cursor-pointer items-start gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent"
                 )}
                 key={`${result.messageId}-${index}`}
                 onClick={handleClick}
+                type="button"
               >
                 <MessageCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
@@ -84,7 +93,7 @@ export function SearchResults({
                     )}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

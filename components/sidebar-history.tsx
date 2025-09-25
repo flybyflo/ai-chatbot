@@ -100,10 +100,10 @@ export function getChatHistoryPaginationKey(
   return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
 }
 
-interface SidebarHistoryProps {
+type SidebarHistoryProps = {
   user: User | undefined;
   currentChatMessages?: any[];
-}
+};
 
 export function SidebarHistory({
   user,

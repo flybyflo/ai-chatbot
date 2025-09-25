@@ -4,14 +4,14 @@ import { useMemo, useState } from "react";
 import type { Chat } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 
-export interface SearchResult {
+export type SearchResult = {
   chatId: string;
   messageId: string;
   messageContent: string;
   chatTitle: string;
   createdAt: Date;
   messageIndex: number;
-}
+};
 
 export function useMessageSearch(
   currentMessages: ChatMessage[] = [],
@@ -31,9 +31,9 @@ export function useMessageSearch(
 
     // Search in current chat messages
     const currentChatResults: SearchResult[] = [];
-    currentMessages.forEach((message, index) => {
+    for (const [index, message] of currentMessages.entries()) {
       if (message.parts) {
-        message.parts.forEach((part) => {
+        for (const part of message.parts) {
           if (part.type === "text" && part.text) {
             const text = part.text.toLowerCase();
             if (text.includes(query)) {
@@ -47,9 +47,9 @@ export function useMessageSearch(
               });
             }
           }
-        });
+        }
       }
-    });
+    }
 
     // Search in chat history titles
     const historyResults: SearchResult[] = chatHistory

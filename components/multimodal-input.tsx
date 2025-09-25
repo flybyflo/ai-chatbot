@@ -539,7 +539,7 @@ function PureModelSelectorCompact({
       value={selectedModel?.name}
     >
       <Trigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-foreground shadow-none transition-colors hover:bg-foreground/10 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-3 text-foreground shadow-none transition-all duration-200 hover:bg-foreground/25 hover:shadow-md focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-foreground/25 data-[state=open]:shadow-md"
         type="button"
       >
         <Cpu size={16} />
@@ -548,10 +548,14 @@ function PureModelSelectorCompact({
         </span>
         <ChevronDown size={16} />
       </Trigger>
-      <PromptInputModelSelectContent className="min-w-[260px] p-0">
+      <PromptInputModelSelectContent className="min-w-[260px] rounded-xl border-2 border-[#87CEFA]/30 bg-tool-bg/95 p-1 shadow-lg backdrop-blur-sm dark:border-[#4A90E2]/30">
         <div className="flex flex-col gap-px">
           {chatModels.map((model) => (
-            <SelectItem key={model.id} value={model.name}>
+            <SelectItem
+              className="hover:bg-foreground/20 focus:bg-foreground/20"
+              key={model.id}
+              value={model.name}
+            >
               <div className="truncate font-medium text-xs">{model.name}</div>
               <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">
                 {model.description}
@@ -602,15 +606,19 @@ function PureReasoningEffortSelector({
       value={effortOptions.find((e) => e.value === optimisticEffort)?.label}
     >
       <Trigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-foreground shadow-none transition-colors hover:bg-foreground/10 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-3 text-foreground shadow-none transition-all duration-200 hover:bg-foreground/25 hover:shadow-md focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-foreground/25 data-[state=open]:shadow-md"
         type="button"
       >
         <span className="font-medium text-xs">Reasoning Effort</span>
         <ChevronDown size={16} />
       </Trigger>
-      <PromptInputModelSelectContent>
+      <PromptInputModelSelectContent className="rounded-xl border-2 border-[#87CEFA]/30 bg-tool-bg/95 p-1 shadow-lg backdrop-blur-sm dark:border-[#4A90E2]/30">
         {effortOptions.map((effort) => (
-          <SelectItem key={effort.value} value={effort.label}>
+          <SelectItem
+            className="hover:bg-foreground/20 focus:bg-foreground/20"
+            key={effort.value}
+            value={effort.label}
+          >
             {effort.label}
           </SelectItem>
         ))}
@@ -710,18 +718,18 @@ function PureToolsSelector({
       }}
     >
       <Trigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-foreground shadow-none transition-colors hover:bg-foreground/10 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-3 text-foreground shadow-none transition-all duration-200 hover:bg-foreground/25 hover:shadow-md focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-foreground/25 data-[state=open]:shadow-md"
         type="button"
       >
         <span className="font-medium text-xs">Tools</span>
         <ChevronDown size={14} />
       </Trigger>
-      <PromptInputModelSelectContent className="min-w-[320px] p-0">
+      <PromptInputModelSelectContent className="min-w-[320px] rounded-xl border-2 border-[#87CEFA]/30 bg-tool-bg/95 p-1 shadow-lg backdrop-blur-sm dark:border-[#4A90E2]/30">
         {/* Search Input */}
-        <div className="border-border">
+        <div className="border-border/20 border-b p-2">
           <input
             autoComplete="off"
-            className="w-full rounded-md border border-border bg-tool-bg px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-lg border border-border/30 bg-background/50 px-3 py-2 text-sm transition-all duration-200 hover:border-border/50 focus:border-border focus:outline-none focus:ring-2 focus:ring-ring/20"
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search tools..."
             type="text"
@@ -741,7 +749,7 @@ function PureToolsSelector({
             ) : (
               filteredTools.map((tool) => (
                 <button
-                  className="flex w-full cursor-pointer items-center gap-2 p-2 text-left hover:bg-accent"
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-md p-2 text-left transition-colors duration-200 hover:bg-foreground/20"
                   key={tool.id}
                   onClick={() => toggleTool(tool.id)}
                   type="button"
@@ -771,7 +779,9 @@ function PureToolsSelector({
                       )}
                     </div>
                     <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">
-                      {tool.description}
+                      {tool.description.length > 50
+                        ? `${tool.description.slice(0, 50)}...`
+                        : tool.description}
                       {tool.type === "mcp" && tool.serverName && (
                         <span className="ml-2 text-blue-600 dark:text-blue-400">
                           ({tool.serverName})

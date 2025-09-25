@@ -3,13 +3,12 @@
 import { Search, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
-interface SearchBarProps {
+type SearchBarProps = {
   onSearch: (query: string) => void;
   placeholder?: string;
   className?: string;
-}
+};
 
 export function SearchBar({
   onSearch,

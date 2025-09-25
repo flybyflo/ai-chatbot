@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Highlighter } from "@/components/ui/highlighter";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import type { Vote } from "@/lib/db/schema";
@@ -209,41 +210,112 @@ export function Chat({
           selectedVisibilityType={initialVisibilityType}
         />
 
-        <Messages
-          chatId={id}
-          isReadonly={isReadonly}
-          messages={messages}
-          regenerate={regenerate}
-          selectedModelId={initialChatModel}
-          setMessages={setMessages}
-          status={status}
-          votes={votes}
-        />
-
-        <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
-          {!isReadonly && (
-            <MultimodalInput
-              attachments={attachments}
+        {messages.length === 0 ? (
+          // Centered input for new chat
+          <div className="flex flex-1 items-center justify-center px-2 md:px-4">
+            <div className="w-full max-w-4xl space-y-6">
+              <div className="text-center">
+                <h1 className="mb-2 font-semibold text-2xl text-foreground">
+                  Welcome to{"   "}
+                  <span className="relative">
+                    <span className="dark:hidden">
+                      <Highlighter
+                        action="highlight"
+                        color="#87CEFA"
+                        isView={true}
+                      >
+                        AI Chatbot
+                      </Highlighter>
+                    </span>
+                    <span className="hidden dark:inline">
+                      <Highlighter
+                        action="highlight"
+                        color="#4A90E2"
+                        isView={true}
+                      >
+                        AI Chatbot
+                      </Highlighter>
+                    </span>
+                  </span>
+                </h1>
+                <p className="text-muted-foreground">
+                  Start a{" "}
+                  <Highlighter action="underline" color="#FF9800" isView={true}>
+                    conversation
+                  </Highlighter>{" "}
+                  by typing your message below
+                </p>
+              </div>
+              <div className="relative">
+                {/* Light mode glow */}
+                <div className="-bottom-2 absolute right-0 left-0 h-8 rounded-[1.5rem] bg-gradient-to-r from-orange-300 via-orange-400 to-orange-300 opacity-15 blur-xl dark:hidden" />
+                {/* Dark mode glow - lighter/brighter */}
+                <div className="-bottom-2 absolute right-0 left-0 hidden h-8 rounded-[1.5rem] bg-gradient-to-r from-orange-200 via-orange-300 to-orange-200 opacity-10 blur-xl dark:block" />
+                <div className="relative">
+                  <MultimodalInput
+                    attachments={attachments}
+                    chatId={id}
+                    input={input}
+                    messages={messages}
+                    onModelChange={setCurrentModelId}
+                    onReasoningEffortChange={setCurrentReasoningEffort}
+                    onToolsChange={setSelectedTools}
+                    selectedModelId={currentModelId}
+                    selectedReasoningEffort={currentReasoningEffort}
+                    selectedTools={selectedTools}
+                    selectedVisibilityType={visibilityType}
+                    sendMessage={sendMessage}
+                    setAttachments={setAttachments}
+                    setInput={setInput}
+                    setMessages={setMessages}
+                    status={status}
+                    stop={stop}
+                    usage={usage}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Normal layout with messages and bottom input
+          <>
+            <Messages
               chatId={id}
-              input={input}
+              isReadonly={isReadonly}
               messages={messages}
-              onModelChange={setCurrentModelId}
-              onReasoningEffortChange={setCurrentReasoningEffort}
-              onToolsChange={setSelectedTools}
-              selectedModelId={currentModelId}
-              selectedReasoningEffort={currentReasoningEffort}
-              selectedTools={selectedTools}
-              selectedVisibilityType={visibilityType}
-              sendMessage={sendMessage}
-              setAttachments={setAttachments}
-              setInput={setInput}
+              regenerate={regenerate}
+              selectedModelId={initialChatModel}
               setMessages={setMessages}
               status={status}
-              stop={stop}
-              usage={usage}
+              votes={votes}
             />
-          )}
-        </div>
+
+            <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
+              {!isReadonly && (
+                <MultimodalInput
+                  attachments={attachments}
+                  chatId={id}
+                  input={input}
+                  messages={messages}
+                  onModelChange={setCurrentModelId}
+                  onReasoningEffortChange={setCurrentReasoningEffort}
+                  onToolsChange={setSelectedTools}
+                  selectedModelId={currentModelId}
+                  selectedReasoningEffort={currentReasoningEffort}
+                  selectedTools={selectedTools}
+                  selectedVisibilityType={visibilityType}
+                  sendMessage={sendMessage}
+                  setAttachments={setAttachments}
+                  setInput={setInput}
+                  setMessages={setMessages}
+                  status={status}
+                  stop={stop}
+                  usage={usage}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <AlertDialog

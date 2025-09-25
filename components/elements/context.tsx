@@ -113,7 +113,7 @@ export const Context = ({ className, usage, ...props }: ContextProps) => {
         <button
           className={cn(
             "inline-flex select-none items-center gap-1 rounded-md text-sm",
-            "cursor-pointer bg-transparent text-foreground transition-colors hover:bg-foreground/10",
+            "cursor-pointer bg-transparent text-foreground transition-colors hover:bg-foreground/10 data-[state=open]:bg-foreground/10",
             className
           )}
           type="button"

@@ -1,12 +1,14 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { experimental_createMCPClient } from "ai";
 import type { MCPServerConfig, MCPServerStatus } from "./types";
 
 export class MCPClientWrapper {
+  // biome-ignore lint/style/useReadonlyClassProperties: Properties are reassigned in methods
   private client: any | null = null;
   private readonly config: MCPServerConfig;
+  // biome-ignore lint/style/useReadonlyClassProperties: Properties are reassigned in methods
   private isConnected = false;
+  // biome-ignore lint/style/useReadonlyClassProperties: Properties are reassigned in methods
   private lastError: string | undefined;
 
   constructor(config: MCPServerConfig) {

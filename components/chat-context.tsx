@@ -1,18 +1,12 @@
 "use client";
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import type { ChatMessage } from "@/lib/types";
 
-interface ChatContextType {
+type ChatContextType = {
   currentMessages: ChatMessage[];
   setCurrentMessages: (messages: ChatMessage[]) => void;
-}
+};
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
