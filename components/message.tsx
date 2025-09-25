@@ -2,7 +2,6 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import { memo, useState } from "react";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
@@ -77,7 +76,7 @@ const PurePreviewMessage = ({
                   (p) => p.type === "text" && p.text?.trim()
                 )) ||
               mode === "edit",
-            "max-w-[calc(100%-2.5rem)] sm:max-w-[min(fit-content,80%)]":
+            "max-w-[min(fit-content,80%)]":
               message.role === "user" && mode !== "edit",
           })}
         >
@@ -374,14 +373,8 @@ export const ThinkingMessage = () => {
       initial={{ opacity: 0 }}
     >
       <div className="flex items-start justify-start gap-3">
-        <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
-          <Sparkles size={14} />
-        </div>
-
-        <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
-            <LoadingText>Thinking...</LoadingText>
-          </div>
+        <div className="-mt-1 flex h-6 w-20 shrink-0 items-center justify-center rounded-full bg-background">
+          <LoadingText>Thinking...</LoadingText>
         </div>
       </div>
     </motion.div>
@@ -392,13 +385,15 @@ const LoadingText = ({ children }: { children: React.ReactNode }) => {
   return (
     <motion.div
       animate={{ backgroundPosition: ["100% 50%", "-100% 50%"] }}
-      className="flex items-center text-transparent"
+      className="flex items-center justify-center font-medium text-transparent text-xs"
       style={{
         background:
-          "linear-gradient(90deg, hsl(var(--muted-foreground)) 0%, hsl(var(--muted-foreground)) 35%, hsl(var(--foreground)) 50%, hsl(var(--muted-foreground)) 65%, hsl(var(--muted-foreground)) 100%)",
+          "linear-gradient(90deg, rgb(107 114 128) 0%, rgb(107 114 128) 35%, rgb(229 231 235) 50%, rgb(107 114 128) 65%, rgb(107 114 128) 100%)",
         backgroundSize: "200% 100%",
         WebkitBackgroundClip: "text",
         backgroundClip: "text",
+        width: "100%",
+        height: "100%",
       }}
       transition={{
         duration: 1.5,

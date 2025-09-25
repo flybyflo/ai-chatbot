@@ -1,7 +1,8 @@
 "use client";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import { motion } from "framer-motion";
+import { ChevronDownIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import {
@@ -126,9 +127,8 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4" />
             {isStreaming || duration === 0 ? (
-              <p>Thinking...</p>
+              <LoadingText>Thinking...</LoadingText>
             ) : (
               <p>Thought for {duration}s</p>
             )}
@@ -169,3 +169,26 @@ export const ReasoningContent = memo(
 Reasoning.displayName = "Reasoning";
 ReasoningTrigger.displayName = "ReasoningTrigger";
 ReasoningContent.displayName = "ReasoningContent";
+
+const LoadingText = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <motion.div
+      animate={{ backgroundPosition: ["100% 50%", "-100% 50%"] }}
+      className="flex items-center justify-center font-medium text-transparent text-xs"
+      style={{
+        background:
+          "linear-gradient(90deg, rgb(107 114 128) 0%, rgb(107 114 128) 35%, rgb(229 231 235) 50%, rgb(107 114 128) 65%, rgb(107 114 128) 100%)",
+        backgroundSize: "200% 100%",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+      }}
+      transition={{
+        duration: 1.5,
+        repeat: Number.POSITIVE_INFINITY,
+        ease: "linear",
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+};
