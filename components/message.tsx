@@ -260,7 +260,7 @@ const PurePreviewMessage = ({
                     )}
                     key={toolCallId}
                   >
-                    <div className="rounded-[1.3rem] border border-border bg-muted/50 p-3">
+                    <div className="rounded-[1.3rem] border border-border bg-tool-bg p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm">Weather</div>
                         {typeof latitude === "number" &&

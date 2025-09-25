@@ -27,9 +27,7 @@ export function DataStreamProvider({
 
   // Extract MCP registry from data stream
   const mcpRegistry = useMemo(() => {
-    const mcpData = dataStream.find(
-      (part) => part.type === "data-mcpRegistry"
-    );
+    const mcpData = dataStream.find((part) => part.type === "data-mcpRegistry");
     return mcpData?.data as MCPToolRegistry | undefined;
   }, [dataStream]);
 

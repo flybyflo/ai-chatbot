@@ -6,15 +6,22 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { useWindowSize } from "usehooks-ts";
+
 // Document type removed with artifacts
 type Document = {
   id: string;
   createdAt: Date;
 };
 // Utility function stub for removed document system
-const getDocumentTimestampByIndex = (documents: Document[] | undefined, index: number) => {
-  return documents?.[index]?.createdAt?.toISOString() || new Date().toISOString();
+const getDocumentTimestampByIndex = (
+  documents: Document[] | undefined,
+  index: number
+) => {
+  return (
+    documents?.[index]?.createdAt?.toISOString() || new Date().toISOString()
+  );
 };
+
 import { Button } from "./ui/button";
 
 type VersionFooterProps = {
@@ -30,7 +37,6 @@ export const VersionFooter = ({
   currentVersionIndex,
   documentId,
 }: VersionFooterProps) => {
-
   const { width } = useWindowSize();
   const isMobile = width < 768;
 

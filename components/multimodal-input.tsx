@@ -348,7 +348,7 @@ function PureMultimodalInput({
       />
 
       <PromptInput
-        className="rounded-xl border border-border bg-background p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50"
+        className="rounded-[1.3rem] border border-border bg-tool-bg p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50"
         onSubmit={(event) => {
           event.preventDefault();
           if (status !== "ready") {
@@ -539,7 +539,7 @@ function PureModelSelectorCompact({
       value={selectedModel?.name}
     >
       <Trigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-foreground shadow-none transition-colors hover:bg-foreground/10 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         type="button"
       >
         <Cpu size={16} />
@@ -602,7 +602,7 @@ function PureReasoningEffortSelector({
       value={effortOptions.find((e) => e.value === optimisticEffort)?.label}
     >
       <Trigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-foreground shadow-none transition-colors hover:bg-foreground/10 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         type="button"
       >
         <span className="font-medium text-xs">Reasoning Effort</span>
@@ -710,7 +710,7 @@ function PureToolsSelector({
       }}
     >
       <Trigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-foreground shadow-none transition-colors hover:bg-foreground/10 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         type="button"
       >
         <span className="font-medium text-xs">Tools</span>
@@ -721,7 +721,7 @@ function PureToolsSelector({
         <div className="border-border">
           <input
             autoComplete="off"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-md border border-border bg-tool-bg px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search tools..."
             type="text"

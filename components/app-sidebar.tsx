@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
+import { useChatContext } from "@/components/chat-context";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
+  const { currentMessages } = useChatContext();
 
   return (
-    <Sidebar className="group-data-[side=left]:border-r-0">
+    <Sidebar>
       <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row items-center justify-between">
@@ -60,7 +62,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarHistory user={user} />
+        <SidebarHistory currentChatMessages={currentMessages} user={user} />
       </SidebarContent>
       <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
     </Sidebar>

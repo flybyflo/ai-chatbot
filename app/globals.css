@@ -47,6 +47,7 @@
   /* border radius unit */
   --radius: 0.5rem;
   --sidebar: hsl(0 0% 98%);
+  --tool-bg: #ffffff;
 }
 
 /* define design tokens (dark mode) */
@@ -84,6 +85,7 @@
   --sidebar-border: hsl(240 3.7% 15.9%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
   --sidebar: hsl(240 5.9% 10%);
+  --tool-bg: #24292e;
 }
 
 /* define theme */
@@ -130,6 +132,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  --color-tool-bg: var(--tool-bg);
 
   --color-sidebar: var(--sidebar-background);
   --color-sidebar-foreground: var(--sidebar-foreground);

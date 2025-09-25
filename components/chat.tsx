@@ -24,6 +24,7 @@ import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
+import { useChatContext } from "./chat-context";
 import { useDataStream } from "./data-stream-provider";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
@@ -55,6 +56,7 @@ export function Chat({
 
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
+  const { setCurrentMessages } = useChatContext();
 
   const [input, setInput] = useState<string>("");
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
@@ -178,6 +180,11 @@ export function Chat({
       window.history.replaceState({}, "", `/chat/${id}`);
     }
   }, [query, sendMessage, hasAppendedQuery, id]);
+
+  // Update chat context with current messages
+  useEffect(() => {
+    setCurrentMessages(messages);
+  }, [messages, setCurrentMessages]);
 
   const { data: votes } = useSWR<Vote[]>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
