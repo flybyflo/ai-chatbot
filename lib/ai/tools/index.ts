@@ -1,9 +1,11 @@
 import { MCPManager } from "../mcp";
 import type { MCPToolRegistry } from "../mcp/types";
+import { codeCompare } from "./code-compare";
 import { getWeather } from "./get-weather";
 
 type LocalTools = {
   getWeather: typeof getWeather;
+  codeCompare: typeof codeCompare;
 };
 
 type CombinedToolsResult = {
@@ -14,6 +16,7 @@ type CombinedToolsResult = {
 
 const localTools: LocalTools = {
   getWeather,
+  codeCompare,
 };
 
 export async function getAllTools(): Promise<CombinedToolsResult> {
@@ -73,4 +76,4 @@ export async function getActiveTools(
   return activatedTools;
 }
 
-export { getWeather };
+export { getWeather, codeCompare };

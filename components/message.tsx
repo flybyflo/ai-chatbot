@@ -3,6 +3,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { motion } from "framer-motion";
 import { memo, useState } from "react";
+import { CodeComparison } from "@/components/ui/code-comparison";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
@@ -95,6 +96,7 @@ const PurePreviewMessage = ({
               | { kind: "reasoning"; content: string; originalIndex: number }
               | { kind: "text"; index: number }
               | { kind: "tool-getWeather"; part: any }
+              | { kind: "tool-codeCompare"; part: any }
               | { kind: "dynamic-tool"; part: any }
             > = [];
 
@@ -134,6 +136,11 @@ const PurePreviewMessage = ({
 
               if (part.type === "tool-getWeather") {
                 flowItems.push({ kind: "tool-getWeather", part });
+                return;
+              }
+
+              if (part.type === "tool-codeCompare") {
+                flowItems.push({ kind: "tool-codeCompare", part });
                 return;
               }
 
@@ -267,6 +274,44 @@ const PurePreviewMessage = ({
                         )}
                       </ToolContent>
                     </Tool>
+                  </div>
+                );
+              }
+
+              if (item.kind === "tool-codeCompare") {
+                const { toolCallId } = item.part;
+                const input = item.part.input || {};
+                const output = item.part.output || {};
+                // Merge output over input so final values override while preserving streamed input
+                const payload = {
+                  ...(typeof input === "object" && input ? input : {}),
+                  ...(typeof output === "object" && output ? output : {}),
+                } as any;
+                const filename = payload.filename ?? "file";
+                const beforeCode = payload.beforeCode ?? "";
+                const afterCode = payload.afterCode ?? "";
+                const language = payload.language ?? "plaintext";
+                const lightTheme = payload.lightTheme ?? "github-light";
+                const darkTheme = payload.darkTheme ?? "github-dark";
+                const highlightColor = payload.highlightColor;
+
+                return (
+                  <div
+                    className={cn(
+                      "w-full",
+                      needsTopMargin ? "mt-3" : undefined
+                    )}
+                    key={toolCallId}
+                  >
+                    <CodeComparison
+                      afterCode={afterCode}
+                      beforeCode={beforeCode}
+                      darkTheme={darkTheme}
+                      filename={filename}
+                      highlightColor={highlightColor}
+                      language={language}
+                      lightTheme={lightTheme}
+                    />
                   </div>
                 );
               }

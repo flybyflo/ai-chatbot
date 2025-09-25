@@ -1,6 +1,7 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
 import type { MCPToolRegistry } from "./ai/mcp/types";
+import type { codeCompare } from "./ai/tools/code-compare";
 import type { getWeather } from "./ai/tools/get-weather";
 import type { AppUsage } from "./usage";
 
@@ -13,9 +14,11 @@ export const messageMetadataSchema = z.object({
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 
 type weatherTool = InferUITool<typeof getWeather>;
+type codeCompareTool = InferUITool<typeof codeCompare>;
 
 export type ChatTools = {
   getWeather: weatherTool;
+  codeCompare: codeCompareTool;
   // MCP tools will be dynamically added with pattern: [serverName_toolName]: any
   [key: string]: any;
 };

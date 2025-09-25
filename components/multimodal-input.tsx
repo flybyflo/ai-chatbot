@@ -148,6 +148,13 @@ function PureMultimodalInput({
             description: "Get current weather information for a location",
             type: "local" as const,
           },
+          {
+            id: "codeCompare",
+            name: "Code Compare",
+            description:
+              "Render a side-by-side comparison given filename, before and after code",
+            type: "local" as const,
+          },
         ];
 
         const mcpTools = data.mcpRegistry?.metadata
@@ -172,6 +179,13 @@ function PureMultimodalInput({
             id: "getWeather",
             name: "Get Weather",
             description: "Get current weather information for a location",
+            type: "local" as const,
+          },
+          {
+            id: "codeCompare",
+            name: "Code Compare",
+            description:
+              "Render a side-by-side comparison given filename, before and after code",
             type: "local" as const,
           },
         ]);
@@ -652,6 +666,13 @@ function PureToolsSelector({
             id: "getWeather",
             name: "Get Weather",
             description: "Get current weather information for a location",
+            type: "local" as const,
+          },
+          {
+            id: "codeCompare",
+            name: "Code Compare",
+            description:
+              "Render a side-by-side comparison given filename, before and after code",
             type: "local" as const,
           },
         ];
