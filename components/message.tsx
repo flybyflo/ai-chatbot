@@ -236,7 +236,22 @@ const PurePreviewMessage = ({
               }
 
               if (item.kind === "tool-getWeather") {
-                const { toolCallId, state } = item.part;
+                const { toolCallId } = item.part;
+                const input = item.part.input || {};
+                const output = (item.part.output as any) || {};
+                const latitude: number | undefined = input.latitude;
+                const longitude: number | undefined = input.longitude;
+
+                const currentTemp = output?.current?.temperature_2m as
+                  | number
+                  | undefined;
+                const sunrise = Array.isArray(output?.daily?.sunrise)
+                  ? output.daily.sunrise[0]
+                  : undefined;
+                const sunset = Array.isArray(output?.daily?.sunset)
+                  ? output.daily.sunset[0]
+                  : undefined;
+
                 return (
                   <div
                     className={cn(
@@ -245,35 +260,38 @@ const PurePreviewMessage = ({
                     )}
                     key={toolCallId}
                   >
-                    <Tool defaultOpen={false}>
-                      <ToolHeader
-                        inputParams={item.part.input}
-                        state={state}
-                        type="weather::getWeather"
-                      />
-                      <ToolContent>
-                        {state === "input-available" && (
-                          <ToolInput input={item.part.input} />
-                        )}
-                        {state === "output-available" && (
-                          <ToolOutput
-                            errorText={undefined}
-                            output={
-                              <div className="rounded-md bg-muted/50">
-                                <CodeBlock
-                                  code={JSON.stringify(
-                                    item.part.output,
-                                    null,
-                                    2
-                                  )}
-                                  language="json"
-                                />
-                              </div>
-                            }
-                          />
-                        )}
-                      </ToolContent>
-                    </Tool>
+                    <div className="rounded-[1.3rem] border border-border bg-muted/50 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-sm">Weather</div>
+                        {typeof latitude === "number" &&
+                          typeof longitude === "number" && (
+                            <div className="text-muted-foreground text-xs">
+                              lat {latitude.toFixed(3)}, lon{" "}
+                              {longitude.toFixed(3)}
+                            </div>
+                          )}
+                      </div>
+                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <div className="text-xs">
+                          <div className="text-muted-foreground">
+                            Temperature
+                          </div>
+                          <div>
+                            {typeof currentTemp === "number"
+                              ? `${currentTemp}°C`
+                              : "Fetching..."}
+                          </div>
+                        </div>
+                        <div className="text-xs">
+                          <div className="text-muted-foreground">Sunrise</div>
+                          <div>{sunrise ?? "–"}</div>
+                        </div>
+                        <div className="text-xs">
+                          <div className="text-muted-foreground">Sunset</div>
+                          <div>{sunset ?? "–"}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               }
