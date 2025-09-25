@@ -99,228 +99,217 @@ const PurePreviewMessage = ({
           )}
 
           {(() => {
-            const mergedParts: Array<{
-              type: string;
-              content: string;
-              originalIndex: number;
-              isLast: boolean;
-            }> = [];
+            const flowItems: Array<
+              | { kind: "reasoning"; content: string; originalIndex: number }
+              | { kind: "text"; index: number }
+              | { kind: "tool-getWeather"; part: any }
+              | { kind: "dynamic-tool"; part: any }
+            > = [];
 
             let currentReasoning = "";
             let firstReasoningIndex = -1;
 
+            const flushReasoning = () => {
+              if (currentReasoning) {
+                flowItems.push({
+                  kind: "reasoning",
+                  content: currentReasoning,
+                  originalIndex: firstReasoningIndex,
+                });
+                currentReasoning = "";
+                firstReasoningIndex = -1;
+              }
+            };
+
             message.parts?.forEach((part, index) => {
-              if (part.type === "reasoning" && part.text?.trim().length > 0) {
+              if (part.type === "reasoning" && part.text?.trim()) {
                 if (currentReasoning === "") {
                   firstReasoningIndex = index;
                 }
                 currentReasoning += part.text;
-              } else {
-                // If we have accumulated reasoning, add it to merged parts
-                if (currentReasoning) {
-                  mergedParts.push({
-                    type: "reasoning",
-                    content: currentReasoning,
-                    originalIndex: firstReasoningIndex,
-                    isLast: false,
-                  });
-                  currentReasoning = "";
-                  firstReasoningIndex = -1;
-                }
+                return;
+              }
 
-                // Add the non-reasoning part
-                if (part.type === "text" && part.text?.trim()) {
-                  mergedParts.push({
-                    type: part.type,
-                    content: part.text,
-                    originalIndex: index,
-                    isLast: false,
-                  });
-                }
+              // Non-reasoning: flush any pending reasoning before handling
+              flushReasoning();
+
+              if (part.type === "text" && part.text?.trim()) {
+                flowItems.push({ kind: "text", index });
+                return;
+              }
+
+              if (part.type === "tool-getWeather") {
+                flowItems.push({ kind: "tool-getWeather", part });
+                return;
+              }
+
+              if (part.type === "dynamic-tool") {
+                flowItems.push({ kind: "dynamic-tool", part });
+                return;
               }
             });
 
-            // Don't forget any trailing reasoning
-            if (currentReasoning) {
-              mergedParts.push({
-                type: "reasoning",
-                content: currentReasoning,
-                originalIndex: firstReasoningIndex,
-                isLast: true,
-              });
-            }
+            // Trailing reasoning, if any
+            flushReasoning();
 
-            return mergedParts.map((mergedPart, _index) => {
-              const key = `message-${message.id}-merged-${mergedPart.originalIndex}`;
+            const hasRenderedBeforeFlow = attachmentsFromMessage.length > 0;
 
-              if (mergedPart.type === "reasoning") {
+            return flowItems.map((item, flowIndex) => {
+              const needsTopMargin = hasRenderedBeforeFlow || flowIndex > 0;
+
+              if (item.kind === "reasoning") {
+                const key = `message-${message.id}-reasoning-${item.originalIndex}`;
                 return (
                   <MessageReasoning
-                    isLoading={isLoading && mergedPart.isLast}
+                    className={needsTopMargin ? "mt-3" : undefined}
+                    isLoading={isLoading && flowIndex === flowItems.length - 1}
                     key={key}
-                    reasoning={mergedPart.content}
+                    reasoning={item.content}
                   />
                 );
               }
-              return null; // Will handle text parts below
-            });
-          })()}
 
-          {message.parts?.map((part, index) => {
-            const { type } = part;
-            const key = `message-${message.id}-part-${index}`;
+              if (item.kind === "text") {
+                const part = message.parts?.[item.index];
+                const key = `message-${message.id}-part-${item.index}`;
+                if (!part) {
+                  return null;
+                }
+                if (part.type !== "text") {
+                  return null;
+                }
 
-            console.log("🔍 Processing message part:", { type, part });
-
-            if (type === "reasoning") {
-              // Skip reasoning parts as they're handled above
-              return null;
-            }
-
-            if (type === "text") {
-              if (mode === "view") {
-                return (
-                  <div key={key}>
-                    <MessageContent
-                      className={cn({
-                        "w-fit break-words rounded-2xl px-3 py-2 text-right text-white":
-                          message.role === "user",
-                        "bg-transparent px-0 py-0 text-left":
-                          message.role === "assistant",
-                      })}
-                      data-testid="message-content"
-                      style={
-                        message.role === "user"
-                          ? { backgroundColor: "#006cff" }
-                          : undefined
-                      }
+                if (mode === "view") {
+                  return (
+                    <div
+                      className={needsTopMargin ? "mt-3" : undefined}
+                      key={key}
                     >
-                      <Response>{sanitizeText(part.text)}</Response>
-                    </MessageContent>
-                  </div>
-                );
+                      <MessageContent
+                        className={cn({
+                          "w-fit break-words rounded-2xl px-3 py-2 text-right text-white":
+                            message.role === "user",
+                          "bg-transparent px-0 py-0 text-left":
+                            message.role === "assistant",
+                        })}
+                        data-testid="message-content"
+                        style={
+                          message.role === "user"
+                            ? { backgroundColor: "#006cff" }
+                            : undefined
+                        }
+                      >
+                        <Response>{sanitizeText(part.text)}</Response>
+                      </MessageContent>
+                    </div>
+                  );
+                }
+
+                if (mode === "edit") {
+                  return (
+                    <div
+                      className={cn(
+                        "flex w-full flex-row items-start gap-3",
+                        needsTopMargin && "mt-3"
+                      )}
+                      key={key}
+                    >
+                      <div className="size-8" />
+                      <div className="min-w-0 flex-1">
+                        <MessageEditor
+                          key={message.id}
+                          message={message}
+                          regenerate={regenerate}
+                          setMessages={setMessages}
+                          setMode={setMode}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
               }
 
-              if (mode === "edit") {
+              if (item.kind === "tool-getWeather") {
+                const { toolCallId, state } = item.part;
                 return (
                   <div
-                    className="flex w-full flex-row items-start gap-3"
-                    key={key}
+                    className={needsTopMargin ? "mt-3" : undefined}
+                    key={toolCallId}
                   >
-                    <div className="size-8" />
-                    <div className="min-w-0 flex-1">
-                      <MessageEditor
-                        key={message.id}
-                        message={message}
-                        regenerate={regenerate}
-                        setMessages={setMessages}
-                        setMode={setMode}
-                      />
-                    </div>
+                    <Tool defaultOpen={false}>
+                      <ToolHeader state={state} type="tool-getWeather" />
+                      <ToolContent>
+                        {state === "input-available" && (
+                          <ToolInput input={item.part.input} />
+                        )}
+                        {state === "output-available" && (
+                          <ToolOutput
+                            errorText={undefined}
+                            output={
+                              <Weather weatherAtLocation={item.part.output} />
+                            }
+                          />
+                        )}
+                      </ToolContent>
+                    </Tool>
                   </div>
                 );
               }
-            }
 
-            if (type === "tool-getWeather") {
-              const { toolCallId, state } = part;
+              if (item.kind === "dynamic-tool") {
+                const { toolCallId, state, toolName: fullToolName } = item.part;
+                if (fullToolName.includes("_")) {
+                  const parts = fullToolName.split("_");
+                  const serverName = parts.slice(0, -1).join("_");
+                  const toolName = parts.at(-1);
 
-              return (
-                <Tool defaultOpen={true} key={toolCallId}>
-                  <ToolHeader state={state} type="tool-getWeather" />
-                  <ToolContent>
-                    {state === "input-available" && (
-                      <ToolInput input={part.input} />
-                    )}
-                    {state === "output-available" && (
-                      <ToolOutput
-                        errorText={undefined}
-                        output={<Weather weatherAtLocation={part.output} />}
-                      />
-                    )}
-                  </ToolContent>
-                </Tool>
-              );
-            }
-
-            // Handle dynamic tools (MCP tools come through as dynamic-tool type)
-            if (type === "dynamic-tool") {
-              console.log("🔧 Rendering dynamic tool:", type, part);
-              const { toolCallId, state, toolName: fullToolName } = part;
-
-              // Check if it's an MCP tool (contains underscores indicating server_tool format)
-              if (fullToolName.includes("_")) {
-                // Parse server name and tool name from the full tool name
-                const parts = fullToolName.split("_");
-                const serverName = parts.slice(0, -1).join("_"); // Everything except the last part
-                const toolName = parts.at(-1); // Last part is the tool name
-
-                console.log("🔧 Parsed MCP tool:", {
-                  serverName,
-                  toolName,
-                  state,
-                  fullToolName,
-                });
-
-                return (
-                  <Tool defaultOpen={true} key={toolCallId}>
-                    <ToolHeader
-                      state={state}
-                      type={`tool-${serverName}-${toolName}`}
-                    />
-                    <ToolContent>
-                      {state === "input-available" && (
-                        <ToolInput input={part.input} />
-                      )}
-                      {state === "output-available" && (
-                        <div className="space-y-2 p-4">
-                          <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                            {"errorText" in part && part.errorText
-                              ? "Error"
-                              : "Result"}
-                          </h4>
-                          {"errorText" in part && part.errorText && (
-                            <div className="text-destructive text-sm">
-                              {(part as any).errorText}
+                  return (
+                    <div
+                      className={needsTopMargin ? "mt-3" : undefined}
+                      key={toolCallId}
+                    >
+                      <Tool defaultOpen={false}>
+                        <ToolHeader
+                          state={state}
+                          type={`tool-${serverName}-${toolName}`}
+                        />
+                        <ToolContent>
+                          {state === "input-available" && (
+                            <ToolInput input={item.part.input} />
+                          )}
+                          {state === "output-available" && (
+                            <div className="space-y-2 p-4">
+                              <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                                {"errorText" in item.part && item.part.errorText
+                                  ? "Error"
+                                  : "Result"}
+                              </h4>
+                              {"errorText" in item.part &&
+                                item.part.errorText && (
+                                  <div className="text-destructive text-sm">
+                                    {(item.part as any).errorText}
+                                  </div>
+                                )}
+                              <MCPToolRenderer
+                                output={item.part.output}
+                                serverName={serverName}
+                                toolName={toolName || ""}
+                              />
                             </div>
                           )}
-                          <MCPToolRenderer
-                            output={part.output}
-                            serverName={serverName}
-                            toolName={toolName || ""}
-                          />
-                        </div>
-                      )}
-                    </ToolContent>
-                  </Tool>
-                );
+                        </ToolContent>
+                      </Tool>
+                    </div>
+                  );
+                }
+                return null;
               }
-            }
 
-            // Handle regular tools (like getWeather) - keep existing logic
-            if (type === "tool-getWeather") {
-              const { toolCallId, state } = part;
-
-              return (
-                <Tool defaultOpen={true} key={toolCallId}>
-                  <ToolHeader state={state} type="tool-getWeather" />
-                  <ToolContent>
-                    {state === "input-available" && (
-                      <ToolInput input={part.input} />
-                    )}
-                    {state === "output-available" && (
-                      <ToolOutput
-                        errorText={undefined}
-                        output={<Weather weatherAtLocation={part.output} />}
-                      />
-                    )}
-                  </ToolContent>
-                </Tool>
-              );
-            }
-
-            return null;
-          })}
+              return null;
+            });
+          })()}
 
           {!isReadonly && (
             <MessageActions

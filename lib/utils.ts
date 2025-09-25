@@ -85,7 +85,13 @@ export function getTrailingMessageId({
 }
 
 export function sanitizeText(text: string) {
-  return text.replace('<has_function_call>', '');
+  return text
+    .replace('<has_function_call>', '')
+    // Normalize non-standard tags sometimes emitted by models/streams
+    .replaceAll('<sum>', '<summary>')
+    .replaceAll('</sum>', '</summary>')
+    .replaceAll('<det>', '<details>')
+    .replaceAll('</det>', '</details>');
 }
 
 export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
