@@ -4,6 +4,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { Trigger } from "@radix-ui/react-select";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
+import { ArrowUp, ChevronDown, Cpu, Paperclip, Square } from "lucide-react";
 import {
   type ChangeEvent,
   type Dispatch,
@@ -36,13 +37,6 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from "./elements/prompt-input";
-import {
-  ArrowUpIcon,
-  ChevronDownIcon,
-  CpuIcon,
-  PaperclipIcon,
-  StopIcon,
-} from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import { Button } from "./ui/button";
 import type { VisibilityType } from "./visibility-selector";
@@ -430,7 +424,7 @@ function PureMultimodalInput({
               disabled={!input.trim() || uploadQueue.length > 0}
               status={status}
             >
-              <ArrowUpIcon size={14} />
+              <ArrowUp size={14} />
             </PromptInputSubmit>
           )}
         </PromptInputToolbar>
@@ -492,7 +486,7 @@ function PureAttachmentsButton({
       }}
       variant="ghost"
     >
-      <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
+      <Paperclip size={14} style={{ width: 14, height: 14 }} />
     </Button>
   );
 }
@@ -534,11 +528,11 @@ function PureModelSelectorCompact({
         className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         type="button"
       >
-        <CpuIcon size={16} />
+        <Cpu size={16} />
         <span className="hidden font-medium text-xs sm:block">
           {selectedModel?.name}
         </span>
-        <ChevronDownIcon size={16} />
+        <ChevronDown size={16} />
       </Trigger>
       <PromptInputModelSelectContent className="min-w-[260px] p-0">
         <div className="flex flex-col gap-px">
@@ -598,7 +592,7 @@ function PureReasoningEffortSelector({
         type="button"
       >
         <span className="font-medium text-xs">Reasoning Effort</span>
-        <ChevronDownIcon size={16} />
+        <ChevronDown size={16} />
       </Trigger>
       <PromptInputModelSelectContent>
         {effortOptions.map((effort) => (
@@ -630,7 +624,7 @@ function PureStopButton({
         setMessages((messages) => messages);
       }}
     >
-      <StopIcon size={14} />
+      <Square size={14} />
     </Button>
   );
 }

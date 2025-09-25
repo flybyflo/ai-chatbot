@@ -1,7 +1,7 @@
+import { X } from "lucide-react";
 import Image from "next/image";
 import type { Attachment } from "@/lib/types";
 import { Loader } from "./elements/loader";
-import { CrossSmallIcon } from "./icons";
 import { Button } from "./ui/button";
 
 export const PreviewAttachment = ({
@@ -47,7 +47,7 @@ export const PreviewAttachment = ({
           size="sm"
           variant="destructive"
         >
-          <CrossSmallIcon size={8} />
+          <X size={8} />
         </Button>
       )}
 

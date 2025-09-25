@@ -2,13 +2,13 @@
 
 import { isAfter } from "date-fns";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { useWindowSize } from "usehooks-ts";
 import { useArtifact } from "@/hooks/use-artifact";
 import type { Document } from "@/lib/db/schema";
 import { getDocumentTimestampByIndex } from "@/lib/utils";
-import { LoaderIcon } from "./icons";
 import { Button } from "./ui/button";
 
 type VersionFooterProps = {
@@ -89,7 +89,7 @@ export const VersionFooter = ({
           <div>Restore this version</div>
           {isMutating && (
             <div className="animate-spin">
-              <LoaderIcon />
+              <Loader2 />
             </div>
           )}
         </Button>

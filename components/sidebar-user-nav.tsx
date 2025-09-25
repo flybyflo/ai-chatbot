@@ -1,7 +1,6 @@
 "use client";
 
-import { ChevronUp } from "lucide-react";
-import Image from "next/image";
+import { ChevronUp, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
@@ -19,7 +18,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { guestRegex } from "@/lib/constants";
-import { LoaderIcon } from "./icons";
 import { toast } from "./toast";
 
 export function SidebarUserNav({ user }: { user: User }) {
@@ -37,13 +35,13 @@ export function SidebarUserNav({ user }: { user: User }) {
             {status === "loading" ? (
               <SidebarMenuButton className="h-10 justify-between bg-background data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
                 <div className="flex flex-row gap-2">
-                  <div className="size-6 animate-pulse rounded-full bg-zinc-500/30" />
+                  <div className="h-6 w-6 animate-pulse rounded-full bg-primary/30" />
                   <span className="animate-pulse rounded-md bg-zinc-500/30 text-transparent">
                     Loading auth status
                   </span>
                 </div>
                 <div className="animate-spin text-zinc-500">
-                  <LoaderIcon />
+                  <Loader2 />
                 </div>
               </SidebarMenuButton>
             ) : (
@@ -51,13 +49,9 @@ export function SidebarUserNav({ user }: { user: User }) {
                 className="h-10 bg-background data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 data-testid="user-nav-button"
               >
-                <Image
-                  alt={user.email ?? "User Avatar"}
-                  className="rounded-full"
-                  height={24}
-                  src={`https://avatar.vercel.sh/${user.email}`}
-                  width={24}
-                />
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-xs">
+                  {(user.email?.[0] ?? "U").toUpperCase()}
+                </div>
                 <span className="truncate" data-testid="user-email">
                   {isGuest ? "Guest" : user?.email}
                 </span>

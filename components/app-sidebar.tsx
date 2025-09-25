@@ -1,9 +1,9 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
-import { PlusIcon } from "@/components/icons";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   type="button"
                   variant="ghost"
                 >
-                  <PlusIcon />
+                  <Plus />
                 </Button>
               </TooltipTrigger>
               <TooltipContent align="end" className="hidden md:block">

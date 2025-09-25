@@ -2,6 +2,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
 import { memo, useState } from "react";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
@@ -16,13 +17,12 @@ import {
   ToolInput,
   ToolOutput,
 } from "./elements/tool";
-import { SparklesIcon } from "./icons";
+import { MCPToolRenderer } from "./mcp-tool-renderer";
 import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
-import { MCPToolRenderer } from "./mcp-tool-renderer";
 
 const PurePreviewMessage = ({
   chatId,
@@ -67,7 +67,7 @@ const PurePreviewMessage = ({
       >
         {message.role === "assistant" && (
           <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
-            <SparklesIcon size={14} />
+            <Sparkles size={14} />
           </div>
         )}
 
@@ -177,7 +177,7 @@ const PurePreviewMessage = ({
             const { type } = part;
             const key = `message-${message.id}-part-${index}`;
 
-            console.log('🔍 Processing message part:', { type, part });
+            console.log("🔍 Processing message part:", { type, part });
 
             if (type === "reasoning") {
               // Skip reasoning parts as they're handled above
@@ -252,7 +252,7 @@ const PurePreviewMessage = ({
 
             // Handle dynamic tools (MCP tools come through as dynamic-tool type)
             if (type === "dynamic-tool") {
-              console.log('🔧 Rendering dynamic tool:', type, part);
+              console.log("🔧 Rendering dynamic tool:", type, part);
               const { toolCallId, state, toolName: fullToolName } = part;
 
               // Check if it's an MCP tool (contains underscores indicating server_tool format)
@@ -262,11 +262,19 @@ const PurePreviewMessage = ({
                 const serverName = parts.slice(0, -1).join("_"); // Everything except the last part
                 const toolName = parts[parts.length - 1]; // Last part is the tool name
 
-                console.log('🔧 Parsed MCP tool:', { serverName, toolName, state, fullToolName });
+                console.log("🔧 Parsed MCP tool:", {
+                  serverName,
+                  toolName,
+                  state,
+                  fullToolName,
+                });
 
                 return (
                   <Tool defaultOpen={true} key={toolCallId}>
-                    <ToolHeader state={state} type={`${serverName} • ${toolName}`} />
+                    <ToolHeader
+                      state={state}
+                      type={`${serverName} • ${toolName}`}
+                    />
                     <ToolContent>
                       {state === "input-available" && (
                         <ToolInput input={part.input} />
@@ -277,12 +285,14 @@ const PurePreviewMessage = ({
                             {part.errorText ? "Error" : "Result"}
                           </h4>
                           {part.errorText && (
-                            <div className="text-destructive text-sm">{part.errorText}</div>
+                            <div className="text-destructive text-sm">
+                              {part.errorText}
+                            </div>
                           )}
                           <MCPToolRenderer
-                            toolName={toolName}
-                            serverName={serverName}
                             output={part.output}
+                            serverName={serverName}
+                            toolName={toolName}
                           />
                         </div>
                       )}
@@ -369,7 +379,7 @@ export const ThinkingMessage = () => {
     >
       <div className="flex items-start justify-start gap-3">
         <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
-          <SparklesIcon size={14} />
+          <Sparkles size={14} />
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">

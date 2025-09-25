@@ -1,13 +1,13 @@
 "use client";
 
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
-import { CheckCircleFillIcon, WarningIcon } from "./icons";
 
 const iconsByType: Record<"success" | "error", ReactNode> = {
-  success: <CheckCircleFillIcon />,
-  error: <WarningIcon />,
+  success: <CheckCircle2 />,
+  error: <AlertTriangle />,
 };
 
 export function toast(props: Omit<ToastProps, "id">) {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -7,7 +7,6 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chat.vercel.ai"),
   title: "Next.js Chatbot Template",
   description: "Next.js chatbot template using the AI SDK.",
 };
@@ -16,16 +15,18 @@ export const viewport = {
   maximumScale: 1, // Disable auto-zoom on mobile Safari
 };
 
-const geist = Geist({
-  subsets: ["latin"],
+const geist = localFont({
+  src: "./fonts/Geist-Variable.woff2",
   display: "swap",
   variable: "--font-geist",
+  fallback: ["system-ui", "-apple-system", "sans-serif"],
 });
 
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
+const geistMono = localFont({
+  src: "./fonts/Geist-Regular.woff2",
   display: "swap",
   variable: "--font-geist-mono",
+  fallback: ["ui-monospace", "SFMono-Regular", "monospace"],
 });
 
 const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";

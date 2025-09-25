@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2, ChevronDown } from "lucide-react";
 import type { Session } from "next-auth";
 import { startTransition, useMemo, useOptimistic, useState } from "react";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
@@ -13,7 +14,6 @@ import {
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { chatModels } from "@/lib/ai/models";
 import { cn } from "@/lib/utils";
-import { CheckCircleFillIcon, ChevronDownIcon } from "./icons";
 
 export function ModelSelector({
   session,
@@ -57,7 +57,7 @@ export function ModelSelector({
           variant="outline"
         >
           {selectedChatModel?.name}
-          <ChevronDownIcon />
+          <ChevronDown />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -94,7 +94,7 @@ export function ModelSelector({
                 </div>
 
                 <div className="shrink-0 text-foreground opacity-0 group-data-[active=true]/item:opacity-100 dark:text-foreground">
-                  <CheckCircleFillIcon />
+                  <CheckCircle2 />
                 </div>
               </button>
             </DropdownMenuItem>
