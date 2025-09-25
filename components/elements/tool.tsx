@@ -6,7 +6,6 @@ import {
   ChevronDownIcon,
   CircleIcon,
   ClockIcon,
-  WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
@@ -23,15 +22,16 @@ export type ToolProps = ComponentProps<typeof Collapsible>;
 
 export const Tool = ({ className, ...props }: ToolProps) => (
   <Collapsible
-    className={cn("not-prose w-full rounded-3xl bg-sidebar", className)}
+    className={cn("not-prose w-full rounded-[1.3rem] bg-sidebar", className)}
     {...props}
   />
 );
 
 export type ToolHeaderProps = {
-  type: ToolUIPart["type"];
+  type: string;
   state: ToolUIPart["state"];
   className?: string;
+  inputParams?: Record<string, any>;
 };
 
 const getStatusBadge = (status: ToolUIPart["state"]) => {
@@ -64,6 +64,7 @@ export const ToolHeader = ({
   className,
   type,
   state,
+  inputParams,
   ...props
 }: ToolHeaderProps) => (
   <CollapsibleTrigger
@@ -74,8 +75,16 @@ export const ToolHeader = ({
     {...props}
   >
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
-      <span className="truncate font-medium text-sm">{type}</span>
+      <span className="truncate pl-2 font-medium text-sm">{type}</span>
+      {inputParams && Object.keys(inputParams).length > 0 && (
+        <div className="-ml-1">
+          <Badge className="text-xs" variant="secondary">
+            {Object.entries(inputParams)
+              .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+              .join(", ")}
+          </Badge>
+        </div>
+      )}
     </div>
     <div className="flex shrink-0 items-center gap-2">
       {getStatusBadge(state)}

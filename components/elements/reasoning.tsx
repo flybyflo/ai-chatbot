@@ -36,6 +36,7 @@ export type ReasoningProps = ComponentProps<typeof Collapsible> & {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   duration?: number;
+  estimatedDuration?: number;
 };
 
 const AUTO_CLOSE_DELAY = 500;
@@ -49,6 +50,7 @@ export const Reasoning = memo(
     defaultOpen = true,
     onOpenChange,
     duration: durationProp,
+    estimatedDuration,
     children,
     ...props
   }: ReasoningProps) => {
@@ -59,7 +61,7 @@ export const Reasoning = memo(
     });
     const [duration, setDuration] = useControllableState({
       prop: durationProp,
-      defaultProp: 0,
+      defaultProp: estimatedDuration || 0,
     });
 
     const [hasAutoClosedRef, setHasAutoClosedRef] = useState(false);

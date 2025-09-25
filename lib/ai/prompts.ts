@@ -1,7 +1,11 @@
 import type { Geo } from "@vercel/functions";
 
-export const regularPrompt =
-  "You are a friendly assistant! Keep your responses concise and helpful.";
+export const regularPrompt = `You are a friendly assistant! Keep your responses concise and helpful.
+
+When using tools:
+- Only call tools in parallel when it makes sense and when one tool's result doesn't depend on another tool's result
+- If one tool's result is needed as input for another tool, call them sequentially, not in parallel
+- Use your judgment to determine when tools can be called simultaneously vs when they need to be called one after another`;
 
 export type RequestHints = {
   latitude: Geo["latitude"];

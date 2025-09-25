@@ -27,11 +27,16 @@ export function MessageReasoning({
     }
   }, [isLoading]);
 
+  // Estimate duration based on reasoning content length
+  // Rough estimate: ~50 characters per second of thinking
+  const estimatedDuration = Math.max(1, Math.round(reasoning.length / 50));
+
   return (
     <Reasoning
       className={cn(className)}
       data-testid="message-reasoning"
       defaultOpen={hasBeenStreaming}
+      estimatedDuration={estimatedDuration}
       isStreaming={isLoading}
     >
       <ReasoningTrigger />

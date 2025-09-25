@@ -65,9 +65,6 @@ const PurePreviewMessage = ({
       >
         <div
           className={cn("flex flex-col", {
-            "gap-2 md:gap-4": message.parts?.some(
-              (p) => p.type === "text" && p.text?.trim()
-            ),
             "min-h-96": message.role === "assistant" && requiresScrollPadding,
             // Always full-width for assistant messages so tools don't resize dynamically
             "w-full": message.role === "assistant" || mode === "edit",
@@ -242,7 +239,11 @@ const PurePreviewMessage = ({
                     key={toolCallId}
                   >
                     <Tool defaultOpen={false}>
-                      <ToolHeader state={state} type="tool-getWeather" />
+                      <ToolHeader
+                        inputParams={item.part.input}
+                        state={state}
+                        type="weather::getWeather"
+                      />
                       <ToolContent>
                         {state === "input-available" && (
                           <ToolInput input={item.part.input} />
@@ -287,8 +288,9 @@ const PurePreviewMessage = ({
                     >
                       <Tool defaultOpen={false}>
                         <ToolHeader
+                          inputParams={item.part.input}
                           state={state}
-                          type={`tool-${serverName}-${toolName}`}
+                          type={`${serverName}::${toolName}`}
                         />
                         <ToolContent>
                           {state === "input-available" && (
