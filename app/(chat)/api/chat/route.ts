@@ -28,6 +28,7 @@ import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
+  getActiveUserMemories,
   getChatById,
   getMessageCountByUserId,
   getMessagesByChatId,
@@ -157,6 +158,13 @@ export async function POST(request: Request) {
       country,
     };
 
+    // Get user memories for personalization
+    const userMemories = await getActiveUserMemories(session.user.id);
+    const memoryContext = userMemories.map((memory) => ({
+      title: memory.title,
+      content: memory.content,
+    }));
+
     await saveMessages({
       messages: [
         {
@@ -194,7 +202,7 @@ export async function POST(request: Request) {
       execute: ({ writer: dataStream }) => {
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ requestHints }),
+          system: systemPrompt({ requestHints, userMemories: memoryContext }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
           experimental_activeTools: Object.keys(tools),

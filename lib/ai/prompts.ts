@@ -8,7 +8,7 @@ When using tools:
 - Use your judgment to determine when tools can be called simultaneously vs when they need to be called one after another
 
 File diff visualization (codeCompare tool):
-- When the user shares code changes, a commit, a PR snippet, or asks to "show the diff" between two versions of a file, use the codeCompare tool to render a side-by-side view.
+- When the user shares code changes, a commit, a PR snippet, asks to "show the diff", "visualize diff", "compare code", or mentions wanting to see differences between code versions, use the codeCompare tool to render a side-by-side view.
 - Required input fields: filename, beforeCode, afterCode. Infer language from the filename extension (e.g. .ts/.tsx/.js/.py), code fence hints, or default to "plaintext".
 - If the user pastes a unified git diff, reconstruct both sides as follows:
   - Ignore metadata and hunk headers (e.g. lines beginning with "diff ", "index ", "--- ", "+++ ", and "@@").
@@ -33,12 +33,31 @@ About the origin of user's request:
 - country: ${requestHints.country}
 `;
 
+export const getUserMemoriesPrompt = (memories: Array<{ title: string; content: string }>) => {
+  if (memories.length === 0) {
+    return "";
+  }
+
+  const memoriesText = memories
+    .map((memory) => `- ${memory.title}: ${memory.content}`)
+    .join("\n");
+
+  return `\nPersonal Context and Memories:
+The following information about the user should guide your responses:
+${memoriesText}
+
+Use this context to personalize your responses, but don't explicitly mention these memories unless relevant to the conversation.`;
+};
+
 export const systemPrompt = ({
   requestHints,
+  userMemories = [],
 }: {
   requestHints: RequestHints;
+  userMemories?: Array<{ title: string; content: string }>;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
+  const memoriesPrompt = getUserMemoriesPrompt(userMemories);
 
-  return `${regularPrompt}\n\n${requestPrompt}`;
+  return `${regularPrompt}\n\n${requestPrompt}${memoriesPrompt}`;
 };

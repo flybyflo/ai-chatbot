@@ -26,6 +26,8 @@ import {
   stream,
   type User,
   user,
+  type UserMemory,
+  userMemory,
   vote,
 } from "./schema";
 import { generateHashedPassword } from "./utils";
@@ -427,6 +429,113 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get stream ids by chat id"
+    );
+  }
+}
+
+// User Memory Functions
+export async function getUserMemories(userId: string): Promise<UserMemory[]> {
+  try {
+    return await db
+      .select()
+      .from(userMemory)
+      .where(eq(userMemory.userId, userId))
+      .orderBy(desc(userMemory.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get user memories"
+    );
+  }
+}
+
+export async function getActiveUserMemories(userId: string): Promise<UserMemory[]> {
+  try {
+    return await db
+      .select()
+      .from(userMemory)
+      .where(and(eq(userMemory.userId, userId), eq(userMemory.isActive, true)))
+      .orderBy(desc(userMemory.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active user memories"
+    );
+  }
+}
+
+export async function createUserMemory({
+  userId,
+  title,
+  content,
+}: {
+  userId: string;
+  title: string;
+  content: string;
+}): Promise<UserMemory> {
+  try {
+    const [memory] = await db
+      .insert(userMemory)
+      .values({ userId, title, content })
+      .returning();
+    return memory;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create user memory"
+    );
+  }
+}
+
+export async function updateUserMemory({
+  id,
+  userId,
+  title,
+  content,
+  isActive,
+}: {
+  id: string;
+  userId: string;
+  title?: string;
+  content?: string;
+  isActive?: boolean;
+}): Promise<UserMemory | null> {
+  try {
+    const updateData: Partial<UserMemory> = { updatedAt: new Date() };
+    if (title !== undefined) updateData.title = title;
+    if (content !== undefined) updateData.content = content;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const [memory] = await db
+      .update(userMemory)
+      .set(updateData)
+      .where(and(eq(userMemory.id, id), eq(userMemory.userId, userId)))
+      .returning();
+    return memory || null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update user memory"
+    );
+  }
+}
+
+export async function deleteUserMemory({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}): Promise<boolean> {
+  try {
+    const result = await db
+      .delete(userMemory)
+      .where(and(eq(userMemory.id, id), eq(userMemory.userId, userId)));
+    return result.rowCount > 0;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete user memory"
     );
   }
 }
