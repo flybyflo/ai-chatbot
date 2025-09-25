@@ -65,12 +65,6 @@ const PurePreviewMessage = ({
           "justify-start": message.role === "assistant",
         })}
       >
-        {message.role === "assistant" && (
-          <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
-            <Sparkles size={14} />
-          </div>
-        )}
-
         <div
           className={cn("flex flex-col", {
             "gap-2 md:gap-4": message.parts?.some(
@@ -282,7 +276,9 @@ const PurePreviewMessage = ({
                       {state === "output-available" && (
                         <div className="space-y-2 p-4">
                           <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                            {"errorText" in part && part.errorText ? "Error" : "Result"}
+                            {"errorText" in part && part.errorText
+                              ? "Error"
+                              : "Result"}
                           </h4>
                           {"errorText" in part && part.errorText && (
                             <div className="text-destructive text-sm">
