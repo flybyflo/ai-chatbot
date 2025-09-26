@@ -25,8 +25,10 @@ import {
   message,
   stream,
   type User,
+  type UserMCPServer,
   type UserMemory,
   user,
+  userMCPServer,
   userMemory,
   vote,
 } from "./schema";
@@ -544,6 +546,159 @@ export async function deleteUserMemory({
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to delete user memory"
+    );
+  }
+}
+
+// User MCP Server Functions
+export async function getUserMCPServers(
+  userId: string
+): Promise<UserMCPServer[]> {
+  try {
+    return await db
+      .select()
+      .from(userMCPServer)
+      .where(eq(userMCPServer.userId, userId))
+      .orderBy(desc(userMCPServer.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get user MCP servers"
+    );
+  }
+}
+
+export async function getActiveUserMCPServers(
+  userId: string
+): Promise<UserMCPServer[]> {
+  try {
+    return await db
+      .select()
+      .from(userMCPServer)
+      .where(
+        and(eq(userMCPServer.userId, userId), eq(userMCPServer.isActive, true))
+      )
+      .orderBy(desc(userMCPServer.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active user MCP servers"
+    );
+  }
+}
+
+export async function createUserMCPServer({
+  userId,
+  name,
+  url,
+  description,
+  headers,
+}: {
+  userId: string;
+  name: string;
+  url: string;
+  description?: string;
+  headers?: Record<string, string>;
+}): Promise<UserMCPServer> {
+  try {
+    const [mcpServer] = await db
+      .insert(userMCPServer)
+      .values({ userId, name, url, description, headers })
+      .returning();
+    return mcpServer;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create user MCP server"
+    );
+  }
+}
+
+export async function updateUserMCPServer({
+  id,
+  userId,
+  name,
+  url,
+  description,
+  headers,
+  isActive,
+  lastConnectionTest,
+  lastConnectionStatus,
+  lastError,
+  toolCount,
+}: {
+  id: string;
+  userId: string;
+  name?: string;
+  url?: string;
+  description?: string;
+  headers?: Record<string, string>;
+  isActive?: boolean;
+  lastConnectionTest?: Date;
+  lastConnectionStatus?: string;
+  lastError?: string;
+  toolCount?: number;
+}): Promise<UserMCPServer | null> {
+  try {
+    const updateData: Partial<UserMCPServer> = { updatedAt: new Date() };
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (url !== undefined) {
+      updateData.url = url;
+    }
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (headers !== undefined) {
+      updateData.headers = headers;
+    }
+    if (isActive !== undefined) {
+      updateData.isActive = isActive;
+    }
+    if (lastConnectionTest !== undefined) {
+      updateData.lastConnectionTest = lastConnectionTest;
+    }
+    if (lastConnectionStatus !== undefined) {
+      updateData.lastConnectionStatus = lastConnectionStatus;
+    }
+    if (lastError !== undefined) {
+      updateData.lastError = lastError;
+    }
+    if (toolCount !== undefined) {
+      updateData.toolCount = toolCount;
+    }
+
+    const [mcpServer] = await db
+      .update(userMCPServer)
+      .set(updateData)
+      .where(and(eq(userMCPServer.id, id), eq(userMCPServer.userId, userId)))
+      .returning();
+    return mcpServer || null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update user MCP server"
+    );
+  }
+}
+
+export async function deleteUserMCPServer({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}): Promise<boolean> {
+  try {
+    const result = await db
+      .delete(userMCPServer)
+      .where(and(eq(userMCPServer.id, id), eq(userMCPServer.userId, userId)));
+    return result.rowCount > 0;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete user MCP server"
     );
   }
 }

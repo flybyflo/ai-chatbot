@@ -1,5 +1,6 @@
+import { getActiveUserMCPServers } from "@/lib/db/queries";
 import { MCPManager } from "../mcp";
-import type { MCPToolRegistry } from "../mcp/types";
+import type { MCPServerConfig, MCPToolRegistry } from "../mcp/types";
 import { codeCompare } from "./code-compare";
 import { getWeather } from "./get-weather";
 import { plantuml } from "./plantuml";
@@ -22,22 +23,30 @@ const localTools: LocalTools = {
   plantuml,
 };
 
-export async function getAllTools(): Promise<CombinedToolsResult> {
-  const mcpServersConfig = process.env.MCP_SERVERS;
-
+export async function getAllTools(
+  userId?: string
+): Promise<CombinedToolsResult> {
   // Always include local tools
   const result: CombinedToolsResult = {
     tools: { ...localTools },
     localTools,
   };
 
-  // Add MCP tools if configured
-  if (mcpServersConfig?.trim()) {
+  // Add user MCP tools if userId is provided
+  if (userId) {
     try {
-      const mcpManager = new MCPManager();
-      const serverConfigs = MCPManager.parseServerConfig(mcpServersConfig);
+      const userServers = await getActiveUserMCPServers(userId);
 
-      if (serverConfigs.length > 0) {
+      if (userServers.length > 0) {
+        const mcpManager = new MCPManager();
+
+        // Convert user servers to MCP server configs
+        const serverConfigs: MCPServerConfig[] = userServers.map((server) => ({
+          name: server.name,
+          url: server.url,
+          headers: server.headers || {},
+        }));
+
         await mcpManager.initializeServers(serverConfigs);
         const mcpTools = mcpManager.getTools();
         const mcpRegistry = mcpManager.getRegistry();
@@ -51,7 +60,7 @@ export async function getAllTools(): Promise<CombinedToolsResult> {
       }
     } catch (error) {
       console.warn(
-        "Failed to initialize MCP tools, falling back to local tools:",
+        "Failed to initialize user MCP tools, falling back to local tools:",
         error
       );
     }
@@ -61,9 +70,10 @@ export async function getAllTools(): Promise<CombinedToolsResult> {
 }
 
 export async function getActiveTools(
-  activeToolNames?: string[]
+  activeToolNames?: string[],
+  userId?: string
 ): Promise<Record<string, any>> {
-  const { tools } = await getAllTools();
+  const { tools } = await getAllTools(userId);
 
   if (!activeToolNames) {
     return tools;

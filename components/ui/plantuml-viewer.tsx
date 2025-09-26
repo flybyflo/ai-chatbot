@@ -1,12 +1,12 @@
 "use client";
 
-import { FileIcon, Code, Eye, Download } from "lucide-react";
+import { FileIcon, Code, Eye, Download, Edit, Save, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
-import { encode } from "plantuml-encoder";
 
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
+import { Textarea } from "./textarea";
 
 type PlantUMLViewerProps = {
   code: string;
@@ -26,32 +26,82 @@ export function PlantUMLViewer({
   const { theme, systemTheme } = useTheme();
   const [highlightedCode, setHighlightedCode] = useState("");
   const [viewMode, setViewMode] = useState<"code" | "diagram">("diagram");
-  const [diagramUrl, setDiagramUrl] = useState("");
+  const [diagramSvg, setDiagramSvg] = useState("");
   const [diagramError, setDiagramError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoadingDiagram, setIsLoadingDiagram] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCode, setEditedCode] = useState(code);
+  const [currentCode, setCurrentCode] = useState(code);
 
   const selectedTheme = useMemo(() => {
     const currentTheme = theme === "system" ? systemTheme : theme;
     return currentTheme === "dark" ? darkTheme : lightTheme;
   }, [theme, systemTheme, darkTheme, lightTheme]);
 
-  // Generate PlantUML diagram URL
+  // Update local state when code prop changes
   useEffect(() => {
-    try {
-      const encoded = encode(code);
-      setDiagramUrl(`https://www.plantuml.com/plantuml/svg/${encoded}`);
+    setCurrentCode(code);
+    setEditedCode(code);
+  }, [code]);
+
+  // Generate PlantUML diagram using backend API
+  useEffect(() => {
+    async function generateDiagram() {
+      if (!currentCode.trim()) {
+        setDiagramSvg("");
+        setIsLoadingDiagram(false);
+        return;
+      }
+
+      setIsLoadingDiagram(true);
       setDiagramError(false);
       setErrorMessage("");
-      setIsLoadingDiagram(true);
-    } catch (error) {
-      const errorMsg = `PlantUML encoding error: ${error instanceof Error ? error.message : "Unknown encoding error"}`;
-      console.error("Error encoding PlantUML:", error);
-      setDiagramError(true);
-      setErrorMessage(errorMsg);
-      setIsLoadingDiagram(false);
+
+      try {
+        const response = await fetch("/api/plantuml", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code: currentCode,
+            format: "svg",
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const svg = await response.text();
+        setDiagramSvg(svg);
+        setIsLoadingDiagram(false);
+      } catch (error) {
+        const errorMsg = `PlantUML rendering error: ${error instanceof Error ? error.message : "Failed to render diagram"}.
+
+Common issues:
+- Missing @startuml/@enduml tags
+- Invalid syntax in diagram code
+- Unsupported PlantUML features
+
+Code that failed:
+\`\`\`
+${currentCode}
+\`\`\`
+
+Please check your PlantUML syntax and try again.`;
+
+        console.error("Error generating PlantUML diagram:", error);
+        setDiagramError(true);
+        setErrorMessage(errorMsg);
+        setIsLoadingDiagram(false);
+      }
     }
-  }, [code]);
+
+    generateDiagram();
+  }, [currentCode]);
 
   // Highlight code using Shiki
   useEffect(() => {
@@ -95,15 +145,15 @@ export function PlantUMLViewer({
         }
       } catch (error) {
         console.error("Error highlighting code:", error);
-        setHighlightedCode(`<pre>${code}</pre>`);
+        setHighlightedCode(`<pre>${currentCode}</pre>`);
       }
     }
     highlightCode();
-  }, [code, language, selectedTheme]);
+  }, [currentCode, language, selectedTheme]);
 
   // Handle download of PlantUML source code
   const handleDownload = () => {
-    const blob = new Blob([code], { type: "text/plain" });
+    const blob = new Blob([currentCode], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -114,8 +164,47 @@ export function PlantUMLViewer({
     URL.revokeObjectURL(url);
   };
 
+  // Handle editing mode
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    setEditedCode(currentCode);
+  };
+
+  const handleSaveEdit = () => {
+    setCurrentCode(editedCode);
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedCode(currentCode);
+    setIsEditing(false);
+  };
+
   const renderContent = () => {
     if (viewMode === "code") {
+      if (isEditing) {
+        return (
+          <div className="h-full flex flex-col bg-background">
+            <Textarea
+              value={editedCode}
+              onChange={(e) => setEditedCode(e.target.value)}
+              className="flex-1 font-mono text-xs resize-none border-0 focus-visible:ring-0 rounded-none"
+              placeholder="Enter PlantUML code here..."
+            />
+            <div className="flex justify-end gap-2 p-2 border-t border-border">
+              <Button onClick={handleCancelEdit} size="sm" variant="outline">
+                <X className="mr-1 h-3 w-3" />
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} size="sm">
+                <Save className="mr-1 h-3 w-3" />
+                Apply Changes
+              </Button>
+            </div>
+          </div>
+        );
+      }
+
       if (highlightedCode) {
         return (
           <div
@@ -132,7 +221,7 @@ export function PlantUMLViewer({
       }
       return (
         <pre className="h-full overflow-auto break-all bg-background p-4 font-mono text-foreground text-xs">
-          {code}
+          {currentCode}
         </pre>
       );
     }
@@ -156,38 +245,11 @@ export function PlantUMLViewer({
               </button>
             </div>
           </div>
-        ) : diagramUrl ? (
-          <img
-            src={diagramUrl}
-            alt="PlantUML Diagram"
-            className="max-h-full max-w-full object-contain"
-            onLoad={() => setIsLoadingDiagram(false)}
-            onError={(e) => {
-              const errorDetails = {
-                url: diagramUrl,
-                code: code,
-                timestamp: new Date().toISOString(),
-                error: "Failed to load PlantUML diagram from server"
-              };
-
-              const errorMsg = `PlantUML diagram generation failed. This usually indicates invalid PlantUML syntax. Please check the PlantUML code for syntax errors such as:
-- Missing @startuml/@enduml tags
-- Incorrect relationship syntax (use --> or -> for connections)
-- Invalid element names or keywords
-- Malformed class/sequence/activity diagram syntax
-
-Code that failed:
-\`\`\`
-${code}
-\`\`\`
-
-Please correct the PlantUML syntax and try again.`;
-
-              console.error("Failed to load PlantUML diagram:", errorDetails);
-              setDiagramError(true);
-              setErrorMessage(errorMsg);
-              setIsLoadingDiagram(false);
-            }}
+        ) : diagramSvg ? (
+          <div
+            className="max-h-full max-w-full flex items-center justify-center"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG content is generated by PlantUML library
+            dangerouslySetInnerHTML={{ __html: diagramSvg }}
           />
         ) : isLoadingDiagram ? (
           <div className="text-muted-foreground">Loading diagram...</div>
@@ -227,6 +289,17 @@ Please correct the PlantUML syntax and try again.`;
                 Diagram
                 {diagramError && <span className="ml-1">⚠️</span>}
               </Button>
+              {viewMode === "code" && !isEditing && (
+                <Button
+                  onClick={handleStartEdit}
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  title="Edit PlantUML code"
+                >
+                  <Edit className="h-3 w-3" />
+                </Button>
+              )}
               <Button
                 onClick={handleDownload}
                 size="sm"

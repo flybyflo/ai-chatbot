@@ -190,9 +190,9 @@ export async function POST(request: Request) {
       selectedReasoningEffort || selectedModel?.reasoningEffort || "medium";
 
     // Load all tools (local + MCP) and filter by selected tools
-    const { mcpRegistry } = await getAllTools();
+    const { mcpRegistry } = await getAllTools(session.user.id);
     console.log("🔧 Backend: Received selectedTools:", selectedTools);
-    const tools = await getActiveTools(selectedTools);
+    const tools = await getActiveTools(selectedTools, session.user.id);
     console.log(
       "🔧 Backend: Active tools after filtering:",
       Object.keys(tools)

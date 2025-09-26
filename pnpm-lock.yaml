@@ -143,15 +143,15 @@ importers:
       next-themes:
         specifier: ^0.3.0
         version: 0.3.0(react-dom@19.0.0-rc-45804af1-20241021(react@19.0.0-rc-45804af1-20241021))(react@19.0.0-rc-45804af1-20241021)
+      node-plantuml:
+        specifier: ^0.9.0
+        version: 0.9.0
       orderedmap:
         specifier: ^2.1.1
         version: 2.1.1
       papaparse:
         specifier: ^5.5.2
         version: 5.5.2
-      plantuml-encoder:
-        specifier: ^1.4.0
-        version: 1.4.0
       postgres:
         specifier: ^3.4.4
         version: 3.4.5
@@ -2653,6 +2653,9 @@ packages:
     resolution: {integrity: sha512-2JkV3gUZUVrbNA+1sjBOYLsMZ5cEEl8GTFP2a4AVz5hvasAMCQ1D2l2le/cX+pV4N6ZU17zjUahLpIXRrnWL8A==}
     engines: {node: '>=20'}
 
+  commander@2.20.3:
+    resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
+
   commander@7.2.0:
     resolution: {integrity: sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw==}
     engines: {node: '>= 10'}
@@ -3835,6 +3838,19 @@ packages:
 
   node-gyp-build@4.8.4:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
+    hasBin: true
+
+  node-nailgun-client@0.1.2:
+    resolution: {integrity: sha512-OC611lR0fsDUSptwnhBf8d3sj4DZ5fiRKfS2QaGPe0kR3Dt9YoZr1MY7utK0scFPTbXuQdSBBbeoKYVbME1q5g==}
+    hasBin: true
+
+  node-nailgun-server@0.1.4:
+    resolution: {integrity: sha512-e0Hbh6XPb/7GqATJ45BePaUEO5AwR7InRW/pGeMKHH1cqPMBFCeqdBNfvi+bkVLnsbYOOQE+pAek9nmNoD8sYw==}
+    hasBin: true
+
+  node-plantuml@0.9.0:
+    resolution: {integrity: sha512-bUnntTGjbpYu1pvXZI/GS6ctcXf3AOMqJxBMO8vFzTT5RwH8Cj/J5Ca6Dy+PEfMiMDdSBCFKSGnvYyBvYnucXg==}
+    engines: {node: '>= 6.x'}
     hasBin: true
 
   nypm@0.6.2:
@@ -6920,6 +6936,8 @@ snapshots:
 
   commander@14.0.1: {}
 
+  commander@2.20.3: {}
+
   commander@7.2.0: {}
 
   commander@8.3.0: {}
@@ -8325,6 +8343,21 @@ snapshots:
       - babel-plugin-macros
 
   node-gyp-build@4.8.4: {}
+
+  node-nailgun-client@0.1.2:
+    dependencies:
+      commander: 2.20.3
+
+  node-nailgun-server@0.1.4:
+    dependencies:
+      commander: 2.20.3
+
+  node-plantuml@0.9.0:
+    dependencies:
+      commander: 2.20.3
+      node-nailgun-client: 0.1.2
+      node-nailgun-server: 0.1.4
+      plantuml-encoder: 1.4.0
 
   nypm@0.6.2:
     dependencies:

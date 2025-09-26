@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   jsonb,
   pgTable,
@@ -99,3 +100,23 @@ export const userMemory = pgTable("UserMemory", {
 });
 
 export type UserMemory = InferSelectModel<typeof userMemory>;
+
+export const userMCPServer = pgTable("UserMCPServer", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  url: text("url").notNull(),
+  description: text("description"),
+  headers: jsonb("headers").$type<Record<string, string>>().default({}),
+  isActive: boolean("isActive").notNull().default(true),
+  lastConnectionTest: timestamp("lastConnectionTest"),
+  lastConnectionStatus: varchar("lastConnectionStatus", { length: 50 }),
+  lastError: text("lastError"),
+  toolCount: integer("toolCount").default(0),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type UserMCPServer = InferSelectModel<typeof userMCPServer>;
