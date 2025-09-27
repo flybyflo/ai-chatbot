@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Plus, Server } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
@@ -24,7 +24,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const { currentMessages } = useChatContext();
 
   return (
-    <Sidebar>
+    <Sidebar variant="floating">
       <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row items-center justify-between">
@@ -46,34 +46,16 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     className="h-8 p-1 md:h-fit md:p-2"
                     onClick={() => {
                       setOpenMobile(false);
-                      router.push("/memories");
+                      router.push("/settings");
                     }}
                     type="button"
                     variant="ghost"
                   >
-                    <Brain className="h-4 w-4" />
+                    <Settings className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent align="end" className="hidden md:block">
-                  Memories
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className="h-8 p-1 md:h-fit md:p-2"
-                    onClick={() => {
-                      setOpenMobile(false);
-                      router.push("/settings/mcp-servers");
-                    }}
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Server className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent align="end" className="hidden md:block">
-                  MCP Servers
+                  Settings
                 </TooltipContent>
               </Tooltip>
               <Tooltip>

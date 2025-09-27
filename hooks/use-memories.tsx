@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import useSWR, { mutate } from "swr";
+import { useEffect, useState } from "react";
+import useSWR from "swr";
+import { useMemoryStore } from "@/lib/stores/memory-store";
 import { fetcher } from "@/lib/utils";
 
 export type UserMemory = {
@@ -27,17 +28,61 @@ type UpdateMemoryData = {
 };
 
 export function useMemories() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const { data: memories, error: swrError } = useSWR<UserMemory[]>(
-    "/api/memories",
-    fetcher
-  );
+  // Zustand store
+  const {
+    memories,
+    isLoading: storeLoading,
+    error: storeError,
+    setMemories,
+    setLoading,
+    setError,
+    addMemoryOptimistic,
+    updateMemoryOptimistic,
+    deleteMemoryOptimistic,
+    confirmMemoryCreation,
+    confirmMemoryUpdate,
+    confirmMemoryDeletion,
+    rollbackMemoryCreation,
+    rollbackMemoryUpdate,
+    rollbackMemoryDeletion,
+  } = useMemoryStore();
+
+  // SWR for initial data fetching
+  const {
+    data: swrMemories,
+    error: swrError,
+    isLoading: swrLoading,
+  } = useSWR<UserMemory[]>("/api/memories", fetcher);
+
+  // Sync SWR data with Zustand store
+  useEffect(() => {
+    if (swrMemories && !storeLoading) {
+      setMemories(swrMemories);
+    }
+  }, [swrMemories, setMemories, storeLoading]);
+
+  // Set loading state from SWR
+  useEffect(() => {
+    setLoading(swrLoading && memories.length === 0);
+  }, [swrLoading, memories.length, setLoading]);
+
+  // Set error state from SWR
+  useEffect(() => {
+    setError(swrError?.message || null);
+  }, [swrError, setError]);
 
   const createMemory = async (data: CreateMemoryData) => {
-    setIsLoading(true);
+    setActionLoading(true);
     setError(null);
+
+    // Add optimistic update
+    const tempId = addMemoryOptimistic({
+      title: data.title,
+      content: data.content,
+      isActive: true,
+    });
 
     try {
       const response = await fetch("/api/memories", {
@@ -53,27 +98,35 @@ export function useMemories() {
 
       const newMemory = await response.json();
 
-      // Optimistically update the cache
-      mutate(
-        "/api/memories",
-        (currentMemories: UserMemory[] = []) => [newMemory, ...currentMemories],
-        false
-      );
+      // Confirm optimistic update
+      confirmMemoryCreation(tempId, newMemory);
 
       return newMemory;
     } catch (err) {
+      // Rollback optimistic update
+      rollbackMemoryCreation(tempId);
+
       const message =
         err instanceof Error ? err.message : "Failed to create memory";
       setError(message);
       throw new Error(message);
     } finally {
-      setIsLoading(false);
+      setActionLoading(false);
     }
   };
 
   const updateMemory = async (data: UpdateMemoryData) => {
-    setIsLoading(true);
+    setActionLoading(true);
     setError(null);
+
+    // Store original memory for rollback
+    const originalMemory = memories.find((m) => m.id === data.id);
+    if (!originalMemory) {
+      throw new Error("Memory not found");
+    }
+
+    // Add optimistic update
+    updateMemoryOptimistic(data);
 
     try {
       const response = await fetch("/api/memories", {
@@ -89,30 +142,35 @@ export function useMemories() {
 
       const updatedMemory = await response.json();
 
-      // Optimistically update the cache
-      mutate(
-        "/api/memories",
-        (currentMemories: UserMemory[] = []) =>
-          currentMemories.map((memory) =>
-            memory.id === data.id ? updatedMemory : memory
-          ),
-        false
-      );
+      // Confirm optimistic update
+      confirmMemoryUpdate(data.id, updatedMemory);
 
       return updatedMemory;
     } catch (err) {
+      // Rollback optimistic update
+      rollbackMemoryUpdate(data.id, originalMemory);
+
       const message =
         err instanceof Error ? err.message : "Failed to update memory";
       setError(message);
       throw new Error(message);
     } finally {
-      setIsLoading(false);
+      setActionLoading(false);
     }
   };
 
   const deleteMemory = async (id: string) => {
-    setIsLoading(true);
+    setActionLoading(true);
     setError(null);
+
+    // Store original memory for rollback
+    const originalMemory = memories.find((m) => m.id === id);
+    if (!originalMemory) {
+      throw new Error("Memory not found");
+    }
+
+    // Add optimistic update
+    deleteMemoryOptimistic(id);
 
     try {
       const response = await fetch("/api/memories", {
@@ -126,29 +184,27 @@ export function useMemories() {
         throw new Error(errorData.message || "Failed to delete memory");
       }
 
-      // Optimistically update the cache
-      mutate(
-        "/api/memories",
-        (currentMemories: UserMemory[] = []) =>
-          currentMemories.filter((memory) => memory.id !== id),
-        false
-      );
+      // Confirm optimistic update
+      confirmMemoryDeletion(id);
 
       return true;
     } catch (err) {
+      // Rollback optimistic update
+      rollbackMemoryDeletion(id, originalMemory);
+
       const message =
         err instanceof Error ? err.message : "Failed to delete memory";
       setError(message);
       throw new Error(message);
     } finally {
-      setIsLoading(false);
+      setActionLoading(false);
     }
   };
 
   return {
-    memories: memories || [],
-    isLoading: isLoading || !memories,
-    error: error || swrError?.message,
+    memories,
+    isLoading: storeLoading || actionLoading,
+    error: storeError,
     createMemory,
     updateMemory,
     deleteMemory,

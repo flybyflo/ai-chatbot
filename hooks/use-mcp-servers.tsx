@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import useSWR, { mutate } from "swr";
+import { useEffect, useState } from "react";
+import useSWR from "swr";
+import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
 import { fetcher } from "@/lib/utils";
 
 export type UserMCPServer = {
@@ -53,40 +54,68 @@ type TestMCPServerResult = {
 };
 
 export function useMCPServers() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const { data: mcpServers, error: swrError } = useSWR<UserMCPServer[]>(
-    "/api/mcp-servers",
-    fetcher
-  );
+  // Zustand store
+  const {
+    servers,
+    isLoading: storeLoading,
+    error: storeError,
+    setServers,
+    setLoading,
+    setError,
+    addServerOptimistic,
+    updateServerOptimistic,
+    deleteServerOptimistic,
+    setServerTesting,
+    updateServerTestResult,
+    confirmServerCreation,
+    confirmServerUpdate,
+    confirmServerDeletion,
+    rollbackServerCreation,
+    rollbackServerUpdate,
+    rollbackServerDeletion,
+  } = useMCPServerStore();
+
+  // SWR for initial data fetching
+  const {
+    data: swrServers,
+    error: swrError,
+    isLoading: swrLoading,
+  } = useSWR<UserMCPServer[]>("/api/mcp-servers", fetcher);
+
+  // Sync SWR data with Zustand store
+  useEffect(() => {
+    if (swrServers && !storeLoading) {
+      setServers(swrServers);
+    }
+  }, [swrServers, setServers, storeLoading]);
+
+  // Set loading state from SWR
+  useEffect(() => {
+    setLoading(swrLoading && servers.length === 0);
+  }, [swrLoading, servers.length, setLoading]);
+
+  // Set error state from SWR
+  useEffect(() => {
+    setError(swrError?.message || null);
+  }, [swrError, setError]);
 
   const createMCPServer = async (data: CreateMCPServerData) => {
-    setIsLoading(true);
+    setActionLoading(true);
     setError(null);
 
-    // Create optimistic server with temporary ID
-    const optimisticServer: UserMCPServer = {
-      id: `temp-${Date.now()}`,
-      userId: "temp",
-      ...data,
+    // Add optimistic update
+    const tempId = addServerOptimistic({
+      name: data.name,
+      url: data.url,
+      description: data.description,
+      headers: data.headers,
       isActive: true,
       toolCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
     try {
-      // Optimistically update the cache
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) => [
-          optimisticServer,
-          ...currentServers,
-        ],
-        false
-      );
-
       const response = await fetch("/api/mcp-servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -100,56 +129,37 @@ export function useMCPServers() {
 
       const newServer = await response.json();
 
-      // Replace optimistic server with real server
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) =>
-          currentServers.map((server) =>
-            server.id === optimisticServer.id ? newServer : server
-          ),
-        false
-      );
+      // Confirm optimistic update
+      confirmServerCreation(tempId, newServer);
 
       return newServer;
     } catch (err) {
-      // Rollback optimistic update on error
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) =>
-          currentServers.filter((server) => server.id !== optimisticServer.id),
-        false
-      );
+      // Rollback optimistic update
+      rollbackServerCreation(tempId);
 
       const message =
         err instanceof Error ? err.message : "Failed to create MCP server";
       setError(message);
       throw new Error(message);
     } finally {
-      setIsLoading(false);
+      setActionLoading(false);
     }
   };
 
   const updateMCPServer = async (data: UpdateMCPServerData) => {
-    setIsLoading(true);
+    setActionLoading(true);
     setError(null);
 
     // Store original server for rollback
-    const originalServers = mcpServers || [];
-    const originalServer = originalServers.find((s) => s.id === data.id);
+    const originalServer = servers.find((s) => s.id === data.id);
+    if (!originalServer) {
+      throw new Error("Server not found");
+    }
+
+    // Add optimistic update
+    updateServerOptimistic(data);
 
     try {
-      // Optimistically update the cache
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) =>
-          currentServers.map((server) =>
-            server.id === data.id
-              ? { ...server, ...data, updatedAt: new Date() }
-              : server
-          ),
-        false
-      );
-
       const response = await fetch("/api/mcp-servers", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -163,55 +173,37 @@ export function useMCPServers() {
 
       const updatedServer = await response.json();
 
-      // Update with server response
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) =>
-          currentServers.map((server) =>
-            server.id === data.id ? updatedServer : server
-          ),
-        false
-      );
+      // Confirm optimistic update
+      confirmServerUpdate(data.id, updatedServer);
 
       return updatedServer;
     } catch (err) {
-      // Rollback optimistic update on error
-      if (originalServer) {
-        mutate(
-          "/api/mcp-servers",
-          (currentServers: UserMCPServer[] = []) =>
-            currentServers.map((server) =>
-              server.id === data.id ? originalServer : server
-            ),
-          false
-        );
-      }
+      // Rollback optimistic update
+      rollbackServerUpdate(data.id, originalServer);
 
       const message =
         err instanceof Error ? err.message : "Failed to update MCP server";
       setError(message);
       throw new Error(message);
     } finally {
-      setIsLoading(false);
+      setActionLoading(false);
     }
   };
 
   const deleteMCPServer = async (id: string) => {
-    setIsLoading(true);
+    setActionLoading(true);
     setError(null);
 
-    // Store original servers for rollback
-    const originalServers = mcpServers || [];
+    // Store original server for rollback
+    const originalServer = servers.find((s) => s.id === id);
+    if (!originalServer) {
+      throw new Error("Server not found");
+    }
+
+    // Add optimistic update
+    deleteServerOptimistic(id);
 
     try {
-      // Optimistically remove from cache
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) =>
-          currentServers.filter((server) => server.id !== id),
-        false
-      );
-
       const response = await fetch("/api/mcp-servers", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -223,17 +215,20 @@ export function useMCPServers() {
         throw new Error(errorData.message || "Failed to delete MCP server");
       }
 
+      // Confirm optimistic update
+      confirmServerDeletion(id);
+
       return true;
     } catch (err) {
-      // Rollback optimistic update on error
-      mutate("/api/mcp-servers", originalServers, false);
+      // Rollback optimistic update
+      rollbackServerDeletion(id, originalServer);
 
       const message =
         err instanceof Error ? err.message : "Failed to delete MCP server";
       setError(message);
       throw new Error(message);
     } finally {
-      setIsLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -242,22 +237,8 @@ export function useMCPServers() {
   ): Promise<TestMCPServerResult> => {
     setError(null);
 
-    // Optimistically update server status to "testing"
-    mutate(
-      "/api/mcp-servers",
-      (currentServers: UserMCPServer[] = []) =>
-        currentServers.map((server) =>
-          server.id === data.id
-            ? {
-                ...server,
-                lastConnectionStatus: "testing",
-                lastConnectionTest: new Date(),
-                lastError: undefined,
-              }
-            : server
-        ),
-      false
-    );
+    // Set server as testing
+    setServerTesting(data.id);
 
     try {
       const response = await fetch("/api/mcp-servers/test", {
@@ -274,32 +255,15 @@ export function useMCPServers() {
       const result: TestMCPServerResult = await response.json();
 
       // Update with test results
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) =>
-          currentServers.map((server) =>
-            server.id === data.id ? result.server : server
-          ),
-        false
-      );
+      updateServerTestResult(data.id, result.server);
 
       return result;
     } catch (err) {
       // Update with error status
-      mutate(
-        "/api/mcp-servers",
-        (currentServers: UserMCPServer[] = []) =>
-          currentServers.map((server) =>
-            server.id === data.id
-              ? {
-                  ...server,
-                  lastConnectionStatus: "failed",
-                  lastError: err instanceof Error ? err.message : "Test failed",
-                }
-              : server
-          ),
-        false
-      );
+      updateServerTestResult(data.id, {
+        lastConnectionStatus: "failed",
+        lastError: err instanceof Error ? err.message : "Test failed",
+      });
 
       const message =
         err instanceof Error ? err.message : "Failed to test MCP server";
@@ -356,9 +320,9 @@ export function useMCPServers() {
   };
 
   return {
-    mcpServers: mcpServers || [],
-    isLoading: isLoading || !mcpServers,
-    error: error || swrError?.message,
+    mcpServers: servers,
+    isLoading: storeLoading || actionLoading,
+    error: storeError,
     createMCPServer,
     updateMCPServer,
     deleteMCPServer,

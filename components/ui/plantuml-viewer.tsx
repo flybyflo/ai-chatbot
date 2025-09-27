@@ -1,10 +1,9 @@
 "use client";
 
-import { FileIcon, Code, Eye, Download, Edit, Save, X } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Code, Download, Eye, FileIcon } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Textarea } from "./textarea";
 
@@ -16,34 +15,38 @@ type PlantUMLViewerProps = {
   darkTheme: string;
 };
 
-export function PlantUMLViewer({
-  code,
-  title,
-  language,
-  lightTheme,
-  darkTheme,
-}: PlantUMLViewerProps) {
-  const { theme, systemTheme } = useTheme();
-  const [highlightedCode, setHighlightedCode] = useState("");
+export function PlantUMLViewer(props: PlantUMLViewerProps) {
+  const { code, title } = props;
   const [viewMode, setViewMode] = useState<"code" | "diagram">("diagram");
   const [diagramSvg, setDiagramSvg] = useState("");
   const [diagramError, setDiagramError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoadingDiagram, setIsLoadingDiagram] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedCode, setEditedCode] = useState(code);
   const [currentCode, setCurrentCode] = useState(code);
+  const [draftCode, setDraftCode] = useState(code);
+  // Removed: svgContainerRef (no longer needed when using Next Image)
 
-  const selectedTheme = useMemo(() => {
-    const currentTheme = theme === "system" ? systemTheme : theme;
-    return currentTheme === "dark" ? darkTheme : lightTheme;
-  }, [theme, systemTheme, darkTheme, lightTheme]);
+  const diagramDataUrl = useMemo(() => {
+    if (!diagramSvg) {
+      return null;
+    }
+    // Encode SVG as data URL for safe rendering via Next Image
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(diagramSvg)}`;
+  }, [diagramSvg]);
 
   // Update local state when code prop changes
   useEffect(() => {
     setCurrentCode(code);
-    setEditedCode(code);
+    setDraftCode(code);
   }, [code]);
+
+  // Debounce edits in Code tab to update the rendered diagram
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentCode(draftCode);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [draftCode]);
 
   // Generate PlantUML diagram using backend API
   useEffect(() => {
@@ -72,7 +75,10 @@ export function PlantUMLViewer({
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(
+            errorData.message ||
+              `HTTP ${response.status}: ${response.statusText}`
+          );
         }
 
         const svg = await response.text();
@@ -92,8 +98,6 @@ ${currentCode}
 \`\`\`
 
 Please check your PlantUML syntax and try again.`;
-
-        console.error("Error generating PlantUML diagram:", error);
         setDiagramError(true);
         setErrorMessage(errorMsg);
         setIsLoadingDiagram(false);
@@ -103,57 +107,13 @@ Please check your PlantUML syntax and try again.`;
     generateDiagram();
   }, [currentCode]);
 
-  // Highlight code using Shiki
-  useEffect(() => {
-    async function highlightCode() {
-      try {
-        const { codeToHtml, createHighlighter } = await import("shiki");
+  // (Removed direct SVG injection; using Next Image for safe scaling and centering.)
 
-        if (language === "plantuml") {
-          // Load PlantUML grammar from external source
-          try {
-            const grammarResponse = await fetch(
-              "https://raw.githubusercontent.com/theia-ide/theia-plantuml-extension/master/plantuml/data/plantuml.tmLanguage.json"
-            );
-            const grammarData = await grammarResponse.json();
-
-            const highlighter = await createHighlighter({
-              themes: [selectedTheme],
-              langs: [grammarData],
-            });
-
-            const highlighted = await highlighter.codeToHtml(code, {
-              lang: "plantuml",
-              theme: selectedTheme,
-            });
-            setHighlightedCode(highlighted);
-          } catch (grammarError) {
-            console.warn("Failed to load PlantUML grammar, falling back to text:", grammarError);
-            // Fallback to basic text highlighting
-            const highlighted = await codeToHtml(code, {
-              lang: "text",
-              theme: selectedTheme,
-            });
-            setHighlightedCode(highlighted);
-          }
-        } else {
-          const highlighted = await codeToHtml(code, {
-            lang: language,
-            theme: selectedTheme,
-          });
-          setHighlightedCode(highlighted);
-        }
-      } catch (error) {
-        console.error("Error highlighting code:", error);
-        setHighlightedCode(`<pre>${currentCode}</pre>`);
-      }
-    }
-    highlightCode();
-  }, [currentCode, language, selectedTheme]);
+  // (Removed Shiki highlighting for inline editing simplicity.)
 
   // Handle download of PlantUML source code
-  const handleDownload = () => {
-    const blob = new Blob([currentCode], { type: "text/plain" });
+  const handleDownloadCode = () => {
+    const blob = new Blob([draftCode], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -164,81 +124,50 @@ Please check your PlantUML syntax and try again.`;
     URL.revokeObjectURL(url);
   };
 
-  // Handle editing mode
-  const handleStartEdit = () => {
-    setIsEditing(true);
-    setEditedCode(currentCode);
-  };
-
-  const handleSaveEdit = () => {
-    setCurrentCode(editedCode);
-    setIsEditing(false);
-  };
-
-  const handleCancelEdit = () => {
-    setEditedCode(currentCode);
-    setIsEditing(false);
+  // Handle download of diagram as SVG
+  const handleDownloadDiagram = () => {
+    if (!diagramSvg) {
+      return;
+    }
+    const blob = new Blob([diagramSvg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${title.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const renderContent = () => {
     if (viewMode === "code") {
-      if (isEditing) {
-        return (
-          <div className="h-full flex flex-col bg-background">
-            <Textarea
-              value={editedCode}
-              onChange={(e) => setEditedCode(e.target.value)}
-              className="flex-1 font-mono text-xs resize-none border-0 focus-visible:ring-0 rounded-none"
-              placeholder="Enter PlantUML code here..."
-            />
-            <div className="flex justify-end gap-2 p-2 border-t border-border">
-              <Button onClick={handleCancelEdit} size="sm" variant="outline">
-                <X className="mr-1 h-3 w-3" />
-                Cancel
-              </Button>
-              <Button onClick={handleSaveEdit} size="sm">
-                <Save className="mr-1 h-3 w-3" />
-                Apply Changes
-              </Button>
-            </div>
-          </div>
-        );
-      }
-
-      if (highlightedCode) {
-        return (
-          <div
-            className={cn(
-              "h-full w-full overflow-auto bg-background font-mono text-xs",
-              "[&>pre]:!w-screen [&>pre]:h-full [&>pre]:py-2",
-              "[&>pre>code]:!inline-block [&>pre>code]:!w-full",
-              "[&>pre>code>span]:!inline-block [&>pre>code>span]:w-full [&>pre>code>span]:px-4 [&>pre>code>span]:py-0.5"
-            )}
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: Shiki generates safe HTML
-            dangerouslySetInnerHTML={{ __html: highlightedCode }}
-          />
-        );
-      }
       return (
-        <pre className="h-full overflow-auto break-all bg-background p-4 font-mono text-foreground text-xs">
-          {currentCode}
-        </pre>
+        <div className="flex h-full flex-col bg-background">
+          <Textarea
+            className="flex-1 resize-none rounded-none border-0 font-mono text-xs focus-visible:ring-0"
+            onChange={(e) => setDraftCode(e.target.value)}
+            placeholder="Enter PlantUML code here..."
+            value={draftCode}
+          />
+        </div>
       );
     }
 
     // Diagram view
     return (
-      <div className="flex h-full items-center justify-center bg-background p-4">
+      <div className="flex h-full items-center justify-center bg-background">
         {diagramError ? (
-          <div className="text-center text-destructive max-w-2xl">
+          <div className="max-h-full max-w-2xl overflow-y-auto p-4 text-center text-destructive">
             <div className="mb-2 text-lg">⚠️ Diagram Error</div>
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap text-left bg-muted/50 p-4 rounded-md">
-              {errorMessage || "Failed to generate PlantUML diagram. Please check your PlantUML syntax."}
+            <div className="max-h-60 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-4 text-left text-muted-foreground text-sm">
+              {errorMessage ||
+                "Failed to generate PlantUML diagram. Please check your PlantUML syntax."}
             </div>
             <div className="mt-3">
               <button
+                className="text-primary text-sm hover:underline"
                 onClick={() => setViewMode("code")}
-                className="text-primary hover:underline text-sm"
                 type="button"
               >
                 View source code to fix errors
@@ -246,11 +175,28 @@ Please check your PlantUML syntax and try again.`;
             </div>
           </div>
         ) : diagramSvg ? (
-          <div
-            className="max-h-full max-w-full flex items-center justify-center"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG content is generated by PlantUML library
-            dangerouslySetInnerHTML={{ __html: diagramSvg }}
-          />
+          <div className="relative h-full w-full">
+            {isLoadingDiagram && (
+              <div className="absolute top-2 right-2 z-10 rounded-md bg-background/80 px-2 py-1 text-muted-foreground text-xs backdrop-blur-sm">
+                Updating...
+              </div>
+            )}
+            <div
+              className="relative h-full w-full p-2"
+              style={{ overflow: "hidden" }}
+            >
+              {diagramDataUrl && (
+                <Image
+                  alt={`${title} diagram`}
+                  fill
+                  sizes="100vw"
+                  src={diagramDataUrl}
+                  style={{ objectFit: "contain" }}
+                  unoptimized
+                />
+              )}
+            </div>
+          </div>
         ) : isLoadingDiagram ? (
           <div className="text-muted-foreground">Loading diagram...</div>
         ) : (
@@ -261,9 +207,9 @@ Please check your PlantUML syntax and try again.`;
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <div className="group relative w-full overflow-hidden rounded-[1.3rem] border border-border">
-        <div className="relative">
+    <div className="mx-auto h-96 w-full max-w-5xl">
+      <div className="group relative h-full w-full overflow-hidden rounded-[1.3rem] border border-border">
+        <div className="relative flex h-full flex-col">
           <div className="flex items-center justify-between border-primary/20 border-b bg-accent p-2 text-foreground text-sm">
             <div className="flex items-center">
               <FileIcon className="mr-2 h-4 w-4" />
@@ -271,49 +217,48 @@ Please check your PlantUML syntax and try again.`;
             </div>
             <div className="flex items-center gap-2">
               <Button
+                className="h-6 px-2 text-xs"
                 onClick={() => setViewMode("code")}
                 size="sm"
                 variant={viewMode === "code" ? "default" : "ghost"}
-                className="h-6 px-2 text-xs"
               >
                 <Code className="mr-1 h-3 w-3" />
                 Code
               </Button>
               <Button
+                className={`h-6 px-2 text-xs ${diagramError ? "text-destructive" : ""}`}
                 onClick={() => setViewMode("diagram")}
                 size="sm"
                 variant={viewMode === "diagram" ? "default" : "ghost"}
-                className={`h-6 px-2 text-xs ${diagramError ? "text-destructive" : ""}`}
               >
                 <Eye className="mr-1 h-3 w-3" />
                 Diagram
                 {diagramError && <span className="ml-1">⚠️</span>}
               </Button>
-              {viewMode === "code" && !isEditing && (
-                <Button
-                  onClick={handleStartEdit}
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 px-2 text-xs"
-                  title="Edit PlantUML code"
-                >
-                  <Edit className="h-3 w-3" />
-                </Button>
-              )}
               <Button
-                onClick={handleDownload}
-                size="sm"
-                variant="ghost"
                 className="h-6 px-2 text-xs"
+                onClick={handleDownloadCode}
+                size="sm"
                 title="Download PlantUML source code"
+                variant="ghost"
               >
-                <Download className="h-3 w-3" />
+                <Download className="mr-1 h-3 w-3" />
+                Code
+              </Button>
+              <Button
+                className="h-6 px-2 text-xs"
+                disabled={!diagramSvg || diagramError}
+                onClick={handleDownloadDiagram}
+                size="sm"
+                title="Download diagram as SVG"
+                variant="ghost"
+              >
+                <Download className="mr-1 h-3 w-3" />
+                SVG
               </Button>
             </div>
           </div>
-          <div className="min-h-96">
-            {renderContent()}
-          </div>
+          <div className="min-h-0 flex-1">{renderContent()}</div>
         </div>
       </div>
     </div>

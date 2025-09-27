@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/app/(auth)/auth";
-import { MCPServerManager } from "@/components/mcp-server-manager";
+import { MemoryManager } from "@/components/memory-manager";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,7 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-export default async function MCPServersPage() {
+export default async function MemoriesPage() {
   const session = await auth();
 
   if (!session?.user) {
@@ -38,12 +38,12 @@ export default async function MCPServersPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>MCP Servers</BreadcrumbPage>
+                  <BreadcrumbPage>Memory</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <MCPServerManager />
+          <MemoryManager />
         </div>
       </div>
     </div>
