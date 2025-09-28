@@ -212,7 +212,7 @@ export function Chat({
             <div className="w-full max-w-4xl">
               <div className="mb-8 text-center">
                 <h1 className="font-bold text-3xl text-foreground">
-                  moin meister
+                  test chat
                 </h1>
               </div>
               <div className="relative">
