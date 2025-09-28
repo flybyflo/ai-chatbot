@@ -3,17 +3,8 @@
 export const dynamic = "force-dynamic";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useEffect } from "react";
 import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 
 const settingsFeatures = [
   {
@@ -60,38 +51,17 @@ export default function SettingsPage() {
   }, [queryClient]);
 
   return (
-    <div className="flex h-dvh min-w-0 flex-col bg-background">
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl p-4 md:p-6">
-          <div className="mb-6">
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href="/">Home</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Settings</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-          <div className="mb-8">
-            <h1 className="font-bold text-3xl text-foreground">Settings</h1>
-            <p className="mt-2 text-muted-foreground">
-              Configure your AI assistant and manage your preferences.
-            </p>
-          </div>
+    <div className="mb-8">
+      <h1 className="font-bold text-3xl text-foreground">Settings</h1>
+      <p className="my-2 text-muted-foreground">
+        Configure your AI assistant and manage your preferences.
+      </p>
 
-          <BentoGrid className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
-            {settingsFeatures.map((feature) => (
-              <BentoCard key={feature.name} {...feature} />
-            ))}
-          </BentoGrid>
-        </div>
-      </div>
+      <BentoGrid className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
+        {settingsFeatures.map((feature) => (
+          <BentoCard key={feature.name} {...feature} />
+        ))}
+      </BentoGrid>
     </div>
   );
 }

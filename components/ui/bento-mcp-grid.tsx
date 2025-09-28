@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { CheckCircle, Clock, XCircle } from "lucide-react";
+import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { UserMCPServer } from "@/hooks/use-mcp-servers";
@@ -96,9 +97,14 @@ const BentoMCPServerCard = ({
       key={server.id}
       {...props}
     >
+      <Link
+        aria-label={`View details for ${server.name}`}
+        className="absolute inset-0 z-10"
+        href={`/settings/mcp-servers/${server.id}`}
+      />
       <div>{getBackground()}</div>
       <div className="p-4">
-        <div className="lg:group-hover:-translate-y-10 pointer-events-none z-10 flex transform-gpu flex-col gap-1 transition-all duration-300">
+        <div className="lg:group-hover:-translate-y-10 pointer-events-none z-20 flex transform-gpu flex-col gap-1 transition-all duration-300">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-semibold text-lg text-neutral-700 dark:text-neutral-300">
               {server.name}
@@ -128,19 +134,25 @@ const BentoMCPServerCard = ({
           </div>
         </div>
 
-        <div className="pointer-events-none flex w-full translate-y-0 transform-gpu flex-row items-center transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:hidden">
+        <div className="pointer-events-none relative z-30 flex w-full translate-y-0 transform-gpu flex-row items-center transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:hidden">
           <Button
             className="pointer-events-auto flex-1 bg-green-600 text-white text-xs transition-all duration-200 hover:scale-105 hover:bg-green-700"
-            onClick={() => onTest(server.id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onTest(server.id);
+            }}
             size="sm"
           >
             Test
           </Button>
           <Button
             className="pointer-events-auto flex-1 bg-green-600 text-white text-xs transition-all duration-200 hover:scale-105 hover:bg-green-700"
-            onClick={() =>
-              onUpdate({ id: server.id, isActive: !server.isActive })
-            }
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onUpdate({ id: server.id, isActive: !server.isActive });
+            }}
             size="sm"
           >
             {server.isActive ? "Disable" : "Enable"}
@@ -150,22 +162,28 @@ const BentoMCPServerCard = ({
 
       <div
         className={cn(
-          "pointer-events-none absolute bottom-0 hidden w-full translate-y-10 transform-gpu flex-row items-center p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:flex"
+          "pointer-events-none absolute bottom-0 z-30 hidden w-full translate-y-10 transform-gpu flex-row items-center p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:flex"
         )}
       >
         <div className="flex w-full gap-2">
           <Button
             className="pointer-events-auto flex-1 bg-green-600 text-white text-xs transition-all duration-200 hover:scale-105 hover:bg-green-700"
-            onClick={() => onTest(server.id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onTest(server.id);
+            }}
             size="sm"
           >
             Test
           </Button>
           <Button
             className="pointer-events-auto flex-1 bg-green-600 text-white text-xs transition-all duration-200 hover:scale-105 hover:bg-green-700"
-            onClick={() =>
-              onUpdate({ id: server.id, isActive: !server.isActive })
-            }
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onUpdate({ id: server.id, isActive: !server.isActive });
+            }}
             size="sm"
           >
             {server.isActive ? "Disable" : "Enable"}
