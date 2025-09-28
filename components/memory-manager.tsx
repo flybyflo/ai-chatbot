@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { BentoMemoryCard } from "@/components/ui/bento-memory-grid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMemories } from "@/hooks/use-memories";
-import { toast } from "./toast";
 
 export function MemoryManager() {
   const {
@@ -44,16 +44,11 @@ export function MemoryManager() {
       });
       setNewTitle("");
       setNewContent("");
-      toast({
-        type: "success",
-        description: "Memory created successfully",
-      });
+      toast.success("Memory created successfully");
     } catch (error) {
-      toast({
-        type: "error",
-        description:
-          error instanceof Error ? error.message : "Failed to create memory",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create memory"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -67,32 +62,22 @@ export function MemoryManager() {
   }) => {
     try {
       await updateMemory(data);
-      toast({
-        type: "success",
-        description: "Memory updated successfully",
-      });
+      toast.success("Memory updated successfully");
     } catch (error) {
-      toast({
-        type: "error",
-        description:
-          error instanceof Error ? error.message : "Failed to update memory",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update memory"
+      );
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteMemory(id);
-      toast({
-        type: "success",
-        description: "Memory deleted successfully",
-      });
+      toast.success("Memory deleted successfully");
     } catch (error) {
-      toast({
-        type: "error",
-        description:
-          error instanceof Error ? error.message : "Failed to delete memory",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete memory"
+      );
     }
   };
 

@@ -8,6 +8,16 @@ export const isTestEnvironment = Boolean(
     process.env.CI_PLAYWRIGHT
 );
 
-export const guestRegex = /^guest-\d+$/;
+// Admin users can be identified by email domain or specific emails
+// For now, we'll use a simple email check - you can modify this logic later
+export const isAdminUser = (email: string): boolean => {
+  // Add your admin email addresses here
+  const adminEmails: string[] = [
+    // Add admin emails here, e.g., "admin@yourdomain.com"
+  ];
+
+  // Check if user is in admin list or has admin domain
+  return adminEmails.includes(email) || email.endsWith("@admin.local");
+};
 
 export const DUMMY_PASSWORD = generateDummyPassword();

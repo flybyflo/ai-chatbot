@@ -1,6 +1,7 @@
+import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/app/(auth)/auth";
+import { auth } from "@/lib/auth";
 import { MCPClientWrapper } from "@/lib/ai/mcp/client";
 import { getUserMCPServers } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
@@ -15,7 +16,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
@@ -88,7 +89,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();

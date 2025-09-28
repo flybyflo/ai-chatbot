@@ -1,12 +1,11 @@
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
-import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "Next.js Chatbot Template",
@@ -69,7 +68,7 @@ export default function RootLayout({
         >
           <QueryProvider>
             <Toaster position="top-center" />
-            <SessionProvider>{children}</SessionProvider>
+            {children}
           </QueryProvider>
         </ThemeProvider>
       </body>

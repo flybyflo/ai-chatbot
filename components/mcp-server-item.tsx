@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -26,7 +27,6 @@ import { Textarea } from "@/components/ui/textarea";
 import type { UserMCPServer } from "@/hooks/use-mcp-servers";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
 import { cn } from "@/lib/utils";
-import { toast } from "./toast";
 
 type MCPServerItemProps = {
   server: UserMCPServer;
@@ -112,21 +112,14 @@ export function MCPServerItem({
       });
 
       if (result.connected) {
-        toast({
-          type: "success",
-          description: `Connected successfully! Found ${result.server.toolCount} tools.`,
-        });
+        toast.success(
+          `Connected successfully! Found ${result.server.toolCount} tools.`
+        );
       } else {
-        toast({
-          type: "error",
-          description: result.server.lastError || "Connection failed",
-        });
+        toast.error(result.server.lastError || "Connection failed");
       }
     } catch (error) {
-      toast({
-        type: "error",
-        description: error instanceof Error ? error.message : "Test failed",
-      });
+      toast.error(error instanceof Error ? error.message : "Test failed");
     } finally {
       setIsTesting(false);
     }

@@ -3,7 +3,7 @@
 import { Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { User } from "next-auth";
+import type { User } from "@/lib/auth";
 import { useChatContext } from "@/components/chat-context";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";

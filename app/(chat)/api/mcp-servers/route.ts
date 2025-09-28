@@ -1,6 +1,7 @@
+import { headers as getHeaders } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/app/(auth)/auth";
+import { auth } from "@/lib/auth";
 import {
   createUserMCPServer,
   deleteUserMCPServer,
@@ -35,7 +36,7 @@ const deleteMCPServerSchema = z.object({
 
 export async function GET() {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
@@ -56,7 +57,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
@@ -126,7 +127,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();

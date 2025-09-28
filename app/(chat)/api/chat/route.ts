@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { geolocation } from "@vercel/functions";
 import {
   convertToModelMessages,
@@ -16,11 +17,12 @@ import {
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
-import { auth, type UserType } from "@/app/(auth)/auth";
+import { auth, type UserType } from "@/lib/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import type { ChatModel } from "@/lib/ai/models";
 import { chatModels } from "@/lib/ai/models";
+import { isAdminUser } from "@/lib/constants";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { getActiveTools, getAllTools } from "@/lib/ai/tools";
@@ -110,13 +112,13 @@ export async function POST(request: Request) {
       selectedTools?: string[];
     } = requestBody;
 
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user) {
       return new ChatSDKError("unauthorized:chat").toResponse();
     }
 
-    const userType: UserType = session.user.type;
+    const userType: UserType = isAdminUser(session.user.email ?? "") ? "admin" : "regular";
 
     const messageCount = await getMessageCountByUserId({
       id: session.user.id,
@@ -374,7 +376,7 @@ export async function DELETE(request: Request) {
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session?.user) {
     return new ChatSDKError("unauthorized:chat").toResponse();

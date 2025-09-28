@@ -2,9 +2,8 @@
 
 import { ChevronUp, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { User } from "next-auth";
-import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,22 +16,23 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { guestRegex } from "@/lib/constants";
-import { toast } from "./toast";
+import type { User } from "@/lib/auth";
+import { signOut, useSession } from "@/lib/auth-client";
+import { isAdminUser } from "@/lib/constants";
 
 export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
-  const { data, status } = useSession();
+  const { data: session, isPending } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
 
-  const isGuest = guestRegex.test(data?.user?.email ?? "");
+  const isAdmin = isAdminUser(session?.user?.email ?? "");
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            {status === "loading" ? (
+            {isPending ? (
               <SidebarMenuButton className="h-10 justify-between bg-background data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
                 <div className="flex flex-row gap-2">
                   <div className="h-6 w-6 animate-pulse rounded-full bg-primary/30" />
@@ -53,7 +53,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   {(user.email?.[0] ?? "U").toUpperCase()}
                 </div>
                 <span className="truncate" data-testid="user-email">
-                  {isGuest ? "Guest" : user?.email}
+                  {user?.email} {isAdmin && "(Admin)"}
                 </span>
                 <ChevronUp className="ml-auto" />
               </SidebarMenuButton>
@@ -78,27 +78,25 @@ export function SidebarUserNav({ user }: { user: User }) {
               <button
                 className="w-full cursor-pointer"
                 onClick={() => {
-                  if (status === "loading") {
-                    toast({
-                      type: "error",
-                      description:
-                        "Checking authentication status, please try again!",
-                    });
+                  if (isPending) {
+                    toast.error(
+                      "Checking authentication status, please try again!"
+                    );
 
                     return;
                   }
 
-                  if (isGuest) {
-                    router.push("/login");
-                  } else {
-                    signOut({
-                      redirectTo: "/",
-                    });
-                  }
+                  signOut({
+                    fetchOptions: {
+                      onSuccess: () => {
+                        router.push("/");
+                      },
+                    },
+                  });
                 }}
                 type="button"
               >
-                {isGuest ? "Login to your account" : "Sign out"}
+                Sign out
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

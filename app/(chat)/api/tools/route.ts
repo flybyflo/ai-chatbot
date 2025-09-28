@@ -1,9 +1,12 @@
-import { auth } from "@/app/(auth)/auth";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { getAllTools } from "@/lib/ai/tools";
 
 export async function GET() {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
     // Get tools for the authenticated user (if any)
     const userId = session?.user?.id;

@@ -1,10 +1,10 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import Script from "next/script";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ChatProvider } from "@/components/chat-context";
 import { DataStreamProvider } from "@/components/data-stream-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "../(auth)/auth";
+import { auth } from "@/lib/auth";
 
 export const experimental_ppr = true;
 
@@ -13,7 +13,12 @@ export default async function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
+  const [session, cookieStore] = await Promise.all([
+    auth.api.getSession({
+      headers: await headers(),
+    }),
+    cookies(),
+  ]);
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 
   return (

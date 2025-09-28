@@ -1,77 +1,162 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useActionState, useEffect, useState } from "react";
-import { AuthForm } from "@/components/auth-form";
-import { SubmitButton } from "@/components/submit-button";
-import { toast } from "@/components/toast";
-import { type RegisterActionState, register } from "../actions";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { signUp } from "@/lib/auth-client";
 
-export default function Page() {
-  const router = useRouter();
-
+export default function SignUp() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [isSuccessful, setIsSuccessful] = useState(false);
-
-  const [state, formAction] = useActionState<RegisterActionState, FormData>(
-    register,
-    {
-      status: "idle",
-    }
-  );
-
-  const { update: updateSession } = useSession();
-
-  useEffect(() => {
-    if (state.status === "user_exists") {
-      toast({ type: "error", description: "Account already exists!" });
-    } else if (state.status === "failed") {
-      toast({ type: "error", description: "Failed to create account!" });
-    } else if (state.status === "invalid_data") {
-      toast({
-        type: "error",
-        description: "Failed validating your submission!",
-      });
-    } else if (state.status === "success") {
-      toast({ type: "success", description: "Account created successfully!" });
-
-      setIsSuccessful(true);
-      updateSession();
-      router.refresh();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.status, router.refresh, updateSession]);
-
-  const handleSubmit = (formData: FormData) => {
-    setEmail(formData.get("email") as string);
-    formAction(formData);
-  };
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   return (
     <div className="flex h-dvh w-screen items-start justify-center bg-background pt-12 md:items-center md:pt-0">
-      <div className="flex w-full max-w-md flex-col gap-12 overflow-hidden rounded-2xl">
-        <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
-          <h3 className="font-semibold text-xl dark:text-zinc-50">Sign Up</h3>
-          <p className="text-gray-500 text-sm dark:text-zinc-400">
-            Create an account with your email and password
-          </p>
-        </div>
-        <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
-          <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
-            {"Already have an account? "}
-            <Link
-              className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
-              href="/login"
+      <Card className="z-50 w-full max-w-md rounded-md">
+        <CardHeader>
+          <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            Enter your information to create an account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="first-name">First name</Label>
+                <Input
+                  id="first-name"
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                  }}
+                  placeholder="Max"
+                  required
+                  value={firstName}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="last-name">Last name</Label>
+                <Input
+                  id="last-name"
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                  }}
+                  placeholder="Robinson"
+                  required
+                  value={lastName}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                }}
+                placeholder="m@example.com"
+                required
+                type="email"
+                value={email}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                autoComplete="new-password"
+                id="password"
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                type="password"
+                value={password}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Confirm Password</Label>
+              <Input
+                autoComplete="new-password"
+                id="password_confirmation"
+                onChange={(e) => setPasswordConfirmation(e.target.value)}
+                placeholder="Confirm Password"
+                type="password"
+                value={passwordConfirmation}
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={loading || password !== passwordConfirmation}
+              onClick={async () => {
+                if (password !== passwordConfirmation) {
+                  toast.error("Passwords do not match!");
+                  return;
+                }
+
+                await signUp.email({
+                  email,
+                  password,
+                  name: `${firstName} ${lastName}`,
+                  callbackURL: "/",
+                  fetchOptions: {
+                    onResponse: () => {
+                      setLoading(false);
+                    },
+                    onRequest: () => {
+                      setLoading(true);
+                    },
+                    onError: (ctx) => {
+                      toast.error(
+                        ctx.error.message || "Failed to create account!"
+                      );
+                    },
+                    onSuccess: () => {
+                      toast.success("Account created successfully!");
+                      router.push("/");
+                    },
+                  },
+                });
+              }}
+              type="submit"
             >
-              Sign in
-            </Link>
-            {" instead."}
-          </p>
-        </AuthForm>
-      </div>
+              {loading ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                "Create an account"
+              )}
+            </Button>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <div className="flex w-full justify-center border-t py-4">
+            <p className="text-center text-neutral-500 text-xs">
+              {"Already have an account? "}
+              <Link
+                className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
+                href="/login"
+              >
+                Sign in
+              </Link>
+              {" instead."}
+            </p>
+          </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

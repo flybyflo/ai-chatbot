@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { BentoMCPServerCard } from "@/components/ui/bento-mcp-grid";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
-import { toast } from "./toast";
 import { Card, CardContent } from "./ui/card";
 export function MCPServerManager() {
   const {
@@ -48,18 +48,11 @@ export function MCPServerManager() {
       setNewName("");
       setNewUrl("");
       setNewDescription("");
-      toast({
-        type: "success",
-        description: "MCP server created successfully",
-      });
+      toast.success("MCP server created successfully");
     } catch (error) {
-      toast({
-        type: "error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to create MCP server",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create MCP server"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -74,36 +67,22 @@ export function MCPServerManager() {
   }) => {
     try {
       await updateMCPServer(data);
-      toast({
-        type: "success",
-        description: "MCP server updated successfully",
-      });
+      toast.success("MCP server updated successfully");
     } catch (error) {
-      toast({
-        type: "error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update MCP server",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update MCP server"
+      );
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteMCPServer(id);
-      toast({
-        type: "success",
-        description: "MCP server deleted successfully",
-      });
+      toast.success("MCP server deleted successfully");
     } catch (error) {
-      toast({
-        type: "error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete MCP server",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete MCP server"
+      );
     }
   };
 
@@ -119,16 +98,11 @@ export function MCPServerManager() {
         url: server.url,
         headers: server.headers,
       });
-      toast({
-        type: "success",
-        description: "MCP server test completed",
-      });
+      toast.success("MCP server test completed");
     } catch (error) {
-      toast({
-        type: "error",
-        description:
-          error instanceof Error ? error.message : "Failed to test MCP server",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to test MCP server"
+      );
     }
   };
 

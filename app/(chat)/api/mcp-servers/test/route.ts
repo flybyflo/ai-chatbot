@@ -1,6 +1,7 @@
+import { headers as getHeaders } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/app/(auth)/auth";
+import { auth } from "@/lib/auth";
 import { MCPClientWrapper } from "@/lib/ai/mcp/client";
 import { updateUserMCPServer } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
@@ -13,7 +14,7 @@ const testMCPServerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();

@@ -1,8 +1,9 @@
 "use client";
 
 import { CheckCircle2, ChevronDown } from "lucide-react";
-import type { Session } from "next-auth";
+import type { Session } from "@/lib/auth";
 import { startTransition, useMemo, useOptimistic, useState } from "react";
+import { isAdminUser } from "@/lib/constants";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +28,7 @@ export function ModelSelector({
   const [optimisticModelId, setOptimisticModelId] =
     useOptimistic(selectedModelId);
 
-  const userType = session.user.type;
+  const userType = isAdminUser(session.user.email ?? "") ? "admin" : "regular";
   const { availableChatModelIds } = entitlementsByUserType[userType];
 
   const availableChatModels = chatModels.filter((chatModel) =>
