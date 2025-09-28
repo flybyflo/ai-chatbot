@@ -1,5 +1,6 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
+import type { MCPProgressNotification } from "./ai/mcp/progress-types";
 import type { MCPToolRegistry } from "./ai/mcp/types";
 import type { codeCompare } from "./ai/tools/code-compare";
 import type { getWeather } from "./ai/tools/get-weather";
@@ -26,6 +27,7 @@ export type ChatTools = {
 export type CustomUIDataTypes = {
   usage: AppUsage;
   mcpRegistry?: MCPToolRegistry;
+  mcpProgress?: MCPProgressNotification;
 };
 
 export type ChatMessage = UIMessage<

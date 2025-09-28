@@ -30,7 +30,7 @@ export async function GET() {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized", "Not authenticated").toResponse();
+      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
     }
 
     const memories = await getUserMemories(session.user.id);
@@ -40,7 +40,7 @@ export async function GET() {
       return error.toResponse();
     }
     return new ChatSDKError(
-      "internal_server_error",
+      "offline:api",
       "Failed to fetch memories"
     ).toResponse();
   }
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized", "Not authenticated").toResponse();
+      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
     }
 
     const body = await request.json();
@@ -66,13 +66,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(memory, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new ChatSDKError("bad_request", "Invalid input").toResponse();
+      return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
     }
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
     return new ChatSDKError(
-      "internal_server_error",
+      "offline:api",
       "Failed to create memory"
     ).toResponse();
   }
@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest) {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized", "Not authenticated").toResponse();
+      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
     }
 
     const body = await request.json();
@@ -98,19 +98,19 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!memory) {
-      return new ChatSDKError("not_found", "Memory not found").toResponse();
+      return new ChatSDKError("not_found:api", "Memory not found").toResponse();
     }
 
     return NextResponse.json(memory);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new ChatSDKError("bad_request", "Invalid input").toResponse();
+      return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
     }
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
     return new ChatSDKError(
-      "internal_server_error",
+      "offline:api",
       "Failed to update memory"
     ).toResponse();
   }
@@ -121,7 +121,7 @@ export async function DELETE(request: NextRequest) {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized", "Not authenticated").toResponse();
+      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
     }
 
     const body = await request.json();
@@ -133,19 +133,19 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!success) {
-      return new ChatSDKError("not_found", "Memory not found").toResponse();
+      return new ChatSDKError("not_found:api", "Memory not found").toResponse();
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new ChatSDKError("bad_request", "Invalid input").toResponse();
+      return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
     }
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
     return new ChatSDKError(
-      "internal_server_error",
+      "offline:api",
       "Failed to delete memory"
     ).toResponse();
   }

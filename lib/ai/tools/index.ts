@@ -14,6 +14,7 @@ type LocalTools = {
 type CombinedToolsResult = {
   tools: Record<string, any>;
   mcpRegistry?: MCPToolRegistry;
+  mcpManager?: MCPManager;
   localTools: LocalTools;
 };
 
@@ -57,6 +58,7 @@ export async function getAllTools(
           ...mcpTools,
         };
         result.mcpRegistry = mcpRegistry;
+        result.mcpManager = mcpManager;
       }
     } catch (error) {
       console.warn(

@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import useSWR from "swr";
-import { useMemoryStore } from "@/lib/stores/memory-store";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { fetcher } from "@/lib/utils";
 
 export type UserMemory = {
@@ -27,64 +30,27 @@ type UpdateMemoryData = {
   isActive?: boolean;
 };
 
+const QUERY_KEY = ["memories"];
+
 export function useMemories() {
-  const [actionLoading, setActionLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Zustand store
+  // Query for fetching memories
   const {
-    memories,
-    isLoading: storeLoading,
-    error: storeError,
-    setMemories,
-    setLoading,
-    setError,
-    addMemoryOptimistic,
-    updateMemoryOptimistic,
-    deleteMemoryOptimistic,
-    confirmMemoryCreation,
-    confirmMemoryUpdate,
-    confirmMemoryDeletion,
-    rollbackMemoryCreation,
-    rollbackMemoryUpdate,
-    rollbackMemoryDeletion,
-  } = useMemoryStore();
+    data: memories = [],
+    isLoading,
+    isFetching,
+    error,
+  } = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: async () => (await fetcher("/api/memories")) as UserMemory[],
+    refetchOnMount: "always",
+    placeholderData: keepPreviousData,
+  });
 
-  // SWR for initial data fetching
-  const {
-    data: swrMemories,
-    error: swrError,
-    isLoading: swrLoading,
-  } = useSWR<UserMemory[]>("/api/memories", fetcher);
-
-  // Sync SWR data with Zustand store
-  useEffect(() => {
-    if (swrMemories && !storeLoading) {
-      setMemories(swrMemories);
-    }
-  }, [swrMemories, setMemories, storeLoading]);
-
-  // Set loading state from SWR
-  useEffect(() => {
-    setLoading(swrLoading && memories.length === 0);
-  }, [swrLoading, memories.length, setLoading]);
-
-  // Set error state from SWR
-  useEffect(() => {
-    setError(swrError?.message || null);
-  }, [swrError, setError]);
-
-  const createMemory = async (data: CreateMemoryData) => {
-    setActionLoading(true);
-    setError(null);
-
-    // Add optimistic update
-    const tempId = addMemoryOptimistic({
-      title: data.title,
-      content: data.content,
-      isActive: true,
-    });
-
-    try {
+  // Create memory mutation with optimistic updates
+  const createMemoryMutation = useMutation({
+    mutationFn: async (data: CreateMemoryData): Promise<UserMemory> => {
       const response = await fetch("/api/memories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,39 +62,58 @@ export function useMemories() {
         throw new Error(errorData.message || "Failed to create memory");
       }
 
-      const newMemory = await response.json();
+      return response.json();
+    },
+    onMutate: async (newMemory) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QUERY_KEY });
 
-      // Confirm optimistic update
-      confirmMemoryCreation(tempId, newMemory);
+      // Snapshot the previous value
+      const previousMemories =
+        queryClient.getQueryData<UserMemory[]>(QUERY_KEY);
 
-      return newMemory;
-    } catch (err) {
-      // Rollback optimistic update
-      rollbackMemoryCreation(tempId);
+      // Optimistically update to the new value
+      const optimisticMemory: UserMemory = {
+        id: `temp-${Date.now()}`,
+        userId: "temp",
+        title: newMemory.title,
+        content: newMemory.content,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      const message =
-        err instanceof Error ? err.message : "Failed to create memory";
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+      queryClient.setQueryData<UserMemory[]>(QUERY_KEY, (old = []) => [
+        optimisticMemory,
+        ...old,
+      ]);
 
-  const updateMemory = async (data: UpdateMemoryData) => {
-    setActionLoading(true);
-    setError(null);
+      // Return a context object with the snapshotted value
+      return { previousMemories, optimisticMemory };
+    },
+    onError: (_err, _newMemory, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousMemories) {
+        queryClient.setQueryData(QUERY_KEY, context.previousMemories);
+      }
+    },
+    onSuccess: (data, _variables, context) => {
+      // Update the optimistic memory with the real data from server
+      queryClient.setQueryData<UserMemory[]>(QUERY_KEY, (old = []) =>
+        old.map((memory) =>
+          memory.id === context?.optimisticMemory.id ? data : memory
+        )
+      );
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
 
-    // Store original memory for rollback
-    const originalMemory = memories.find((m) => m.id === data.id);
-    if (!originalMemory) {
-      throw new Error("Memory not found");
-    }
-
-    // Add optimistic update
-    updateMemoryOptimistic(data);
-
-    try {
+  // Update memory mutation with optimistic updates
+  const updateMemoryMutation = useMutation({
+    mutationFn: async (data: UpdateMemoryData): Promise<UserMemory> => {
       const response = await fetch("/api/memories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -140,39 +125,38 @@ export function useMemories() {
         throw new Error(errorData.message || "Failed to update memory");
       }
 
-      const updatedMemory = await response.json();
+      return response.json();
+    },
+    onMutate: async (updatedMemory) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEY });
 
-      // Confirm optimistic update
-      confirmMemoryUpdate(data.id, updatedMemory);
+      const previousMemories =
+        queryClient.getQueryData<UserMemory[]>(QUERY_KEY);
 
-      return updatedMemory;
-    } catch (err) {
-      // Rollback optimistic update
-      rollbackMemoryUpdate(data.id, originalMemory);
+      // Optimistically update
+      queryClient.setQueryData<UserMemory[]>(QUERY_KEY, (old = []) =>
+        old.map((memory) =>
+          memory.id === updatedMemory.id
+            ? { ...memory, ...updatedMemory, updatedAt: new Date() }
+            : memory
+        )
+      );
 
-      const message =
-        err instanceof Error ? err.message : "Failed to update memory";
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+      return { previousMemories };
+    },
+    onError: (_err, _newMemory, context) => {
+      if (context?.previousMemories) {
+        queryClient.setQueryData(QUERY_KEY, context.previousMemories);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
 
-  const deleteMemory = async (id: string) => {
-    setActionLoading(true);
-    setError(null);
-
-    // Store original memory for rollback
-    const originalMemory = memories.find((m) => m.id === id);
-    if (!originalMemory) {
-      throw new Error("Memory not found");
-    }
-
-    // Add optimistic update
-    deleteMemoryOptimistic(id);
-
-    try {
+  // Delete memory mutation with optimistic updates
+  const deleteMemoryMutation = useMutation({
+    mutationFn: async (id: string): Promise<void> => {
       const response = await fetch("/api/memories", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -183,30 +167,40 @@ export function useMemories() {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to delete memory");
       }
+    },
+    onMutate: async (deletedId) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEY });
 
-      // Confirm optimistic update
-      confirmMemoryDeletion(id);
+      const previousMemories =
+        queryClient.getQueryData<UserMemory[]>(QUERY_KEY);
 
-      return true;
-    } catch (err) {
-      // Rollback optimistic update
-      rollbackMemoryDeletion(id, originalMemory);
+      // Optimistically remove the memory
+      queryClient.setQueryData<UserMemory[]>(QUERY_KEY, (old = []) =>
+        old.filter((memory) => memory.id !== deletedId)
+      );
 
-      const message =
-        err instanceof Error ? err.message : "Failed to delete memory";
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+      return { previousMemories };
+    },
+    onError: (_err, _deletedId, context) => {
+      if (context?.previousMemories) {
+        queryClient.setQueryData(QUERY_KEY, context.previousMemories);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
 
   return {
     memories,
-    isLoading: storeLoading || actionLoading,
-    error: storeError,
-    createMemory,
-    updateMemory,
-    deleteMemory,
+    isLoading,
+    isFetching,
+    error: error?.message || null,
+    createMemory: createMemoryMutation.mutateAsync,
+    updateMemory: updateMemoryMutation.mutateAsync,
+    deleteMemory: deleteMemoryMutation.mutateAsync,
+    isCreating: createMemoryMutation.isPending,
+    isUpdating: updateMemoryMutation.isPending,
+    isDeleting: deleteMemoryMutation.isPending,
   };
 }

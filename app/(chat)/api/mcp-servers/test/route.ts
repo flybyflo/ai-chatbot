@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized", "Not authenticated").toResponse();
+      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
     }
 
     const body = await request.json();
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!updatedServer) {
-      return new ChatSDKError("not_found", "MCP server not found").toResponse();
+      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
     }
 
     return NextResponse.json({
@@ -76,13 +76,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new ChatSDKError("bad_request", "Invalid input").toResponse();
+      return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
     }
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
     return new ChatSDKError(
-      "internal_server_error",
+      "offline:api",
       "Failed to test MCP server"
     ).toResponse();
   }

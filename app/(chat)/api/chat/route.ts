@@ -198,6 +198,9 @@ export async function POST(request: Request) {
       Object.keys(tools)
     );
 
+    // MCP progress tracking (placeholder for future AI SDK support)
+    // TODO: Implement when AI SDK exposes MCP progress notifications
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({

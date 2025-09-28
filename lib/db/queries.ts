@@ -540,8 +540,9 @@ export async function deleteUserMemory({
   try {
     const result = await db
       .delete(userMemory)
-      .where(and(eq(userMemory.id, id), eq(userMemory.userId, userId)));
-    return result.rowCount > 0;
+      .where(and(eq(userMemory.id, id), eq(userMemory.userId, userId)))
+      .returning({ id: userMemory.id });
+    return result.length > 0;
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
@@ -693,8 +694,9 @@ export async function deleteUserMCPServer({
   try {
     const result = await db
       .delete(userMCPServer)
-      .where(and(eq(userMCPServer.id, id), eq(userMCPServer.userId, userId)));
-    return result.rowCount > 0;
+      .where(and(eq(userMCPServer.id, id), eq(userMCPServer.userId, userId)))
+      .returning({ id: userMCPServer.id });
+    return result.length > 0;
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",

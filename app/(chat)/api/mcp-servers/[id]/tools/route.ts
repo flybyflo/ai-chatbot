@@ -12,26 +12,28 @@ const executeToolSchema = z.object({
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized", "Not authenticated").toResponse();
+      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
     }
+
+    const { id } = await params;
 
     // Get the user's MCP servers and find the requested one
     const userServers = await getUserMCPServers(session.user.id);
-    const server = userServers.find((s) => s.id === params.id);
+    const server = userServers.find((s) => s.id === id);
 
     if (!server) {
-      return new ChatSDKError("not_found", "MCP server not found").toResponse();
+      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
     }
 
     if (!server.isActive) {
       return new ChatSDKError(
-        "bad_request",
+        "bad_request:api",
         "MCP server is not active"
       ).toResponse();
     }
@@ -48,7 +50,7 @@ export async function GET(
 
       if (!connected) {
         return new ChatSDKError(
-          "service_unavailable",
+          "offline:api",
           "Failed to connect to MCP server"
         ).toResponse();
       }
@@ -66,7 +68,7 @@ export async function GET(
       });
     } catch (error) {
       return new ChatSDKError(
-        "service_unavailable",
+        "offline:api",
         error instanceof Error ? error.message : "Failed to fetch tools"
       ).toResponse();
     }
@@ -75,7 +77,7 @@ export async function GET(
       return error.toResponse();
     }
     return new ChatSDKError(
-      "internal_server_error",
+      "offline:api",
       "Failed to fetch server tools"
     ).toResponse();
   }
@@ -83,29 +85,31 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized", "Not authenticated").toResponse();
+      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
     }
 
     const body = await request.json();
     const { toolName, arguments: toolArgs } = executeToolSchema.parse(body);
 
+    const { id } = await params;
+
     // Get the user's MCP servers and find the requested one
     const userServers = await getUserMCPServers(session.user.id);
-    const server = userServers.find((s) => s.id === params.id);
+    const server = userServers.find((s) => s.id === id);
 
     if (!server) {
-      return new ChatSDKError("not_found", "MCP server not found").toResponse();
+      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
     }
 
     if (!server.isActive) {
       return new ChatSDKError(
-        "bad_request",
+        "bad_request:api",
         "MCP server is not active"
       ).toResponse();
     }
@@ -122,7 +126,7 @@ export async function POST(
 
       if (!connected) {
         return new ChatSDKError(
-          "service_unavailable",
+          "offline:api",
           "Failed to connect to MCP server"
         ).toResponse();
       }
@@ -133,7 +137,7 @@ export async function POST(
 
       if (!tool) {
         await client.close();
-        return new ChatSDKError("not_found", "Tool not found").toResponse();
+        return new ChatSDKError("not_found:api", "Tool not found").toResponse();
       }
 
       // Execute the tool (this will depend on the AI SDK implementation)
@@ -155,19 +159,19 @@ export async function POST(
       return NextResponse.json(result);
     } catch (error) {
       return new ChatSDKError(
-        "service_unavailable",
+        "offline:api",
         error instanceof Error ? error.message : "Failed to execute tool"
       ).toResponse();
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new ChatSDKError("bad_request", "Invalid input").toResponse();
+      return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
     }
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
     return new ChatSDKError(
-      "internal_server_error",
+      "offline:api",
       "Failed to execute tool"
     ).toResponse();
   }

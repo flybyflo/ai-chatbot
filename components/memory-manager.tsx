@@ -1,20 +1,32 @@
 "use client";
 
-import { Brain, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
+import { BentoMemoryCard } from "@/components/ui/bento-memory-grid";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useMemories } from "@/hooks/use-memories";
-import { MemoryItem } from "./memory-item";
 import { toast } from "./toast";
 
 export function MemoryManager() {
-  const { memories, isLoading, createMemory, updateMemory, deleteMemory } =
-    useMemories();
-  const [isCreating, setIsCreating] = useState(false);
+  const {
+    memories,
+    isLoading,
+    createMemory,
+    updateMemory,
+    deleteMemory,
+    isCreating: isCreatingMemory,
+  } = useMemories();
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -32,7 +44,6 @@ export function MemoryManager() {
       });
       setNewTitle("");
       setNewContent("");
-      setIsCreating(false);
       toast({
         type: "success",
         description: "Memory created successfully",
@@ -85,134 +96,93 @@ export function MemoryManager() {
     }
   };
 
-  const activeMemories = memories.filter((memory) => memory.isActive);
-  const inactiveMemories = memories.filter((memory) => !memory.isActive);
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Brain className="h-5 w-5" />
-        <h1 className="font-semibold text-xl">Memory Management</h1>
-      </div>
+      <div className="grid w-full auto-rows-[18rem] grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Memories */}
+        {memories.map((memory) => (
+          <BentoMemoryCard
+            key={memory.id}
+            memory={memory}
+            onDelete={handleDelete}
+            onUpdate={handleUpdate}
+          />
+        ))}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">About Memories</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          <p>
-            Memories help the AI assistant remember important information about
-            you, your preferences, and context that should guide future
-            conversations. Only active memories will be used to personalize
-            responses.
-          </p>
-        </CardContent>
-      </Card>
+        {/* Add Memory Button */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              className="group relative col-span-1 flex transform-gpu flex-col justify-center overflow-hidden rounded-xl bg-background transition-all duration-300 [box-shadow:0_0_0_1px_rgba(0,0,0,.03),0_2px_4px_rgba(0,0,0,.05),0_12px_24px_rgba(0,0,0,.05)] dark:bg-background dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset]"
+              type="button"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-900/20" />
+              <div className="pointer-events-none absolute inset-0 transform-gpu transition-all duration-300 group-hover:bg-black/[.03] group-hover:dark:bg-neutral-800/10" />
 
-      {/* Create New Memory */}
-      {isCreating ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Create New Memory</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Memory title (e.g., 'Favorite Programming Language')"
-              value={newTitle}
-            />
-            <Textarea
-              onChange={(e) => setNewContent(e.target.value)}
-              placeholder="Memory content (e.g., 'Prefers TypeScript and React for web development')"
-              rows={3}
-              value={newContent}
-            />
-            <div className="flex justify-end gap-2">
-              <Button onClick={() => setIsCreating(false)} variant="outline">
-                Cancel
-              </Button>
-              <Button
-                disabled={!newTitle.trim() || isSaving}
-                onClick={handleCreate}
-              >
-                {isSaving ? "Creating..." : "Create Memory"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Button className="w-full" onClick={() => setIsCreating(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Memory
-        </Button>
-      )}
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="text-muted-foreground text-sm">
-            Loading memories...
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Active Memories */}
-          {activeMemories.length > 0 && (
-            <div>
-              <h2 className="mb-3 font-medium text-foreground text-sm">
-                Active Memories ({activeMemories.length})
-              </h2>
-              <div className="space-y-3">
-                {activeMemories.map((memory) => (
-                  <MemoryItem
-                    key={memory.id}
-                    memory={memory}
-                    onDelete={handleDelete}
-                    onUpdate={handleUpdate}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Inactive Memories */}
-          {inactiveMemories.length > 0 && (
-            <>
-              {activeMemories.length > 0 && <Separator />}
-              <div>
-                <h2 className="mb-3 font-medium text-muted-foreground text-sm">
-                  Disabled Memories ({inactiveMemories.length})
-                </h2>
-                <div className="space-y-3">
-                  {inactiveMemories.map((memory) => (
-                    <MemoryItem
-                      key={memory.id}
-                      memory={memory}
-                      onDelete={handleDelete}
-                      onUpdate={handleUpdate}
-                    />
-                  ))}
+              <div className="flex h-full items-center justify-center p-4">
+                <div className="text-center">
+                  <Plus className="mx-auto mb-4 h-12 w-12 text-neutral-400 transition-colors duration-300 group-hover:text-neutral-600" />
+                  <h3 className="font-semibold text-lg text-neutral-700 transition-colors duration-300 group-hover:text-neutral-900 dark:text-neutral-300 dark:group-hover:text-neutral-100">
+                    Add Memory
+                  </h3>
                 </div>
               </div>
-            </>
-          )}
-
-          {memories.length === 0 && (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <Brain className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 font-medium">No memories yet</h3>
-                <p className="mb-4 text-muted-foreground text-sm">
-                  Create your first memory to help the AI assistant remember
-                  important information about you.
-                </p>
-                <Button onClick={() => setIsCreating(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Memory
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Memory</DialogTitle>
+              <DialogDescription>
+                Create a new memory to help the AI assistant remember important
+                information about you.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Memory title (e.g., 'Favorite Programming Language')"
+                value={newTitle}
+              />
+              <Textarea
+                onChange={(e) => setNewContent(e.target.value)}
+                placeholder="Memory content (e.g., 'Prefers TypeScript and React for web development')"
+                rows={3}
+                value={newContent}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={!newTitle.trim() || isSaving || isCreatingMemory}
+                  onClick={handleCreate}
+                >
+                  {isSaving || isCreatingMemory
+                    ? "Creating..."
+                    : "Create Memory"}
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-        </>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Loading State */}
+      {isLoading && memories.length === 0 && (
+        <div className="space-y-3">
+          <Card>
+            <CardContent className="py-6">
+              <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+              <div className="mt-3 h-3 w-full animate-pulse rounded bg-muted" />
+              <div className="mt-2 h-3 w-5/6 animate-pulse rounded bg-muted" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-6">
+              <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+              <div className="mt-3 h-3 w-full animate-pulse rounded bg-muted" />
+              <div className="mt-2 h-3 w-5/6 animate-pulse rounded bg-muted" />
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

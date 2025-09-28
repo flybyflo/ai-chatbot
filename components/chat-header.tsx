@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo } from "react";
 import { useWindowSize } from "usehooks-ts";
@@ -28,17 +28,29 @@ function PureChatHeader({
       <SidebarToggle />
 
       {(!open || windowWidth < 768) && (
-        <Button
-          className="order-2 ml-auto h-8 px-2 md:order-1 md:ml-0 md:h-fit md:px-2"
-          onClick={() => {
-            router.push("/");
-            router.refresh();
-          }}
-          variant="outline"
-        >
-          <Plus />
-          <span className="md:sr-only">New Chat</span>
-        </Button>
+        <>
+          <Button
+            className="order-2 ml-auto h-8 px-2 md:order-1 md:ml-0 md:h-fit md:px-2"
+            onClick={() => {
+              router.push("/");
+              router.refresh();
+            }}
+            variant="outline"
+          >
+            <Plus />
+            <span className="md:sr-only">New Chat</span>
+          </Button>
+          <Button
+            className="h-8 px-2 md:h-fit md:px-2"
+            onClick={() => {
+              router.push("/settings");
+            }}
+            variant="outline"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="md:sr-only">Settings</span>
+          </Button>
+        </>
       )}
 
       {!isReadonly && (

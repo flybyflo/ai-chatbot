@@ -1,6 +1,10 @@
+"use client";
+
+export const dynamic = "force-dynamic";
+
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "@/app/(auth)/auth";
+import { useEffect } from "react";
 import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
 import {
   Breadcrumb,
@@ -38,12 +42,22 @@ const settingsFeatures = [
   },
 ];
 
-export default async function SettingsPage() {
-  const session = await auth();
+export default function SettingsPage() {
+  const queryClient = useQueryClient();
 
-  if (!session?.user) {
-    redirect("/login");
-  }
+  useEffect(() => {
+    // Warm the cache for instant render on navigation
+    queryClient.prefetchQuery({
+      queryKey: ["mcp-servers"],
+      queryFn: async () => (await fetch("/api/mcp-servers")).json(),
+      staleTime: 30 * 1000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["memories"],
+      queryFn: async () => (await fetch("/api/memories")).json(),
+      staleTime: 30 * 1000,
+    });
+  }, [queryClient]);
 
   return (
     <div className="flex h-dvh min-w-0 flex-col bg-background">

@@ -1,6 +1,8 @@
+"use client";
+
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "@/app/(auth)/auth";
 import { MemoryManager } from "@/components/memory-manager";
 import {
   Breadcrumb,
@@ -11,13 +13,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-export default async function MemoriesPage() {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
+export default function MemoriesPage() {
   return (
     <div className="flex h-dvh min-w-0 flex-col bg-background">
       <div className="flex-1 overflow-y-auto">

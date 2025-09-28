@@ -2,6 +2,7 @@ import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 
 import "./globals.css";
@@ -66,8 +67,10 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <Toaster position="top-center" />
-          <SessionProvider>{children}</SessionProvider>
+          <QueryProvider>
+            <Toaster position="top-center" />
+            <SessionProvider>{children}</SessionProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
