@@ -7,6 +7,8 @@ import type { UserMCPServer } from "@/hooks/use-mcp-servers";
 type MCPServerState = {
   servers: UserMCPServer[];
   updatedAt: number;
+  selectedTools: string[];
+  selectedToolsUpdatedAt: number;
 };
 
 type MCPServerActions = {
@@ -14,6 +16,8 @@ type MCPServerActions = {
   upsert: (server: UserMCPServer) => void;
   remove: (id: string) => void;
   clear: () => void;
+  setSelectedTools: (tools: string[]) => void;
+  toggleSelectedTool: (id: string) => void;
 };
 
 export const useMCPServerStore = create<MCPServerState & MCPServerActions>()(
@@ -21,6 +25,8 @@ export const useMCPServerStore = create<MCPServerState & MCPServerActions>()(
     (set, get) => ({
       servers: [],
       updatedAt: 0,
+      selectedTools: [],
+      selectedToolsUpdatedAt: 0,
       setServers: (servers) => set({ servers, updatedAt: Date.now() }),
       upsert: (server) => {
         const list = get().servers;
@@ -35,7 +41,22 @@ export const useMCPServerStore = create<MCPServerState & MCPServerActions>()(
           updatedAt: Date.now(),
         });
       },
-      clear: () => set({ servers: [], updatedAt: 0 }),
+      clear: () =>
+        set({
+          servers: [],
+          updatedAt: 0,
+          selectedTools: [],
+          selectedToolsUpdatedAt: 0,
+        }),
+      setSelectedTools: (tools) =>
+        set({ selectedTools: tools, selectedToolsUpdatedAt: Date.now() }),
+      toggleSelectedTool: (id) => {
+        const current = get().selectedTools;
+        const next = current.includes(id)
+          ? current.filter((t) => t !== id)
+          : [id, ...current];
+        set({ selectedTools: next, selectedToolsUpdatedAt: Date.now() });
+      },
     }),
     {
       name: "mcp-servers-cache",
@@ -43,6 +64,8 @@ export const useMCPServerStore = create<MCPServerState & MCPServerActions>()(
       partialize: (state) => ({
         servers: state.servers,
         updatedAt: state.updatedAt,
+        selectedTools: state.selectedTools,
+        selectedToolsUpdatedAt: state.selectedToolsUpdatedAt,
       }),
     }
   )

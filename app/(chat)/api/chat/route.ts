@@ -48,6 +48,9 @@ export const maxDuration = 60;
 
 let globalStreamContext: ResumableStreamContext | null = null;
 
+// File processing is now handled automatically by the AI SDK
+// when files are sent using the native attachment system
+
 const getTokenlensCatalog = cache(
   async (): Promise<ModelCatalog | undefined> => {
     try {

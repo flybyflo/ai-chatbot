@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +23,8 @@ import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
+import { selectedToolsSchema } from "@/lib/schemas/tools";
+import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
@@ -69,6 +72,8 @@ export function Chat({
   const [selectedTools, setSelectedTools] = useState<string[]>(["getWeather"]);
   const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
   const selectedToolsRef = useRef(selectedTools);
+  const queryClient = useQueryClient();
+  const setStoreSelected = useMCPServerStore((s) => s.setSelectedTools);
 
   useEffect(() => {
     const stored = localStorage.getItem("reasoning-effort");
@@ -76,21 +81,44 @@ export function Chat({
       setCurrentReasoningEffort(stored);
     }
 
-    // Load selected tools from localStorage after hydration
-    const storedTools = localStorage.getItem("selected-tools");
-    if (storedTools) {
-      try {
-        const parsedTools = JSON.parse(storedTools);
-        if (Array.isArray(parsedTools) && parsedTools.length > 0) {
-          setSelectedTools(parsedTools);
+    // Prefer React Query cache for selected tools across app
+    // Prefer persisted Zustand store first
+    const fromStore = useMCPServerStore.getState().selectedTools;
+    if (fromStore && fromStore.length > 0) {
+      setSelectedTools(fromStore);
+      setHasLoadedFromStorage(true);
+      return;
+    }
+    const cachedSelected = queryClient.getQueryData(["tools", "selected"]);
+    try {
+      const parsed = selectedToolsSchema.parse(cachedSelected ?? []);
+      if (parsed.length > 0) {
+        setSelectedTools(parsed);
+      } else {
+        const storedTools = localStorage.getItem("selected-tools");
+        if (storedTools) {
+          const parsedTools = JSON.parse(storedTools);
+          if (Array.isArray(parsedTools) && parsedTools.length > 0) {
+            setSelectedTools(parsedTools);
+          }
         }
-      } catch (error) {
-        console.warn("Failed to parse stored tools:", error);
-        localStorage.removeItem("selected-tools");
+      }
+    } catch {
+      // Fallback to localStorage on validation failure
+      const storedTools = localStorage.getItem("selected-tools");
+      if (storedTools) {
+        try {
+          const parsedTools = JSON.parse(storedTools);
+          if (Array.isArray(parsedTools) && parsedTools.length > 0) {
+            setSelectedTools(parsedTools);
+          }
+        } catch {
+          localStorage.removeItem("selected-tools");
+        }
       }
     }
     setHasLoadedFromStorage(true);
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
@@ -101,8 +129,16 @@ export function Chat({
     // Only save to localStorage after we've loaded from storage initially
     if (hasLoadedFromStorage) {
       localStorage.setItem("selected-tools", JSON.stringify(selectedTools));
+      // Update shared cache as source of truth
+      try {
+        const validated = selectedToolsSchema.parse(selectedTools);
+        queryClient.setQueryData(["tools", "selected"], validated);
+        setStoreSelected(validated);
+      } catch {
+        // ignore validation errors
+      }
     }
-  }, [selectedTools, hasLoadedFromStorage]);
+  }, [selectedTools, hasLoadedFromStorage, queryClient, setStoreSelected]);
 
   const {
     messages,

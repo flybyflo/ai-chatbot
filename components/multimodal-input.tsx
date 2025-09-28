@@ -21,12 +21,11 @@ import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import { SelectItem } from "@/components/ui/select";
+import { useAllTools, useSelectedTools } from "@/hooks/use-tools";
 import { chatModels } from "@/lib/ai/models";
-import { myProvider } from "@/lib/ai/providers";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
-import { useDataStream } from "./data-stream-provider";
 import { Context } from "./elements/context";
 import {
   PromptInput,
@@ -130,135 +129,26 @@ function PureMultimodalInput({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
-  const { mcpRegistry } = useDataStream();
-  const [availableTools, setAvailableTools] = useState<any[]>([]);
+  const { mcpRegistry, tools: availableTools } = useAllTools();
+  // Validate and persist selection only when tools are ready; avoids accidental deselection
+  useSelectedTools(selectedTools, onToolsChange);
 
-  // Fetch available tools on component mount
-  useEffect(() => {
-    const fetchTools = async () => {
-      try {
-        const response = await fetch("/api/tools");
-        const data = await response.json();
-        console.log("🔧 Frontend: Fetched tools data:", data);
-
-        const localTools = [
-          {
-            id: "getWeather",
-            name: "Get Weather",
-            description: "Get current weather information for a location",
-            type: "local" as const,
-          },
-          {
-            id: "codeCompare",
-            name: "Code Compare",
-            description:
-              "Render a side-by-side comparison given filename, before and after code",
-            type: "local" as const,
-          },
-          {
-            id: "plantuml",
-            name: "PlantUML Diagram",
-            description:
-              "Create and render PlantUML diagrams with source code viewer",
-            type: "local" as const,
-          },
-        ];
-
-        const mcpTools = data.mcpRegistry?.metadata
-          ? Object.entries(data.mcpRegistry.metadata).map(
-              ([toolId, metadata]: [string, any]) => ({
-                id: toolId,
-                name: metadata.toolName || toolId,
-                description: metadata.description || "MCP tool",
-                type: "mcp" as const,
-                serverName: metadata.serverName,
-              })
-            )
-          : [];
-
-        const allTools = [...localTools, ...mcpTools];
-        console.log("🔧 Frontend: Setting available tools:", allTools);
-        setAvailableTools(allTools);
-      } catch (error) {
-        console.error("Failed to fetch tools:", error);
-        setAvailableTools([
-          {
-            id: "getWeather",
-            name: "Get Weather",
-            description: "Get current weather information for a location",
-            type: "local" as const,
-          },
-          {
-            id: "codeCompare",
-            name: "Code Compare",
-            description:
-              "Render a side-by-side comparison given filename, before and after code",
-            type: "local" as const,
-          },
-          {
-            id: "plantuml",
-            name: "PlantUML Diagram",
-            description:
-              "Create and render PlantUML diagrams with source code viewer",
-            type: "local" as const,
-          },
-        ]);
-      }
-    };
-
-    fetchTools();
-  }, []);
-
-  // Validate selected tools against available tools (fail-safe cleanup)
-  useEffect(() => {
-    if (
-      availableTools.length > 0 &&
-      selectedTools &&
-      selectedTools.length > 0 &&
-      onToolsChange
-    ) {
-      const availableToolIds = availableTools.map((tool) => tool.id);
-      const validSelectedTools = selectedTools.filter((toolId) =>
-        availableToolIds.includes(toolId)
-      );
-
-      // If some tools are no longer available, update the selection
-      if (validSelectedTools.length !== selectedTools.length) {
-        console.log("🔧 Frontend: Removing unavailable tools from selection:", {
-          previous: selectedTools,
-          valid: validSelectedTools,
-          removed: selectedTools.filter(
-            (toolId) => !availableToolIds.includes(toolId)
-          ),
-        });
-        onToolsChange(validSelectedTools);
-
-        // Update localStorage
-        localStorage.setItem(
-          "selected-tools",
-          JSON.stringify(validSelectedTools)
-        );
-      }
-    }
-  }, [availableTools, selectedTools, onToolsChange]);
+  // Validation handled by useSelectedTools
 
   const submitForm = useCallback(() => {
     window.history.replaceState({}, "", `/chat/${chatId}`);
 
+    // Use AI SDK's native attachment system
+    const fileAttachments = attachments.map((attachment) => ({
+      type: "file" as const,
+      filename: attachment.name,
+      mediaType: attachment.contentType,
+      url: attachment.url,
+    }));
+
     sendMessage({
-      role: "user",
-      parts: [
-        ...attachments.map((attachment) => ({
-          type: "file" as const,
-          url: attachment.url,
-          name: attachment.name,
-          mediaType: attachment.contentType,
-        })),
-        {
-          type: "text",
-          text: input,
-        },
-      ],
+      text: input,
+      files: fileAttachments,
     });
 
     setAttachments([]);
@@ -308,14 +198,15 @@ function PureMultimodalInput({
     }
   }, []);
 
-  const _modelResolver = useMemo(() => {
-    try {
-      return myProvider.languageModel(selectedModelId);
-    } catch (_error) {
-      // Fallback to default model if selectedModelId doesn't exist
-      return myProvider.languageModel("chat-model");
-    }
-  }, [selectedModelId]);
+  // Model resolver for potential future use
+  // const _modelResolver = useMemo(() => {
+  //   try {
+  //     return myProvider.languageModel(selectedModelId);
+  //   } catch (_error) {
+  //     // Fallback to default model if selectedModelId doesn't exist
+  //     return myProvider.languageModel("chat-model");
+  //   }
+  // }, [selectedModelId]);
 
   const contextProps = useMemo(
     () => ({
@@ -353,6 +244,7 @@ function PureMultimodalInput({
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
       <input
+        accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.tiff,.pdf,.txt,.md,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.json,.csv,.xml,.yaml,.yml,.js,.ts,.html,.css,.py,.c,.cpp,.h,.hpp"
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}

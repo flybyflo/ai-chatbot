@@ -7,8 +7,19 @@ const textPartSchema = z.object({
 
 const filePartSchema = z.object({
   type: z.enum(["file"]),
-  mediaType: z.enum(["image/jpeg", "image/png"]),
-  name: z.string().min(1).max(100),
+  mediaType: z.enum([
+    // Images - supported by AI models
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    // Documents - supported by AI models
+    "application/pdf",
+    "text/plain",
+    // Fallback for ambiguous files that will be processed as text
+    "application/octet-stream",
+  ]),
+  filename: z.string().min(1).max(100),
   url: z.string().url(),
 });
 
