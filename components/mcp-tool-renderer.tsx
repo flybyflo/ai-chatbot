@@ -1,13 +1,9 @@
 "use client";
 
-import type { MCPProgressNotification } from "@/lib/ai/mcp/progress-types";
-import { MCPProgressIndicator } from "./mcp-progress-indicator";
-
 type MCPToolRendererProps = {
   toolName: string;
   serverName: string;
   output: any;
-  progressData?: MCPProgressNotification;
   isInProgress?: boolean;
 };
 
@@ -15,51 +11,32 @@ export function MCPToolRenderer({
   toolName,
   serverName,
   output,
-  progressData,
   isInProgress = false,
 }: MCPToolRendererProps) {
   console.log("🎨 MCPToolRenderer:", {
     toolName,
     serverName,
     output,
-    progressData,
     isInProgress,
   });
-
-  // Show progress indicator if tool is in progress
-  if (isInProgress && progressData) {
-    return <MCPProgressIndicator progress={progressData} />;
-  }
 
   // Handle different MCP tool types with custom UI
   const renderToolOutput = () => {
     switch (toolName) {
       case "greet":
         console.log("🎨 Rendering GreetingToolUI");
-        return <GreetingToolUI output={output} progressData={progressData} />;
+        return <GreetingToolUI output={output} />;
 
       default:
         console.log("🎨 Rendering GenericToolUI");
-        return (
-          <GenericToolUI
-            output={output}
-            progressData={progressData}
-            toolName={toolName}
-          />
-        );
+        return <GenericToolUI output={output} toolName={toolName} />;
     }
   };
 
   return renderToolOutput();
 }
 
-function GreetingToolUI({
-  output,
-  progressData,
-}: {
-  output: any;
-  progressData?: MCPProgressNotification;
-}) {
+function GreetingToolUI({ output }: { output: any }) {
   // Extract the greeting message from the MCP output
   const message =
     output?.structuredContent?.result ||
@@ -78,12 +55,6 @@ function GreetingToolUI({
         </div>
       </div>
 
-      {progressData && (
-        <div className="w-full">
-          <MCPProgressIndicator progress={progressData} />
-        </div>
-      )}
-
       <div className="w-full">
         <p className="text-foreground">{message}</p>
       </div>
@@ -94,11 +65,9 @@ function GreetingToolUI({
 function GenericToolUI({
   toolName,
   output,
-  progressData,
 }: {
   toolName: string;
   output: any;
-  progressData?: MCPProgressNotification;
 }) {
   const displayOutput = () => {
     if (typeof output === "string") {
@@ -131,12 +100,6 @@ function GenericToolUI({
           <p className="text-muted-foreground text-xs">MCP Tool Response</p>
         </div>
       </div>
-
-      {progressData && (
-        <div className="w-full">
-          <MCPProgressIndicator progress={progressData} />
-        </div>
-      )}
 
       <div className="w-full">
         <div className="text-foreground">

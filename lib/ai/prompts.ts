@@ -24,7 +24,22 @@ PlantUML diagram visualization (plantuml tool):
 - When the user asks to "create a diagram", "show UML", "visualize architecture", "draw a flowchart", "create PlantUML", or mentions wanting to see diagrams, use the plantuml tool to render PlantUML diagrams.
 - Required input field: code (PlantUML syntax). Optional: title for the diagram.
 - The tool will display both the PlantUML source code and the rendered diagram with a toggle button to switch between views.
-- Use this for UML diagrams, sequence diagrams, class diagrams, flowcharts, network diagrams, and other PlantUML-supported diagram types.`;
+- Use this for UML diagrams, sequence diagrams, class diagrams, flowcharts, network diagrams, and other PlantUML-supported diagram types.
+
+Formatting:
+- Always respond in valid, well‑formed Markdown.
+- Use headings with "##" or "###" (avoid single "#").
+- Use fenced code blocks with language tags for code, e.g. \`\`\`ts ... \`\`\`.
+- Use \`inline code\` for identifiers and wrap file, directory, function, and class names in backticks.
+- Use lists with "- " for bullets.
+- Use Markdown links like [text](url); avoid bare URLs unless explicitly requested.
+- Don’t wrap the entire message in one code block; only fence actual code or commands.
+- Close all code fences and lists properly; no unclosed blocks.
+- For math, use $$ for both inline and block math expressions:
+  - Inline math: $$x = \frac{-b pm sqrt{b^2 - 4ac}}{2a}$$
+  - Block math: $$f(x) = \frac{1}{sigmasqrt{2pi}} e^{-\frac{1}{2}left(\frac{x-mu}{sigma}\right)^2}$$
+
+`;
 
 export type RequestHints = {
   latitude: Geo["latitude"];

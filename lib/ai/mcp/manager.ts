@@ -1,12 +1,5 @@
 import { EventEmitter } from "node:events";
 import { MCPClientWrapper } from "./client";
-import type {
-  MCPProgressCallback,
-  MCPProgressNotification,
-  MCPProgressState,
-  MCPProgressToken,
-  MCPToolCallOptions,
-} from "./progress-types";
 import type { MCPServerConfig, MCPToolRegistry } from "./types";
 
 export class MCPManager extends EventEmitter {
@@ -16,13 +9,6 @@ export class MCPManager extends EventEmitter {
     metadata: {},
     serverStatus: {},
   };
-  // Progress coordination
-  private readonly progressCallbacks: Map<
-    MCPProgressToken,
-    MCPProgressCallback
-  > = new Map();
-  private readonly toolProgressTokens: Map<string, MCPProgressToken> =
-    new Map();
 
   static parseServerConfig(configString: string): MCPServerConfig[] {
     if (!configString?.trim()) {
@@ -73,11 +59,6 @@ export class MCPManager extends EventEmitter {
     const connectionPromises = configs.map(async (config) => {
       const client = new MCPClientWrapper(config);
       this.clients.set(config.name, client);
-
-      // Set up progress event forwarding
-      client.on("progress", (notification: MCPProgressNotification) => {
-        this.handleClientProgress(config.name, notification);
-      });
 
       const connected = await client.connect();
       this.registry.serverStatus[config.name] = client.getStatus();
@@ -187,129 +168,5 @@ export class MCPManager extends EventEmitter {
     return Object.keys(this.registry.serverStatus).filter((serverName) =>
       this.isServerHealthy(serverName)
     );
-  }
-
-  // Progress coordination methods
-  private handleClientProgress(
-    serverName: string,
-    notification: MCPProgressNotification
-  ): void {
-    // Forward progress to registered callbacks
-    const callback = this.progressCallbacks.get(notification.progressToken);
-    if (callback) {
-      try {
-        callback({
-          progress: notification.progress,
-          total: notification.total,
-          message: notification.message,
-        });
-      } catch (error) {
-        console.warn(
-          `Progress callback error for token ${notification.progressToken}:`,
-          error
-        );
-      }
-    }
-
-    // Emit consolidated progress event
-    this.emit("progress", {
-      serverName,
-      ...notification,
-    });
-  }
-
-  generateProgressToken(serverName?: string): MCPProgressToken {
-    const server = serverName || "manager";
-    return `progress_${server}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  registerProgressCallback(
-    token: MCPProgressToken,
-    callback: MCPProgressCallback
-  ): void {
-    this.progressCallbacks.set(token, callback);
-  }
-
-  unregisterProgressCallback(token: MCPProgressToken): void {
-    this.progressCallbacks.delete(token);
-    this.toolProgressTokens.delete(token);
-  }
-
-  async executeToolWithProgress(
-    toolName: string,
-    args: Record<string, any>,
-    options?: MCPToolCallOptions
-  ): Promise<any> {
-    // Parse tool name to find server (format: serverName_toolName)
-    const parts = toolName.split("_");
-    if (parts.length < 2) {
-      throw new Error(`Invalid MCP tool name format: ${toolName}`);
-    }
-
-    const serverName = parts[0];
-    const actualToolName = parts.slice(1).join("_");
-
-    const client = this.clients.get(serverName);
-    if (!client) {
-      throw new Error(`MCP server '${serverName}' not found`);
-    }
-
-    if (!client.isHealthy()) {
-      throw new Error(`MCP server '${serverName}' is not healthy`);
-    }
-
-    const progressToken =
-      options?.progressToken ?? this.generateProgressToken(serverName);
-
-    // Register progress callback at manager level
-    if (options?.onProgress) {
-      this.registerProgressCallback(progressToken, options.onProgress);
-    }
-
-    // Track tool-to-token mapping
-    this.toolProgressTokens.set(toolName, progressToken);
-
-    try {
-      // Execute tool with progress support
-      const result = await client.callToolWithProgress(actualToolName, args, {
-        ...options,
-        progressToken,
-      });
-
-      return result;
-    } finally {
-      // Clean up progress tracking
-      if (options?.onProgress) {
-        this.unregisterProgressCallback(progressToken);
-      }
-    }
-  }
-
-  getProgressState(token: MCPProgressToken): MCPProgressState | undefined {
-    // Find which client has this token
-    for (const client of this.clients.values()) {
-      const state = client.getProgressState(token);
-      if (state) {
-        return state;
-      }
-    }
-    return;
-  }
-
-  getAllProgressStates(): Map<MCPProgressToken, MCPProgressState> {
-    const allStates = new Map<MCPProgressToken, MCPProgressState>();
-
-    for (const client of this.clients.values()) {
-      const clientStates = client.getAllProgressStates();
-      for (const [token, state] of clientStates) {
-        allStates.set(token, state);
-      }
-    }
-
-    return allStates;
-  }
-
-  getActiveProgressTokens(): MCPProgressToken[] {
-    return Array.from(this.getAllProgressStates().keys());
   }
 }

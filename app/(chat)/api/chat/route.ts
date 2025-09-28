@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { geolocation } from "@vercel/functions";
 import {
   convertToModelMessages,
@@ -9,6 +8,7 @@ import {
   streamText,
 } from "ai";
 import { unstable_cache as cache } from "next/cache";
+import { headers } from "next/headers";
 import { after } from "next/server";
 import {
   createResumableStreamContext,
@@ -17,16 +17,15 @@ import {
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
-import { auth, type UserType } from "@/lib/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import type { ChatModel } from "@/lib/ai/models";
 import { chatModels } from "@/lib/ai/models";
-import { isAdminUser } from "@/lib/constants";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { getActiveTools, getAllTools } from "@/lib/ai/tools";
-import { isProductionEnvironment } from "@/lib/constants";
+import { auth, type UserType } from "@/lib/auth";
+import { isAdminUser, isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
@@ -118,7 +117,9 @@ export async function POST(request: Request) {
       return new ChatSDKError("unauthorized:chat").toResponse();
     }
 
-    const userType: UserType = isAdminUser(session.user.email ?? "") ? "admin" : "regular";
+    const userType: UserType = isAdminUser(session.user.email ?? "")
+      ? "admin"
+      : "regular";
 
     const messageCount = await getMessageCountByUserId({
       id: session.user.id,
@@ -199,9 +200,6 @@ export async function POST(request: Request) {
       "🔧 Backend: Active tools after filtering:",
       Object.keys(tools)
     );
-
-    // MCP progress tracking (placeholder for future AI SDK support)
-    // TODO: Implement when AI SDK exposes MCP progress notifications
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
