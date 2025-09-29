@@ -31,6 +31,17 @@ const settingsFeatures = [
     ),
     className: "lg:col-span-1",
   },
+  {
+    Icon: () => null,
+    name: "A2A Servers",
+    description: "Configure and manage A2A agent card servers.",
+    href: "/settings/a2a-servers",
+    cta: "Configure Servers",
+    background: (
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950/20 dark:to-orange-900/20" />
+    ),
+    className: "lg:col-span-1",
+  },
 ];
 
 export default function SettingsPage() {

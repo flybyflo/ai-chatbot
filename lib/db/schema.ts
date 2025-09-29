@@ -176,3 +176,22 @@ export const userMCPServer = pgTable("UserMCPServer", {
 });
 
 export type UserMCPServer = InferSelectModel<typeof userMCPServer>;
+
+export const userA2AServer = pgTable("UserA2AServer", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: text("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  cardUrl: text("cardUrl").notNull(),
+  description: text("description"),
+  headers: jsonb("headers").$type<Record<string, string>>().default({}),
+  isActive: boolean("isActive").notNull().default(true),
+  lastConnectionTest: timestamp("lastConnectionTest"),
+  lastConnectionStatus: varchar("lastConnectionStatus", { length: 50 }),
+  lastError: text("lastError"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type UserA2AServer = InferSelectModel<typeof userA2AServer>;

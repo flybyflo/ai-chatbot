@@ -17,7 +17,7 @@ import postgres from "postgres";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
-import { generateUUID } from "../utils";
+// import { generateUUID } from "../utils";
 import {
   type Chat,
   chat,
@@ -25,14 +25,17 @@ import {
   message,
   stream,
   type User,
+  type UserA2AServer,
   type UserMCPServer,
   type UserMemory,
   user,
+  userA2AServer,
   userMCPServer,
   userMemory,
   vote,
 } from "./schema";
-import { generateHashedPassword } from "./utils";
+
+// import { generateHashedPassword } from "./utils";
 
 // Optionally, if not using email/pass login, you can
 // use the Drizzle adapter for Auth.js / NextAuth
@@ -55,10 +58,12 @@ export async function getUser(email: string): Promise<User[]> {
 
 // Note: User creation is now handled by Better Auth
 // This function is deprecated and should not be used
-export async function createUser(email: string, password: string) {
-  throw new ChatSDKError("bad_request:database", "User creation is handled by Better Auth");
+export function createUser(_email: string, _password: string) {
+  throw new ChatSDKError(
+    "bad_request:database",
+    "User creation is handled by Better Auth"
+  );
 }
-
 
 export async function saveChat({
   id,
@@ -681,6 +686,158 @@ export async function deleteUserMCPServer({
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to delete user MCP server"
+    );
+  }
+}
+
+// User A2A Server Functions
+export async function getUserA2AServers(
+  userId: string
+): Promise<UserA2AServer[]> {
+  try {
+    return await db
+      .select()
+      .from(userA2AServer)
+      .where(eq(userA2AServer.userId, userId))
+      .orderBy(desc(userA2AServer.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get user A2A servers"
+    );
+  }
+}
+
+export async function createUserA2AServer({
+  userId,
+  name,
+  cardUrl,
+  description,
+  headers,
+}: {
+  userId: string;
+  name: string;
+  cardUrl: string;
+  description?: string;
+  headers?: Record<string, string>;
+}): Promise<UserA2AServer> {
+  try {
+    const [a2a] = await db
+      .insert(userA2AServer)
+      .values({ userId, name, cardUrl, description, headers })
+      .returning();
+    return a2a;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create user A2A server"
+    );
+  }
+}
+
+export async function updateUserA2AServer({
+  id,
+  userId,
+  name,
+  cardUrl,
+  description,
+  headers,
+  isActive,
+  lastConnectionTest,
+  lastConnectionStatus,
+  lastError,
+}: {
+  id: string;
+  userId: string;
+  name?: string;
+  cardUrl?: string;
+  description?: string;
+  headers?: Record<string, string>;
+  isActive?: boolean;
+  lastConnectionTest?: Date;
+  lastConnectionStatus?: string;
+  lastError?: string;
+}): Promise<UserA2AServer | null> {
+  try {
+    const updateData: Partial<UserA2AServer> = { updatedAt: new Date() };
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (cardUrl !== undefined) {
+      updateData.cardUrl = cardUrl;
+    }
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (headers !== undefined) {
+      updateData.headers = headers;
+    }
+    if (isActive !== undefined) {
+      updateData.isActive = isActive;
+    }
+    if (lastConnectionTest !== undefined) {
+      updateData.lastConnectionTest = lastConnectionTest;
+    }
+    if (lastConnectionStatus !== undefined) {
+      updateData.lastConnectionStatus = lastConnectionStatus;
+    }
+    if (lastError !== undefined) {
+      updateData.lastError = lastError;
+    }
+
+    const [a2a] = await db
+      .update(userA2AServer)
+      .set(updateData)
+      .where(and(eq(userA2AServer.id, id), eq(userA2AServer.userId, userId)))
+      .returning();
+    return a2a || null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update user A2A server"
+    );
+  }
+}
+
+export async function deleteUserA2AServer({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}): Promise<boolean> {
+  try {
+    const result = await db
+      .delete(userA2AServer)
+      .where(and(eq(userA2AServer.id, id), eq(userA2AServer.userId, userId)))
+      .returning({ id: userA2AServer.id });
+    return result.length > 0;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete user A2A server"
+    );
+  }
+}
+
+export async function getUserA2AServerById({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}): Promise<UserA2AServer | null> {
+  try {
+    const [serverRow] = await db
+      .select()
+      .from(userA2AServer)
+      .where(and(eq(userA2AServer.id, id), eq(userA2AServer.userId, userId)))
+      .limit(1);
+    return serverRow ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get A2A server by id"
     );
   }
 }

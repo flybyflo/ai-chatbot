@@ -10,12 +10,14 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { useA2AServers } from "@/hooks/use-a2a-servers";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
 
 const breadcrumbMap: Record<string, string> = {
   "/settings": "Settings",
   "/settings/memory": "Memory",
   "/settings/mcp-servers": "MCP Servers",
+  "/settings/a2a-servers": "A2A Servers",
 };
 
 export default function SettingsLayout({
@@ -25,6 +27,7 @@ export default function SettingsLayout({
 }) {
   const pathname = usePathname();
   const { mcpServers } = useMCPServers();
+  const { a2aServers } = useA2AServers();
 
   // Generate breadcrumbs based on current path
   const generateBreadcrumbs = () => {
@@ -47,6 +50,18 @@ export default function SettingsLayout({
         const serverId = segments[3];
         const server = mcpServers.find((s) => s.id === serverId);
         const label = server?.name || "MCP Server";
+        breadcrumbs.push({
+          href: currentPath,
+          label,
+        });
+      } else if (
+        currentPath.startsWith("/settings/a2a-servers/") &&
+        segments.length > 3
+      ) {
+        // Handle A2A server detail pages
+        const serverId = segments[3];
+        const server = a2aServers.find((s) => s.id === serverId);
+        const label = server?.name || "A2A Server";
         breadcrumbs.push({
           href: currentPath,
           label,
