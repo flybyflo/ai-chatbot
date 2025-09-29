@@ -708,6 +708,25 @@ export async function getUserA2AServers(
   }
 }
 
+export async function getActiveUserA2AServers(
+  userId: string
+): Promise<UserA2AServer[]> {
+  try {
+    return await db
+      .select()
+      .from(userA2AServer)
+      .where(
+        and(eq(userA2AServer.userId, userId), eq(userA2AServer.isActive, true))
+      )
+      .orderBy(desc(userA2AServer.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active user A2A servers"
+    );
+  }
+}
+
 export async function createUserA2AServer({
   userId,
   name,

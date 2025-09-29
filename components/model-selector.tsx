@@ -1,9 +1,7 @@
 "use client";
 
 import { CheckCircle2, ChevronDown } from "lucide-react";
-import type { Session } from "@/lib/auth";
 import { startTransition, useMemo, useOptimistic, useState } from "react";
-import { isAdminUser } from "@/lib/constants";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { chatModels } from "@/lib/ai/models";
+import type { Session } from "@/lib/auth";
+import { isAdminUser } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export function ModelSelector({

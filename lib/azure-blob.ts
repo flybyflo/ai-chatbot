@@ -32,7 +32,10 @@ export async function uploadToAzureBlob(
   contentType: string;
 }> {
   const blobServiceClient = createBlobServiceClient();
-  const containerName = options.containerName || process.env.AZURE_STORAGE_CONTAINER_NAME || "upload";
+  const containerName =
+    options.containerName ||
+    process.env.AZURE_STORAGE_CONTAINER_NAME ||
+    "upload";
 
   // Get container client and create container if it doesn't exist
   const containerClient = blobServiceClient.getContainerClient(containerName);
@@ -59,7 +62,11 @@ export async function uploadToAzureBlob(
     },
   };
 
-  await blockBlobClient.upload(fileBuffer, fileBuffer.byteLength, uploadOptions);
+  await blockBlobClient.upload(
+    fileBuffer,
+    fileBuffer.byteLength,
+    uploadOptions
+  );
 
   return {
     url: blockBlobClient.url,

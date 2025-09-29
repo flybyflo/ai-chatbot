@@ -1,4 +1,10 @@
-import { getActiveUserMCPServers } from "@/lib/db/queries";
+import {
+  getActiveUserA2AServers,
+  getActiveUserMCPServers,
+} from "@/lib/db/queries";
+import { A2AManager } from "../a2a/manager";
+import { buildA2ATools } from "../a2a/tools";
+import type { A2AAgentRegistry } from "../a2a/types";
 import { MCPManager } from "../mcp";
 import type { MCPServerConfig, MCPToolRegistry } from "../mcp/types";
 import { codeCompare } from "./code-compare";
@@ -15,6 +21,8 @@ type CombinedToolsResult = {
   tools: Record<string, any>;
   mcpRegistry?: MCPToolRegistry;
   mcpManager?: MCPManager;
+  a2aRegistry?: A2AAgentRegistry;
+  a2aManager?: A2AManager;
   localTools: LocalTools;
 };
 
@@ -33,9 +41,33 @@ export async function getAllTools(
     localTools,
   };
 
-  // Add user MCP tools if userId is provided
+  // Add user A2A and MCP tools if userId is provided
   if (userId) {
     try {
+      const a2aServers = await getActiveUserA2AServers(userId);
+      if (a2aServers.length > 0) {
+        const a2aManager = new A2AManager();
+
+        await a2aManager.initializeAgents(
+          a2aServers.map((server) => ({
+            id: server.id,
+            name: server.name,
+            cardUrl: server.cardUrl,
+            description: server.description ?? undefined,
+            headers: server.headers ?? undefined,
+          }))
+        );
+
+        const { tools: a2aTools, registry } = buildA2ATools(a2aManager);
+
+        result.tools = {
+          ...result.tools,
+          ...a2aTools,
+        };
+        result.a2aRegistry = registry;
+        result.a2aManager = a2aManager;
+      }
+
       const userServers = await getActiveUserMCPServers(userId);
 
       if (userServers.length > 0) {
@@ -54,7 +86,7 @@ export async function getAllTools(
 
         // Combine local and MCP tools
         result.tools = {
-          ...localTools,
+          ...result.tools,
           ...mcpTools,
         };
         result.mcpRegistry = mcpRegistry;
@@ -62,7 +94,7 @@ export async function getAllTools(
       }
     } catch (error) {
       console.warn(
-        "Failed to initialize user MCP tools, falling back to local tools:",
+        "Failed to initialize external tools, falling back to local tools:",
         error
       );
     }

@@ -39,7 +39,10 @@ export async function GET() {
     const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const mcpServers = await getUserMCPServers(session.user.id);
@@ -60,7 +63,10 @@ export async function POST(request: NextRequest) {
     const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();
@@ -95,7 +101,10 @@ export async function PUT(request: NextRequest) {
     const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();
@@ -107,7 +116,10 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!mcpServer) {
-      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
+      return new ChatSDKError(
+        "not_found:api",
+        "MCP server not found"
+      ).toResponse();
     }
 
     return NextResponse.json(mcpServer);
@@ -130,7 +142,10 @@ export async function DELETE(request: NextRequest) {
     const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();
@@ -142,7 +157,10 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!success) {
-      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
+      return new ChatSDKError(
+        "not_found:api",
+        "MCP server not found"
+      ).toResponse();
     }
 
     return NextResponse.json({ success: true });

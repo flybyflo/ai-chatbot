@@ -1,9 +1,8 @@
 "use server";
 
-import { z } from "zod";
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { z } from "zod";
+import { auth } from "@/lib/auth";
 
 const authFormSchema = z.object({
   email: z.string().email(),

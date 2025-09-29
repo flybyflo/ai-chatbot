@@ -1,12 +1,14 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { ArrowDownIcon } from "lucide-react";
-import { memo, useEffect } from "react";
+import { Fragment, memo, useEffect, useMemo } from "react";
 import { useMessages } from "@/hooks/use-messages";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { useDataStream } from "./data-stream-provider";
 import { Conversation, ConversationContent } from "./elements/conversation";
+import { MessageA2A } from "./message-a2a";
+import { useA2AEvents } from "@/hooks/use-a2a-events";
 import { Greeting } from "./greeting";
 import { PreviewMessage, ThinkingMessage } from "./message";
 
@@ -41,7 +43,47 @@ function PureMessages({
     status,
   });
 
+  const events = useA2AEvents();
   useDataStream();
+
+  const eventsAfterMessage = useMemo(() => {
+    const map = new Map<number, ReturnType<typeof useA2AEvents>[number][]>();
+    if (events.length === 0) {
+      return map;
+    }
+
+    const messageMeta = messages.map((message, index) => ({
+      index,
+      role: message.role,
+      time: message.metadata?.createdAt
+        ? new Date(message.metadata.createdAt).getTime()
+        : index,
+    }));
+
+    for (const event of events) {
+      const eventTime = event.timestamp
+        ? new Date(event.timestamp).getTime()
+        : Number.MAX_SAFE_INTEGER;
+
+      let targetIndex = messageMeta.length - 1;
+      for (let i = messageMeta.length - 1; i >= 0; i--) {
+        const meta = messageMeta[i];
+        if (meta.role !== "user") {
+          continue;
+        }
+        if (meta.time <= eventTime) {
+          targetIndex = meta.index;
+          break;
+        }
+      }
+
+      const existing = map.get(targetIndex) ?? [];
+      existing.push(event);
+      map.set(targetIndex, existing);
+    }
+
+    return map;
+  }, [events, messages]);
 
   useEffect(() => {
     if (status === "submitted") {
@@ -67,27 +109,40 @@ function PureMessages({
         <ConversationContent className="flex flex-col gap-4 px-2 py-4 md:gap-6 md:px-4">
           {messages.length === 0 && <Greeting />}
 
-          {messages.map((message, index) => (
-            <PreviewMessage
-              chatId={chatId}
-              isLoading={
-                status === "streaming" && messages.length - 1 === index
-              }
-              isReadonly={isReadonly}
-              key={message.id}
-              message={message}
-              regenerate={regenerate}
-              requiresScrollPadding={
-                hasSentMessage && index === messages.length - 1
-              }
-              setMessages={setMessages}
-              vote={
-                votes
-                  ? votes.find((vote) => vote.messageId === message.id)
-                  : undefined
-              }
-            />
-          ))}
+          {messages.map((message, index) => {
+            const eventsForMessage = eventsAfterMessage.get(index) ?? [];
+            return (
+              <Fragment key={message.id}>
+                <PreviewMessage
+                  chatId={chatId}
+                  isLoading={
+                    status === "streaming" &&
+                    messages.length - 1 === index &&
+                    message.role === "assistant"
+                  }
+                  isReadonly={isReadonly}
+                  message={message}
+                  regenerate={regenerate}
+                  requiresScrollPadding={
+                    hasSentMessage && index === messages.length - 1
+                  }
+                  setMessages={setMessages}
+                  vote={
+                    votes
+                      ? votes.find((vote) => vote.messageId === message.id)
+                      : undefined
+                  }
+                />
+                {eventsForMessage.map((event, eventIndex) => {
+                  const eventKey =
+                    event.messages?.[event.messages.length - 1]?.messageId ||
+                    event.timestamp ||
+                    `${event.agentToolId}-${index}-${eventIndex}`;
+                  return <MessageA2A event={event} key={eventKey} />;
+                })}
+              </Fragment>
+            );
+          })}
 
           {status === "submitted" &&
             messages.length > 0 &&

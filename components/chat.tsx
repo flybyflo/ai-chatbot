@@ -175,9 +175,13 @@ export function Chat({
       },
     }),
     onData: (dataPart) => {
+      console.debug("🪄 UI data part", dataPart.type, dataPart);
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));
       if (dataPart.type === "data-usage") {
         setUsage(dataPart.data);
+      }
+      if (dataPart.type === "data-a2aEvents") {
+        console.debug("🛰️ UI received A2A events", dataPart.data);
       }
     },
     onFinish: () => {
@@ -196,6 +200,10 @@ export function Chat({
       }
     },
   });
+
+  useEffect(() => {
+    setDataStream([]);
+  }, [id, setDataStream]);
 
   const searchParams = useSearchParams();
   const query = searchParams.get("query");

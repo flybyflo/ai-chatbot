@@ -1,8 +1,8 @@
 import { headers as getHeaders } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { MCPClientWrapper } from "@/lib/ai/mcp/client";
+import { auth } from "@/lib/auth";
 import { updateUserMCPServer } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
@@ -17,7 +17,10 @@ export async function POST(request: NextRequest) {
     const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();
@@ -67,7 +70,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!updatedServer) {
-      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
+      return new ChatSDKError(
+        "not_found:api",
+        "MCP server not found"
+      ).toResponse();
     }
 
     return NextResponse.json({

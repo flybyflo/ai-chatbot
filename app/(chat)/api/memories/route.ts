@@ -31,7 +31,10 @@ export async function GET() {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const memories = await getUserMemories(session.user.id);
@@ -52,7 +55,10 @@ export async function POST(request: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();
@@ -84,7 +90,10 @@ export async function PUT(request: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();
@@ -122,7 +131,10 @@ export async function DELETE(request: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();

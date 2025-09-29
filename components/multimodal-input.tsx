@@ -129,7 +129,7 @@ function PureMultimodalInput({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
-  const { mcpRegistry, tools: availableTools } = useAllTools();
+  const { mcpRegistry, a2aRegistry, tools: availableTools } = useAllTools();
   // Validate and persist selection only when tools are ready; avoids accidental deselection
   useSelectedTools(selectedTools, onToolsChange);
 
@@ -329,6 +329,7 @@ function PureMultimodalInput({
               selectedReasoningEffort={selectedReasoningEffort}
             />
             <ToolsSelector
+              a2aRegistry={a2aRegistry}
               availableTools={availableTools}
               mcpRegistry={mcpRegistry}
               onToolsChange={onToolsChange}
@@ -563,11 +564,13 @@ function PureToolsSelector({
   selectedTools = [],
   onToolsChange,
   mcpRegistry: _mcpRegistry,
+  a2aRegistry: _a2aRegistry,
   availableTools = [],
 }: {
   selectedTools?: string[];
   onToolsChange?: (tools: string[]) => void;
   mcpRegistry?: any;
+  a2aRegistry?: any;
   availableTools?: any[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -690,6 +693,11 @@ function PureToolsSelector({
                           Local
                         </span>
                       )}
+                      {tool.type === "a2a" && (
+                        <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 dark:bg-purple-900 dark:text-purple-200">
+                          A2A
+                        </span>
+                      )}
                     </div>
                     <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">
                       {tool.description.length > 50
@@ -698,6 +706,11 @@ function PureToolsSelector({
                       {tool.type === "mcp" && tool.serverName && (
                         <span className="ml-2 text-blue-600 dark:text-blue-400">
                           ({tool.serverName})
+                        </span>
+                      )}
+                      {tool.type === "a2a" && tool.agentName && (
+                        <span className="ml-2 text-purple-600 dark:text-purple-300">
+                          ({tool.agentName})
                         </span>
                       )}
                     </div>

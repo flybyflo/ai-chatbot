@@ -196,13 +196,15 @@ export async function POST(request: Request) {
       selectedReasoningEffort || selectedModel?.reasoningEffort || "medium";
 
     // Load all tools (local + MCP) and filter by selected tools
-    const { mcpRegistry } = await getAllTools(session.user.id);
+    const { mcpRegistry, a2aRegistry } = await getAllTools(session.user.id);
     console.log("🔧 Backend: Received selectedTools:", selectedTools);
     const tools = await getActiveTools(selectedTools, session.user.id);
     console.log(
       "🔧 Backend: Active tools after filtering:",
       Object.keys(tools)
     );
+
+    let lastToolResults: any[] = [];
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
@@ -214,14 +216,17 @@ export async function POST(request: Request) {
           experimental_activeTools: Object.keys(tools),
           experimental_transform: smoothStream({ chunking: "word" }),
           tools,
-          onStepFinish: ({ toolCalls, toolResults }) => {
+         onStepFinish: ({ toolCalls, toolResults }) => {
             // Log tool usage
             if (toolCalls.length > 0) {
               console.log("🔧 Tools Called:");
               for (const toolCall of toolCalls) {
-                const toolType = toolCall.toolName.includes("_")
-                  ? "MCP"
-                  : "Local";
+                let toolType: "A2A" | "MCP" | "Local" = "Local";
+                if (toolCall.toolName.startsWith("a2a_")) {
+                  toolType = "A2A";
+                } else if (toolCall.toolName.includes("_")) {
+                  toolType = "MCP";
+                }
                 console.log(`  📋 ${toolType} Tool: ${toolCall.toolName}`);
                 console.log(`     🔧 Tool ID: ${toolCall.toolCallId}`);
                 console.log(
@@ -244,6 +249,22 @@ export async function POST(request: Request) {
                 if ("errorText" in toolResult && toolResult.errorText) {
                   console.log(`     ❌ Error: ${toolResult.errorText}`);
                 }
+              }
+            }
+
+            lastToolResults = toolResults;
+
+            for (const toolResult of toolResults) {
+              if (
+                typeof toolResult.toolName === "string" &&
+                toolResult.toolName.startsWith("a2a_") &&
+                toolResult.output &&
+                typeof toolResult.output === "object"
+              ) {
+                dataStream.write({
+                  type: "data-a2aEvents",
+                  data: toolResult.output,
+                });
               }
             }
           },
@@ -294,6 +315,25 @@ export async function POST(request: Request) {
               dataStream.write({
                 type: "data-mcp-registry",
                 data: mcpRegistry,
+              });
+            }
+            for (const toolResult of lastToolResults ?? []) {
+              if (
+                typeof toolResult.toolName === "string" &&
+                toolResult.toolName.startsWith("a2a_") &&
+                toolResult.output &&
+                typeof toolResult.output === "object"
+              ) {
+                dataStream.write({
+                  type: "data-a2aEvents",
+                  data: toolResult.output,
+                });
+              }
+            }
+            if (a2aRegistry) {
+              dataStream.write({
+                type: "data-a2a-registry",
+                data: a2aRegistry,
               });
             }
           },

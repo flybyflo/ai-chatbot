@@ -31,8 +31,10 @@ export async function GET(
     }
 
     const client = new A2AClientWrapper({
+      id: server.id,
       name: server.name,
       cardUrl: server.cardUrl,
+      headers: server.headers || undefined,
     });
     const ok = await client.init();
     if (!ok) {

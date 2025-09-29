@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import {
+  type A2AAgentRegistry,
   type MCPToolRegistry,
   type ServerToolsResponse,
   selectedToolsSchema,
@@ -62,12 +63,34 @@ export function useAllTools() {
         )
       : [];
 
-    return [...localTools, ...mcpTools];
+    const sanitizeAgentKey = (key: string) =>
+      key.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+    const a2aTools: ToolListItem[] = query.data?.a2aRegistry
+      ? Object.entries(query.data.a2aRegistry.agents).map(
+          ([agentKey, metadata]) => {
+            const toolId =
+              metadata.toolId || `a2a_${sanitizeAgentKey(agentKey)}`;
+            return {
+              id: toolId,
+              name: metadata.displayName,
+              description:
+                metadata.description ||
+                "Send a task to your configured A2A agent",
+              type: "a2a" as const,
+              agentName: metadata.displayName,
+            };
+          }
+        )
+      : [];
+
+    return [...localTools, ...mcpTools, ...a2aTools];
   }, [query.data]);
 
   return {
     tools: list,
     mcpRegistry: query.data?.mcpRegistry as MCPToolRegistry | undefined,
+    a2aRegistry: query.data?.a2aRegistry as A2AAgentRegistry | undefined,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isReady: Boolean(query.data),
@@ -115,12 +138,27 @@ export function useSelectedTools(
     if (isLoading || isFetching) {
       return;
     }
+    const normalizeToolId = (toolId: string) =>
+      toolId.startsWith("a2a::") ? `a2a_${toolId.slice(5)}` : toolId;
+
+    const normalizedSelection = selectedTools.map(normalizeToolId);
+    const normalizationChanged = normalizedSelection.some(
+      (id, index) => id !== selectedTools[index]
+    );
+
     const availableIds = new Set(allTools.map((t) => t.id));
-    const valid = selectedTools.filter((t) => availableIds.has(t));
-    if (valid.length !== selectedTools.length) {
-      onValidSelection?.(valid);
+    const filteredSelection = normalizedSelection.filter((t) =>
+      availableIds.has(t)
+    );
+
+    if (
+      filteredSelection.length !== selectedTools.length ||
+      normalizationChanged
+    ) {
+      onValidSelection?.(filteredSelection);
     }
-    const parsed = selectedToolsSchema.parse(valid);
+
+    const parsed = selectedToolsSchema.parse(filteredSelection);
     // Keep a cache entry for last selected tools
     queryClient.setQueryData(["tools", "selected"], parsed);
     // Persist via Zustand store

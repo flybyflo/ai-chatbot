@@ -25,6 +25,27 @@ export const mcpToolRegistrySchema = z.object({
 export const toolsResponseSchema = z.object({
   tools: z.array(z.string()),
   mcpRegistry: mcpToolRegistrySchema.optional(),
+  a2aRegistry: z
+    .object({
+      agents: z.record(
+        z.object({
+          id: z.string(),
+          toolId: z.string(),
+          displayName: z.string(),
+          cardUrl: z.string().url(),
+          description: z.string().optional(),
+          isReady: z.boolean(),
+          lastError: z.string().optional(),
+          supportsStreaming: z.boolean().optional(),
+          defaultInputModes: z.array(z.string()).optional(),
+          defaultOutputModes: z.array(z.string()).optional(),
+          skills: z.array(z.any()).optional(),
+          documentationUrl: z.string().optional(),
+          iconUrl: z.string().optional(),
+        })
+      ),
+    })
+    .optional(),
 });
 
 export const serverToolsResponseSchema = z.object({
@@ -35,6 +56,9 @@ export const serverToolsResponseSchema = z.object({
 
 export type ToolsResponse = z.infer<typeof toolsResponseSchema>;
 export type MCPToolRegistry = z.infer<typeof mcpToolRegistrySchema>;
+export type A2AAgentRegistry = z.infer<
+  NonNullable<ToolsResponse["a2aRegistry"]>
+>;
 export type ServerToolsResponse = z.infer<typeof serverToolsResponseSchema>;
 
 export const selectedToolsSchema = z.array(z.string());
@@ -43,6 +67,7 @@ export type ToolListItem = {
   id: string;
   name: string;
   description: string;
-  type: "local" | "mcp";
+  type: "local" | "mcp" | "a2a";
   serverName?: string;
+  agentName?: string;
 };

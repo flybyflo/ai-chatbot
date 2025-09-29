@@ -3,7 +3,6 @@
 import { Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { User } from "@/lib/auth";
 import { useChatContext } from "@/components/chat-context";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
@@ -16,6 +15,7 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+import type { User } from "@/lib/auth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function AppSidebar({ user }: { user: User | undefined }) {

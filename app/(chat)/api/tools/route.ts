@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
 import { getAllTools } from "@/lib/ai/tools";
+import { auth } from "@/lib/auth";
 
 export async function GET() {
   try {
@@ -10,11 +10,12 @@ export async function GET() {
 
     // Get tools for the authenticated user (if any)
     const userId = session?.user?.id;
-    const { tools, mcpRegistry } = await getAllTools(userId);
+    const { tools, mcpRegistry, a2aRegistry } = await getAllTools(userId);
 
     return Response.json({
       tools: Object.keys(tools),
       mcpRegistry,
+      a2aRegistry,
     });
   } catch (error) {
     console.error("Failed to fetch tools:", error);

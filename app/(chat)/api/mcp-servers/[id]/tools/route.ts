@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { MCPClientWrapper } from "@/lib/ai/mcp/client";
+import { auth } from "@/lib/auth";
 import { getUserMCPServers } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
@@ -19,7 +19,10 @@ export async function GET(
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const { id } = await params;
@@ -29,7 +32,10 @@ export async function GET(
     const server = userServers.find((s) => s.id === id);
 
     if (!server) {
-      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
+      return new ChatSDKError(
+        "not_found:api",
+        "MCP server not found"
+      ).toResponse();
     }
 
     if (!server.isActive) {
@@ -92,7 +98,10 @@ export async function POST(
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session?.user?.id) {
-      return new ChatSDKError("unauthorized:api", "Not authenticated").toResponse();
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
     }
 
     const body = await request.json();
@@ -105,7 +114,10 @@ export async function POST(
     const server = userServers.find((s) => s.id === id);
 
     if (!server) {
-      return new ChatSDKError("not_found:api", "MCP server not found").toResponse();
+      return new ChatSDKError(
+        "not_found:api",
+        "MCP server not found"
+      ).toResponse();
     }
 
     if (!server.isActive) {

@@ -94,12 +94,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -156,12 +152,8 @@
           "name": "Chat_userId_user_id_fk",
           "tableFrom": "Chat",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -217,12 +209,8 @@
           "name": "Message_v2_chatId_Chat_id_fk",
           "tableFrom": "Message_v2",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -290,12 +278,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -305,9 +289,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       }
     },
@@ -341,12 +323,8 @@
           "name": "Stream_chatId_Chat_id_fk",
           "tableFrom": "Stream",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -411,9 +389,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       }
     },
@@ -512,12 +488,8 @@
           "name": "UserMCPServer_userId_user_id_fk",
           "tableFrom": "UserMCPServer",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -582,12 +554,8 @@
           "name": "UserMemory_userId_user_id_fk",
           "tableFrom": "UserMemory",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -672,12 +640,8 @@
           "name": "Vote_v2_chatId_Chat_id_fk",
           "tableFrom": "Vote_v2",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -685,12 +649,8 @@
           "name": "Vote_v2_messageId_Message_v2_id_fk",
           "tableFrom": "Vote_v2",
           "tableTo": "Message_v2",
-          "columnsFrom": [
-            "messageId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["messageId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -698,10 +658,7 @@
       "compositePrimaryKeys": {
         "Vote_v2_chatId_messageId_pk": {
           "name": "Vote_v2_chatId_messageId_pk",
-          "columns": [
-            "chatId",
-            "messageId"
-          ]
+          "columns": ["chatId", "messageId"]
         }
       },
       "uniqueConstraints": {}

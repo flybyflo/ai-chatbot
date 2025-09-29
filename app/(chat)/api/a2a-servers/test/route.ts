@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, cardUrl } = testA2AServerSchema.parse(body);
+    const { id, cardUrl, headers } = testA2AServerSchema.parse(body);
 
     const testStartTime = new Date();
     let connectionStatus = "failed";
@@ -31,7 +31,11 @@ export async function POST(request: NextRequest) {
     const agentCard: any = undefined;
 
     try {
-      const client = new A2AClientWrapper({ name: "test", cardUrl });
+      const client = new A2AClientWrapper({
+        name: "test",
+        cardUrl,
+        headers,
+      });
       const ok = await client.init();
       if (ok) {
         connectionStatus = "connected";

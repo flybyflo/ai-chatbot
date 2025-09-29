@@ -58,6 +58,7 @@ export class A2AClientWrapper {
 
   getStatus(): A2AAgentStatus {
     return {
+      id: this.config.id,
       name: this.config.name,
       cardUrl: this.config.cardUrl,
       isReady: this.isReady,

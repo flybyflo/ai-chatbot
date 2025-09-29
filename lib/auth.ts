@@ -1,8 +1,9 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+// biome-ignore lint/performance/noNamespaceImport: adapter expects schema object shape
 import * as schema from "./db/schema";
 
 // biome-ignore lint: Forbidden non-null assertion.
