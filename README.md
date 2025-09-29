@@ -1,61 +1,59 @@
-<img alt="Next.js 14 and App Router-ready AI chatbot." src="app/(chat)/opengraph-image.png">
-<h1 align="center">Chat SDK</h1>
+<h1 align="center">
+AI-Chatbot
+</h1>
 
 <p align="center">
-    Chat SDK is a free, open-source template built with Next.js and the AI SDK that helps you quickly build powerful chatbot applications.
+  A modern chat runtime built on top of Vercel's Chat SDK template and extended with stronger auth, richer tooling, and Azure integrations.
 </p>
 
 <p align="center">
-  <a href="https://chat-sdk.dev"><strong>Read Docs</strong></a> ·
   <a href="#features"><strong>Features</strong></a> ·
-  <a href="#model-providers"><strong>Model Providers</strong></a> ·
-  <a href="#running-locally"><strong>Running locally</strong></a>
+  <a href="#integrations"><strong>Integrations</strong></a> ·
+  <a href="#getting-started"><strong>Getting Started</strong></a>
 </p>
-<br/>
 
 ## Features
 
-- [Next.js](https://nextjs.org) App Router
-  - Advanced routing for seamless navigation and performance
-  - React Server Components (RSCs) and Server Actions for server-side rendering and increased performance
-- [AI SDK](https://ai-sdk.dev/docs/introduction)
-  - Unified API for generating text, structured objects, and tool calls with LLMs
-  - Hooks for building dynamic chat and generative user interfaces
-  - Supports xAI (default), OpenAI, Fireworks, and other model providers
-- [shadcn/ui](https://ui.shadcn.com)
-  - Styling with [Tailwind CSS](https://tailwindcss.com)
-  - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
-- Data Persistence
-  - [Neon Serverless Postgres](https://vercel.com/marketplace/neon) for saving chat history and user data
-  - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
-- [Auth.js](https://authjs.dev)
-  - Simple and secure authentication
+- **Next.js App Router + Turbopack** – Server Components, Server Actions, and instant hot reloads.
+- **AI SDK chat runtime** – Structured tool calling, streaming UI parts, and multi-model support.
+- **Polished UI system** – Tailwind, shadcn/ui primitives, and custom styling for a dashboard-style chat surface.
+- **Persistent chat history & uploads** – Postgres for chats, Redis for sessions/queues, and Azure Blob for user files (Docker Compose ready).
+- **Inline tool visualisation** – A2A/MCP interactions render directly in the conversation flow with status, artifacts, and logs.
 
-## Model Providers
+## Integrations
 
-This template uses the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) to access multiple AI models through a unified interface. The default configuration includes [xAI](https://x.ai) models (`grok-2-vision-1212`, `grok-3-mini`) routed through the gateway.
+### Better Auth
 
-### AI Gateway Authentication
+Secure e-mail/password authentication powered by [better-auth](https://github.com/better-auth/better-auth) with session cookies wired into the App Router middleware.
 
-**For Vercel deployments**: Authentication is handled automatically via OIDC tokens.
+### Model Context Protocol (MCP)
 
-**For non-Vercel deployments**: You need to provide an AI Gateway API key by setting the `AI_GATEWAY_API_KEY` environment variable in your `.env.local` file.
+Bring your own MCP servers. The app can discover tools, execute them, and show results inline.
 
-With the [AI SDK](https://ai-sdk.dev/docs/introduction), you can also switch to direct LLM providers like [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://ai-sdk.dev/providers/ai-sdk-providers) with just a few lines of code.
+### Agent-to-Agent (A2A)
 
-## Running locally
+First-class support for the A2A protocol: the chat client fetches agent cards, manages task lifecycles, and displays responses and artifacts inline. [WIP]
 
-You will need to use the environment variables [defined in `.env.example`](.env.example) to run Next.js AI Chatbot. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
+### Azure
 
-> Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various AI and authentication provider accounts.
+- **Azure AI Foundry** provider bindings for the AI SDK.
+- **Azure Blob Storage** for uploads and attachments.
 
-1. Install Vercel CLI: `npm i -g vercel`
-2. Link local instance with Vercel and GitHub accounts (creates `.vercel` directory): `vercel link`
-3. Download your environment variables: `vercel env pull`
+## Getting Started
 
-```bash
-pnpm install
-pnpm dev
-```
+1. Copy `.env.example` to `.env.local` and populate the Azure, Better Auth, Postgres, Redis, and AI credentials you plan to use.
+2. Start the optional data stack (Postgres + Redis) with Docker Compose:
+   ```bash
+   docker compose up -d
+   ```
+3. Install dependencies and run the dev server:
+   ```bash
+   pnpm install
+   pnpm dev
+   ```
 
-Your app template should now be running on [localhost:3000](http://localhost:3000).
+The app runs on [http://localhost:3000](http://localhost:3000). Hot reloading works out of the box.
+
+## Credit
+
+This project started as the public <code>vercel/ai-chatbot</code> template and expanded to include Better Auth, MCP tool orchestration, A2A agent workflows, refreshed styling, and Azure platform support.
