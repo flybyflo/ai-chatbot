@@ -216,7 +216,7 @@ export async function POST(request: Request) {
           experimental_activeTools: Object.keys(tools),
           experimental_transform: smoothStream({ chunking: "word" }),
           tools,
-         onStepFinish: ({ toolCalls, toolResults }) => {
+          onStepFinish: ({ toolCalls, toolResults }) => {
             // Log tool usage
             if (toolCalls.length > 0) {
               console.log("🔧 Tools Called:");

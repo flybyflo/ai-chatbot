@@ -37,26 +37,26 @@ export function DataStreamProvider({
 
   // Extract MCP registry from data stream
   const mcpRegistry = useMemo(() => {
-    const mcpData = dataStream.find(
-      (part) =>
-        part.type === "data-mcpRegistry" || part.type === "data-mcp-registry"
-    );
+    const mcpData = dataStream.find((part) => {
+      const type = part.type as string;
+      return type === "data-mcpRegistry" || type === "data-mcp-registry";
+    });
     return mcpData?.data as MCPToolRegistry | undefined;
   }, [dataStream]);
 
   const a2aRegistry = useMemo(() => {
-    const a2aData = dataStream.find(
-      (part) =>
-        part.type === "data-a2aRegistry" || part.type === "data-a2a-registry"
-    );
+    const a2aData = dataStream.find((part) => {
+      const type = part.type as string;
+      return type === "data-a2aRegistry" || type === "data-a2a-registry";
+    });
     return a2aData?.data as A2AAgentRegistry | undefined;
   }, [dataStream]);
 
   const a2aEvents = useMemo(() => {
-    return dataStream.filter(
-      (part) =>
-        part.type === "data-a2aEvents" || part.type === "data-a2a-events"
-    );
+    return dataStream.filter((part) => {
+      const type = part.type as string;
+      return type === "data-a2aEvents" || type === "data-a2a-events";
+    });
   }, [dataStream]);
 
   const a2aSessions = useMemo(() => {

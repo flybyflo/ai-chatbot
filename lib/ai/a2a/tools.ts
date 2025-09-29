@@ -1,4 +1,4 @@
-import { tool } from "ai";
+import { type Tool, tool } from "ai";
 import { z } from "zod";
 import { generateUUID } from "@/lib/utils";
 import type { A2AClientWrapper } from "./client";
@@ -34,7 +34,7 @@ function buildToolId(agentKey: string) {
 
 function extractTextFromParts(parts: any[] | undefined): string | undefined {
   if (!Array.isArray(parts)) {
-    return undefined;
+    return;
   }
   const texts = parts
     .filter(
@@ -46,7 +46,7 @@ function extractTextFromParts(parts: any[] | undefined): string | undefined {
 }
 
 function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
-  return tool({
+  return tool<{ text: string }, A2AToolEventPayload>({
     description:
       metadata.description ||
       `Interact with the ${metadata.displayName} A2A agent`,
@@ -248,7 +248,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
         timestamp,
       };
 
-      payload.messages.forEach((message) => {
+      for (const message of payload.messages) {
         if (!message.messageId) {
           message.messageId = `${payload.agentToolId}-${payload.timestamp}`;
         }
@@ -258,7 +258,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
         if (!message.role) {
           message.role = "agent";
         }
-      });
+      }
 
       console.log("🛰️ A2A session update", {
         agent: metadata.displayName,
@@ -299,7 +299,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
 export function buildA2ATools(manager: A2AManager) {
   const registryRecords = manager.getRegistry();
-  const tools: Record<string, ReturnType<typeof tool>> = {};
+  const tools: Record<string, Tool<{ text: string }, A2AToolEventPayload>> = {};
   const metadata: Record<string, A2AAgentMetadata> = {};
 
   for (const [key, record] of Object.entries(registryRecords)) {

@@ -2,15 +2,15 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { ArrowDownIcon } from "lucide-react";
 import { Fragment, memo, useEffect, useMemo } from "react";
+import { useA2AEvents } from "@/hooks/use-a2a-events";
 import { useMessages } from "@/hooks/use-messages";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { useDataStream } from "./data-stream-provider";
 import { Conversation, ConversationContent } from "./elements/conversation";
-import { MessageA2A } from "./message-a2a";
-import { useA2AEvents } from "@/hooks/use-a2a-events";
 import { Greeting } from "./greeting";
 import { PreviewMessage, ThinkingMessage } from "./message";
+import { MessageA2A } from "./message-a2a";
 
 type MessagesProps = {
   chatId: string;

@@ -106,13 +106,13 @@ export class A2AManager {
     const mergedMessagesUnfiltered = [...previousMessages, ...newMessages];
     const seenMessageKeys = new Set<string>();
     const mergedMessages = mergedMessagesUnfiltered.filter((message, index) => {
-      const key =
+      const messageKey =
         message.messageId ||
         `${message.taskId ?? ""}:${message.role ?? ""}:$${message.text ?? ""}:${index}`;
-      if (seenMessageKeys.has(key)) {
+      if (seenMessageKeys.has(messageKey)) {
         return false;
       }
-      seenMessageKeys.add(key);
+      seenMessageKeys.add(messageKey);
       return true;
     });
     const next: A2ASessionState = {

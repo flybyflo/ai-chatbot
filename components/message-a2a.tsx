@@ -13,42 +13,40 @@ export function MessageA2A({ event }: { event: A2AToolEventPayload }) {
 
   return (
     <div className="flex w-full justify-center">
-      <div className="w-full max-w-3xl rounded-xl border border-border/40 bg-muted/40 p-3 text-sm text-muted-foreground shadow-sm">
-        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground/70">
+      <div className="w-full max-w-3xl rounded-xl border border-border/40 bg-muted/40 p-3 text-muted-foreground text-sm shadow-sm">
+        <div className="mb-1 flex items-center gap-2 font-semibold text-foreground/70 text-xs uppercase tracking-wide">
           <Sparkles className="size-3" />
           A2A Agent Response
         </div>
-        <div className="text-foreground font-medium">
+        <div className="font-medium text-foreground">
           {event.agentName}
           {event.contextId ? ` · Context ${event.contextId}` : ""}
         </div>
 
         <div className="mt-3 space-y-3">
           <div className="rounded-lg border border-border/30 bg-background/70 p-3">
-            <div className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-foreground/60">
+            <div className="mb-1 flex items-center gap-1 font-semibold text-foreground/60 text-xs uppercase tracking-wide">
               <ClipboardList className="size-3" /> Active Agent Tasks
             </div>
             {tasks.length === 0 ? (
-              <div className="text-xs text-muted-foreground">
+              <div className="text-muted-foreground text-xs">
                 No task lifecycle information reported.
               </div>
             ) : (
-              <ul className="space-y-1 text-xs text-foreground">
+              <ul className="space-y-1 text-foreground text-xs">
                 {tasks.map((task) => (
                   <li
                     className="rounded-md bg-muted/60 p-2"
                     key={`${event.agentToolId}-${task.taskId}`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-medium">
-                        Task {task.taskId}
-                      </span>
-                      <span className="text-muted-foreground text-[11px]">
+                      <span className="font-medium">Task {task.taskId}</span>
+                      <span className="text-[11px] text-muted-foreground">
                         {task.state ?? "unknown"}
                       </span>
                     </div>
                     {task.statusMessage ? (
-                      <div className="mt-1 text-muted-foreground/80 text-[11px]">
+                      <div className="mt-1 text-[11px] text-muted-foreground/80">
                         {task.statusMessage}
                       </div>
                     ) : null}
@@ -71,10 +69,10 @@ export function MessageA2A({ event }: { event: A2AToolEventPayload }) {
           </div>
 
           <div className="rounded-lg border border-border/30 bg-background/70 p-3">
-            <div className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-foreground/60">
+            <div className="mb-1 flex items-center gap-1 font-semibold text-foreground/60 text-xs uppercase tracking-wide">
               <MessageCircle className="size-3" /> Recent Agent Activity
             </div>
-            <div className="whitespace-pre-wrap text-sm text-foreground/80">
+            <div className="whitespace-pre-wrap text-foreground/80 text-sm">
               {summaryText}
             </div>
             {artifacts.length > 0 ? (

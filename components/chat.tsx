@@ -203,7 +203,7 @@ export function Chat({
 
   useEffect(() => {
     setDataStream([]);
-  }, [id, setDataStream]);
+  }, [setDataStream]);
 
   const searchParams = useSearchParams();
   const query = searchParams.get("query");

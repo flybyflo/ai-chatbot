@@ -155,24 +155,6 @@ export async function POST(request: Request) {
       file.type === "application/octet-stream"
     ) {
       console.log(`📝 Processing ${file.type} file, checking extension...`);
-      const allowedExtensions = [
-        ".txt",
-        ".md",
-        ".py",
-        ".js",
-        ".ts",
-        ".html",
-        ".css",
-        ".json",
-        ".csv",
-        ".xml",
-        ".yaml",
-        ".yml",
-        ".c",
-        ".cpp",
-        ".h",
-        ".hpp",
-      ];
 
       const fileExtension = filename
         .toLowerCase()
