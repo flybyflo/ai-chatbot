@@ -18,6 +18,7 @@
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
   },
   "dependencies": {
+    "@a2a-js/sdk": "^0.3.4",
     "@ai-sdk/azure": "^2.0.32",
     "@ai-sdk/gateway": "^1.0.15",
     "@ai-sdk/provider": "2.0.0",
