@@ -62,7 +62,6 @@ export function useMCPServers() {
   const queryClient = useQueryClient();
   // Zustand cache for instant initial data
   const { useMCPServerStore } = require("@/lib/stores/mcp-server-store");
-  const serversCache = useMCPServerStore.getState().servers as UserMCPServer[];
   const setServersCache = useMCPServerStore.getState().setServers as (
     servers: UserMCPServer[]
   ) => void;
@@ -79,7 +78,6 @@ export function useMCPServers() {
     queryFn: async () => (await fetcher("/api/mcp-servers")) as UserMCPServer[],
     refetchOnMount: "always",
     placeholderData: keepPreviousData,
-    initialData: serversCache.length > 0 ? serversCache : undefined,
   });
 
   // Create server mutation with optimistic updates

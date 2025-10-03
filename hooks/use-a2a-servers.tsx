@@ -59,7 +59,6 @@ const QUERY_KEY = ["a2a-servers"] as const;
 export function useA2AServers() {
   const queryClient = useQueryClient();
   const { useA2AServerStore } = require("@/lib/stores/a2a-server-store");
-  const serversCache = useA2AServerStore.getState().servers as UserA2AServer[];
   const setServersCache = useA2AServerStore.getState().setServers as (
     servers: UserA2AServer[]
   ) => void;
@@ -75,7 +74,6 @@ export function useA2AServers() {
     queryFn: async () => (await fetcher("/api/a2a-servers")) as UserA2AServer[],
     refetchOnMount: "always",
     placeholderData: keepPreviousData,
-    initialData: serversCache.length > 0 ? serversCache : undefined,
   });
 
   const createServer = useMutation({
