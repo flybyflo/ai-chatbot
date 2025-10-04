@@ -1,32 +1,33 @@
 import {
   FileBox,
+  ListTodo,
+  type LucideIcon,
   MessageCircle,
   RefreshCw,
-  type LucideIcon,
-  ListTodo,
 } from "lucide-react";
+import { A2A_EVENT_TYPES, type A2AEventType } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 
 const eventTypeConfig: Record<
-  string,
+  A2AEventType,
   { icon: LucideIcon; className: string; label: string }
 > = {
-  message: {
+  [A2A_EVENT_TYPES.MESSAGE]: {
     icon: MessageCircle,
     className: "text-blue-500",
     label: "Message",
   },
-  task: {
+  [A2A_EVENT_TYPES.TASK]: {
     icon: ListTodo,
     className: "text-purple-500",
     label: "Task",
   },
-  "status-update": {
+  [A2A_EVENT_TYPES.STATUS_UPDATE]: {
     icon: RefreshCw,
     className: "text-orange-500",
     label: "Status Update",
   },
-  "artifact-update": {
+  [A2A_EVENT_TYPES.ARTIFACT_UPDATE]: {
     icon: FileBox,
     className: "text-green-500",
     label: "Artifact Update",
@@ -42,7 +43,7 @@ export function A2AEventTypeIcon({
   className?: string;
   showLabel?: boolean;
 }) {
-  const config = eventTypeConfig[type] || {
+  const config = eventTypeConfig[type as A2AEventType] || {
     icon: MessageCircle,
     className: "text-muted-foreground",
     label: type,
@@ -52,9 +53,7 @@ export function A2AEventTypeIcon({
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
       <Icon className={cn("size-4", config.className)} />
-      {showLabel && (
-        <span className="font-medium text-sm">{config.label}</span>
-      )}
+      {showLabel && <span className="font-medium text-sm">{config.label}</span>}
     </div>
   );
 }

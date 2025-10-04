@@ -8,15 +8,14 @@ import {
   Root,
 } from "@radix-ui/react-hover-card";
 import { Trigger } from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Wrench } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { triggerClass } from "../lib/styles";
+import { TOOL_TYPES, type ToolType } from "@/lib/enums";
 import {
   PromptInputModelSelect,
   PromptInputModelSelectContent,
 } from "./elements/prompt-input";
 
-type ToolType = "mcp" | "a2a" | "local";
 type ToolItem = {
   id: string;
   name: string;
@@ -54,7 +53,7 @@ function PureToolsSelector({
     "sticky top-0 z-10 flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-popover/95";
 
   // group tools by server/agent
-  const { mcpServers, a2aServers } = useMemo(() => {
+  const { mcpServers, a2aServers, localTools } = useMemo(() => {
     const byKey = (
       items: ToolItem[],
       key: "serverName" | "agentName",
@@ -80,15 +79,16 @@ function PureToolsSelector({
     };
     return {
       mcpServers: byKey(
-        availableTools.filter((t) => t.type === "mcp"),
+        availableTools.filter((t) => t.type === TOOL_TYPES.MCP),
         "serverName",
         "mcp"
       ),
       a2aServers: byKey(
-        availableTools.filter((t) => t.type === "a2a"),
+        availableTools.filter((t) => t.type === TOOL_TYPES.A2A),
         "agentName",
         "a2a"
       ),
+      localTools: availableTools.filter((t) => t.type === TOOL_TYPES.LOCAL),
     };
   }, [availableTools]);
 
@@ -111,6 +111,14 @@ function PureToolsSelector({
   };
   const filteredMCP = filterServers(mcpServers);
   const filteredA2A = filterServers(a2aServers);
+  const filteredLocal = searchTerm
+    ? localTools.filter(
+        (t) =>
+          t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.id.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : localTools;
 
   // selection
   const isToolSelected = (id: string) => selectedTools.includes(id);
@@ -150,7 +158,11 @@ function PureToolsSelector({
         // No-op for tools selector
       }}
     >
-      <Trigger className={triggerClass} type="button">
+      <Trigger
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-foreground transition-colors duration-150 hover:border-border/60 data-[state=open]:border-border/80"
+        type="button"
+      >
+        <Wrench size={16} />
         <span className="font-medium text-xs">Tools</span>
         <ChevronDown size={14} />
       </Trigger>
@@ -171,6 +183,61 @@ function PureToolsSelector({
         </div>
 
         <div className="max-h-[360px] overflow-y-auto">
+          {/* Local Tools */}
+          <SectionHeader className={sectionHeaderClass} label="Local Tools" />
+          {filteredLocal.length === 0 ? (
+            <EmptyRow
+              message={
+                searchTerm ? "No local tools match" : "No local tools found"
+              }
+            />
+          ) : (
+            <div className="space-y-1 p-1.5">
+              {filteredLocal.map((tool) => {
+                const checked = isToolSelected(tool.id);
+                return (
+                  <button
+                    className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-foreground/10"
+                    key={tool.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTool(tool.id);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    type="button"
+                  >
+                    <span
+                      className={[
+                        "mt-0.5 grid size-4 place-items-center rounded border border-border",
+                        checked
+                          ? "bg-foreground/80 text-background"
+                          : "bg-background",
+                      ].join(" ")}
+                    >
+                      {checked && <Check size={12} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium text-xs">
+                          {tool.name}
+                        </span>
+                        <span className="rounded bg-green-100 px-1 py-0.5 text-[10px] text-green-700 dark:bg-green-900 dark:text-green-300">
+                          LOCAL
+                        </span>
+                      </div>
+                      <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                        {tool.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Divider */}
+          <div className="my-1 h-px w-full bg-border/30" />
+
           {/* MCP */}
           <SectionHeader className={sectionHeaderClass} label="MCP Servers" />
           {filteredMCP.length === 0 ? (
@@ -238,7 +305,7 @@ function SectionHeader({
 }) {
   return (
     <div className={className}>
-      <Layers size={12} />
+      <Wrench size={12} />
       {label}
     </div>
   );

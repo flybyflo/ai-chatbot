@@ -1,6 +1,7 @@
 import { azure } from "@ai-sdk/azure";
 import { customProvider } from "ai";
 import { isTestEnvironment } from "../constants";
+import { MODEL_IDS } from "../enums";
 
 export const myProvider = isTestEnvironment
   ? (() => {
@@ -12,17 +13,17 @@ export const myProvider = isTestEnvironment
       } = require("./models.mock");
       return customProvider({
         languageModels: {
-          "chat-model": chatModel,
-          "chat-model-reasoning": reasoningModel,
-          "title-model": titleModel,
-          "artifact-model": artifactModel,
+          [MODEL_IDS.CHAT_MODEL]: chatModel,
+          [MODEL_IDS.CHAT_MODEL_REASONING]: reasoningModel,
+          [MODEL_IDS.TITLE_MODEL]: titleModel,
+          [MODEL_IDS.ARTIFACT_MODEL]: artifactModel,
         },
       });
     })()
   : customProvider({
       languageModels: {
-        "chat-model": azure.responses("gpt-5-mini"),
-        "title-model": azure("gpt-5-mini"),
-        "artifact-model": azure("gpt-5-mini"),
+        [MODEL_IDS.CHAT_MODEL]: azure.responses("gpt-5-mini"),
+        [MODEL_IDS.TITLE_MODEL]: azure("gpt-5-mini"),
+        [MODEL_IDS.ARTIFACT_MODEL]: azure("gpt-5-mini"),
       },
     });

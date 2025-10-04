@@ -54,7 +54,7 @@ export function A2ATaskProgress({
       </button>
 
       {isExpanded && (
-        <div className="mt-3 space-y-2 border-t border-orange-200 pt-3 dark:border-orange-900/30">
+        <div className="mt-3 space-y-2 border-orange-200 border-t pt-3 dark:border-orange-900/30">
           {task.statusMessage && (
             <div className="text-foreground/80 text-sm">
               {task.statusMessage}
@@ -69,7 +69,7 @@ export function A2ATaskProgress({
 
           {hasArtifacts && (
             <div className="space-y-1.5">
-              <div className="font-medium text-xs text-foreground/70">
+              <div className="font-medium text-foreground/70 text-xs">
                 Artifacts:
               </div>
               <ul className="space-y-1">

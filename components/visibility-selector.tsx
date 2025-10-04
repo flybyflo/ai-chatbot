@@ -10,9 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { VISIBILITY_TYPES, type VisibilityType } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 
-export type VisibilityType = "private" | "public";
+export type { VisibilityType };
 
 const visibilities: Array<{
   id: VisibilityType;
@@ -21,13 +22,13 @@ const visibilities: Array<{
   icon: ReactNode;
 }> = [
   {
-    id: "private",
+    id: VISIBILITY_TYPES.PRIVATE,
     label: "Private",
     description: "Only you can access this chat",
     icon: <Lock />,
   },
   {
-    id: "public",
+    id: VISIBILITY_TYPES.PUBLIC,
     label: "Public",
     description: "Anyone with the link can access this chat",
     icon: <Globe />,

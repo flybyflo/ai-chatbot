@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/enums";
 import { fetcher } from "@/lib/utils";
 
 export type UserA2AServer = {
@@ -54,7 +55,7 @@ type TestA2AServerResult = {
   agentCard?: any;
 };
 
-const QUERY_KEY = ["a2a-servers"] as const;
+const QUERY_KEY = QUERY_KEYS.A2A_SERVERS;
 
 export function useA2AServers() {
   const queryClient = useQueryClient();

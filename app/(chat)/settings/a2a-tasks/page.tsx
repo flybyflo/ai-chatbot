@@ -4,7 +4,6 @@ import { Calendar, ChevronDown, ChevronRight, FileBox } from "lucide-react";
 import { useMemo, useState } from "react";
 import { A2ATaskStateBadge } from "@/components/a2a";
 import { useDataStream } from "@/components/data-stream-provider";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -13,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { A2ATaskSummary } from "@/lib/ai/a2a/types";
-import { cn } from "@/lib/utils";
 
 type TaskWithAgent = A2ATaskSummary & {
   agentName: string;
@@ -47,12 +45,8 @@ export default function A2ATasksPage() {
 
     return {
       tasks: tasksList.sort((a, b) => {
-        const timeA = a.lastUpdated
-          ? new Date(a.lastUpdated).getTime()
-          : 0;
-        const timeB = b.lastUpdated
-          ? new Date(b.lastUpdated).getTime()
-          : 0;
+        const timeA = a.lastUpdated ? new Date(a.lastUpdated).getTime() : 0;
+        const timeB = b.lastUpdated ? new Date(b.lastUpdated).getTime() : 0;
         return timeB - timeA;
       }),
       agentNames: Array.from(agentSet).sort(),

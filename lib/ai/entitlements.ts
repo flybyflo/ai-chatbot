@@ -1,4 +1,5 @@
 import type { UserType } from "@/lib/auth";
+import { MODEL_IDS } from "../enums";
 import type { ChatModel } from "./models";
 
 type Entitlements = {
@@ -12,7 +13,10 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    */
   regular: {
     maxMessagesPerDay: 100,
-    availableChatModelIds: ["chat-model", "chat-model-reasoning"],
+    availableChatModelIds: [
+      MODEL_IDS.CHAT_MODEL,
+      MODEL_IDS.CHAT_MODEL_REASONING,
+    ],
   },
 
   /*
@@ -20,6 +24,9 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    */
   admin: {
     maxMessagesPerDay: 100,
-    availableChatModelIds: ["chat-model", "chat-model-reasoning"],
+    availableChatModelIds: [
+      MODEL_IDS.CHAT_MODEL,
+      MODEL_IDS.CHAT_MODEL_REASONING,
+    ],
   },
 };

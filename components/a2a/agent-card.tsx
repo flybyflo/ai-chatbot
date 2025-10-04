@@ -1,4 +1,5 @@
 import { ExternalLink, FileText, Sparkles } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,10 +29,12 @@ export function A2AAgentCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
             {agent.iconUrl ? (
-              <img
+              <Image
                 alt={agent.displayName}
                 className="size-8 rounded"
+                height={32}
                 src={agent.iconUrl}
+                width={32}
               />
             ) : (
               <Sparkles className="size-8 text-orange-500" />
@@ -43,9 +46,7 @@ export function A2AAgentCard({
               <p className="text-muted-foreground text-xs">{agent.id}</p>
             </div>
           </div>
-          <Badge
-            variant={agent.isReady ? "default" : "destructive"}
-          >
+          <Badge variant={agent.isReady ? "default" : "destructive"}>
             {agent.isReady ? "Ready" : "Error"}
           </Badge>
         </div>

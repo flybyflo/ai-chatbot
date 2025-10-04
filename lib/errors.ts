@@ -1,3 +1,5 @@
+import { ERROR_VISIBILITY_LEVELS, type ErrorVisibility } from "./enums";
+
 export type ErrorType =
   | "bad_request"
   | "unauthorized"
@@ -18,17 +20,15 @@ export type Surface =
 
 export type ErrorCode = `${ErrorType}:${Surface}`;
 
-export type ErrorVisibility = "response" | "log" | "none";
-
 export const visibilityBySurface: Record<Surface, ErrorVisibility> = {
-  database: "log",
-  chat: "response",
-  auth: "response",
-  stream: "response",
-  api: "response",
-  history: "response",
-  vote: "response",
-  activate_gateway: "response",
+  database: ERROR_VISIBILITY_LEVELS.LOG,
+  chat: ERROR_VISIBILITY_LEVELS.RESPONSE,
+  auth: ERROR_VISIBILITY_LEVELS.RESPONSE,
+  stream: ERROR_VISIBILITY_LEVELS.RESPONSE,
+  api: ERROR_VISIBILITY_LEVELS.RESPONSE,
+  history: ERROR_VISIBILITY_LEVELS.RESPONSE,
+  vote: ERROR_VISIBILITY_LEVELS.RESPONSE,
+  activate_gateway: ERROR_VISIBILITY_LEVELS.RESPONSE,
 };
 
 export class ChatSDKError extends Error {
@@ -54,7 +54,7 @@ export class ChatSDKError extends Error {
 
     const { message, cause, statusCode } = this;
 
-    if (visibility === "log") {
+    if (visibility === ERROR_VISIBILITY_LEVELS.LOG) {
       console.error({
         code,
         message,

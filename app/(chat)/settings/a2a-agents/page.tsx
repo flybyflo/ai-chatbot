@@ -12,13 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-type FilterState = "all" | "ready" | "error";
+import { FILTER_STATES, type FilterState } from "@/lib/enums";
 
 export default function A2AAgentsPage() {
   const { a2aRegistry } = useDataStream();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterState, setFilterState] = useState<FilterState>("all");
+  const [filterState, setFilterState] = useState<FilterState>(
+    FILTER_STATES.ALL
+  );
 
   const agents = useMemo(() => {
     if (!a2aRegistry) {
@@ -30,9 +31,9 @@ export default function A2AAgentsPage() {
   const filteredAgents = useMemo(() => {
     let result = agents;
 
-    if (filterState === "ready") {
+    if (filterState === FILTER_STATES.READY) {
       result = result.filter((agent) => agent.isReady);
-    } else if (filterState === "error") {
+    } else if (filterState === FILTER_STATES.ERROR) {
       result = result.filter((agent) => !agent.isReady);
     }
 
@@ -76,9 +77,9 @@ export default function A2AAgentsPage() {
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Agents</SelectItem>
-            <SelectItem value="ready">Ready Only</SelectItem>
-            <SelectItem value="error">Errors Only</SelectItem>
+            <SelectItem value={FILTER_STATES.ALL}>All Agents</SelectItem>
+            <SelectItem value={FILTER_STATES.READY}>Ready Only</SelectItem>
+            <SelectItem value={FILTER_STATES.ERROR}>Errors Only</SelectItem>
           </SelectContent>
         </Select>
       </div>

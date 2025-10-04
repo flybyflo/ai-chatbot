@@ -26,10 +26,12 @@ import {
   stream,
   type User,
   type UserA2AServer,
+  type UserLoadout,
   type UserMCPServer,
   type UserMemory,
   user,
   userA2AServer,
+  userLoadout,
   userMCPServer,
   userMemory,
   vote,
@@ -857,6 +859,199 @@ export async function getUserA2AServerById({
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get A2A server by id"
+    );
+  }
+}
+
+// ============================================================================
+// Loadout Queries
+// ============================================================================
+
+export async function getUserLoadouts(userId: string): Promise<UserLoadout[]> {
+  try {
+    return await db
+      .select()
+      .from(userLoadout)
+      .where(eq(userLoadout.userId, userId))
+      .orderBy(desc(userLoadout.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get user loadouts"
+    );
+  }
+}
+
+export async function getUserLoadoutById({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}): Promise<UserLoadout | null> {
+  try {
+    const [loadoutRow] = await db
+      .select()
+      .from(userLoadout)
+      .where(and(eq(userLoadout.id, id), eq(userLoadout.userId, userId)))
+      .limit(1);
+    return loadoutRow ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get loadout by id"
+    );
+  }
+}
+
+export async function getDefaultLoadout(
+  userId: string
+): Promise<UserLoadout | null> {
+  try {
+    const [loadoutRow] = await db
+      .select()
+      .from(userLoadout)
+      .where(
+        and(eq(userLoadout.userId, userId), eq(userLoadout.isDefault, true))
+      )
+      .limit(1);
+    return loadoutRow ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get default loadout"
+    );
+  }
+}
+
+export async function createUserLoadout({
+  userId,
+  name,
+  description,
+  color,
+  tags,
+  isDefault,
+  selectedTools,
+}: {
+  userId: string;
+  name: string;
+  description?: string;
+  color?: string;
+  tags?: string[];
+  isDefault?: boolean;
+  selectedTools?: string[];
+}): Promise<UserLoadout> {
+  try {
+    // If setting as default, unset all other defaults for this user
+    if (isDefault) {
+      await db
+        .update(userLoadout)
+        .set({ isDefault: false })
+        .where(eq(userLoadout.userId, userId));
+    }
+
+    const [loadout] = await db
+      .insert(userLoadout)
+      .values({
+        userId,
+        name,
+        description,
+        color,
+        tags,
+        isDefault: isDefault ?? false,
+        selectedTools,
+      })
+      .returning();
+    return loadout;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create user loadout"
+    );
+  }
+}
+
+export async function updateUserLoadout({
+  id,
+  userId,
+  name,
+  description,
+  color,
+  tags,
+  isDefault,
+  selectedTools,
+}: {
+  id: string;
+  userId: string;
+  name?: string;
+  description?: string;
+  color?: string;
+  tags?: string[];
+  isDefault?: boolean;
+  selectedTools?: string[];
+}): Promise<UserLoadout | null> {
+  try {
+    // If setting as default, unset all other defaults for this user
+    if (isDefault) {
+      await db
+        .update(userLoadout)
+        .set({ isDefault: false })
+        .where(
+          and(eq(userLoadout.userId, userId), eq(userLoadout.isDefault, true))
+        );
+    }
+
+    const updateData: Partial<UserLoadout> = { updatedAt: new Date() };
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (color !== undefined) {
+      updateData.color = color;
+    }
+    if (tags !== undefined) {
+      updateData.tags = tags;
+    }
+    if (isDefault !== undefined) {
+      updateData.isDefault = isDefault;
+    }
+    if (selectedTools !== undefined) {
+      updateData.selectedTools = selectedTools;
+    }
+
+    const [loadout] = await db
+      .update(userLoadout)
+      .set(updateData)
+      .where(and(eq(userLoadout.id, id), eq(userLoadout.userId, userId)))
+      .returning();
+    return loadout || null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update user loadout"
+    );
+  }
+}
+
+export async function deleteUserLoadout({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}): Promise<boolean> {
+  try {
+    const result = await db
+      .delete(userLoadout)
+      .where(and(eq(userLoadout.id, id), eq(userLoadout.userId, userId)))
+      .returning({ id: userLoadout.id });
+    return result.length > 0;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete user loadout"
     );
   }
 }

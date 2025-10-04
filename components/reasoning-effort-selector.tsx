@@ -1,10 +1,9 @@
 "use client";
 
 import { Trigger } from "@radix-ui/react-select";
-import { ChevronDown } from "lucide-react";
+import { Brain, ChevronDown } from "lucide-react";
 import { memo, startTransition, useEffect, useState } from "react";
 import { SelectItem } from "@/components/ui/select";
-import { triggerClass } from "../lib/styles";
 import {
   PromptInputModelSelect,
   PromptInputModelSelectContent,
@@ -50,7 +49,11 @@ function PureReasoningEffortSelector({
       }}
       value={effortOptions.find((e) => e.value === optimisticEffort)?.label}
     >
-      <Trigger className={triggerClass} type="button">
+      <Trigger
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-foreground transition-colors duration-150 hover:border-border/60 data-[state=open]:border-border/80"
+        type="button"
+      >
+        <Brain size={16} />
         <span className="font-medium text-xs">Reasoning Effort</span>
         <ChevronDown size={14} />
       </Trigger>

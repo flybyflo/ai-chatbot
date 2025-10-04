@@ -41,7 +41,8 @@ export function A2AStatusPanel({ className }: { className?: string }) {
       >
         <Activity className="size-4 text-orange-500" />
         <span className="hidden md:inline">
-          {agentCount > 0 && `${agentCount} Agent${agentCount !== 1 ? "s" : ""}`}
+          {agentCount > 0 &&
+            `${agentCount} Agent${agentCount !== 1 ? "s" : ""}`}
           {agentCount > 0 && activeTasks.length > 0 && " • "}
           {activeTasks.length > 0 &&
             `${activeTasks.length} Task${activeTasks.length !== 1 ? "s" : ""}`}
@@ -55,11 +56,17 @@ export function A2AStatusPanel({ className }: { className?: string }) {
 
       {isExpanded && (
         <>
-          <div
+          <button
             className="fixed inset-0 z-40"
             onClick={() => setIsExpanded(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setIsExpanded(false);
+              }
+            }}
+            type="button"
           />
-          <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border bg-background p-4 shadow-lg">
+          <div className="absolute top-full right-0 z-50 mt-2 w-80 rounded-lg border bg-background p-4 shadow-lg">
             <div className="space-y-3">
               <div>
                 <h3 className="mb-2 font-semibold text-sm">Active Agents</h3>
@@ -80,7 +87,9 @@ export function A2AStatusPanel({ className }: { className?: string }) {
                             <span className="font-medium text-sm">
                               {agent.displayName}
                             </span>
-                            <span className="text-green-600 text-xs">Ready</span>
+                            <span className="text-green-600 text-xs">
+                              Ready
+                            </span>
                           </div>
                         ))}
                   </div>

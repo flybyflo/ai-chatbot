@@ -15,18 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const eventTypeOptions = [
-  { value: "all", label: "All Events" },
-  { value: "message", label: "Messages" },
-  { value: "task", label: "Tasks" },
-  { value: "status-update", label: "Status Updates" },
-  { value: "artifact-update", label: "Artifact Updates" },
-];
-
 export default function A2AEventsPage() {
   const { a2aEventLog, a2aRegistry } = useDataStream();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState("all");
+  const [_filterType, _setFilterType] = useState("all");
   const [filterAgent, setFilterAgent] = useState("all");
 
   const agentNames = useMemo(() => {

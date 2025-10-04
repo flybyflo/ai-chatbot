@@ -15,6 +15,27 @@
       "when": 1759164009202,
       "tag": "0001_lonely_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1759539840943,
+      "tag": "0002_rapid_sally_floyd",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1759540464036,
+      "tag": "0003_bizarre_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1759541824238,
+      "tag": "0004_majestic_kingpin",
+      "breakpoints": true
     }
   ]
 }

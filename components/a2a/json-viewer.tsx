@@ -41,11 +41,7 @@ export function A2AJsonViewer({
           )}
           {isExpanded ? "Hide" : "Show"} JSON
         </button>
-        <Button
-          onClick={handleCopy}
-          size="sm"
-          variant="ghost"
-        >
+        <Button onClick={handleCopy} size="sm" variant="ghost">
           <Copy className="size-3" />
           Copy
         </Button>

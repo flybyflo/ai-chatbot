@@ -21,6 +21,18 @@ const settingsFeatures = [
   },
   {
     Icon: () => null,
+    name: "Loadouts",
+    description:
+      "Create and manage loadouts to quickly configure tools and agents.",
+    href: "/settings/loadouts",
+    cta: "Manage Loadouts",
+    background: (
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-100 dark:from-purple-950/20 dark:to-blue-900/20" />
+    ),
+    className: "lg:col-span-1",
+  },
+  {
+    Icon: () => null,
     name: "MCP Servers",
     description:
       "Configure and manage Model Context Protocol servers for extended functionality.",
@@ -90,6 +102,11 @@ export default function SettingsPage() {
     queryClient.prefetchQuery({
       queryKey: ["memories"],
       queryFn: async () => (await fetch("/api/memories")).json(),
+      staleTime: 30 * 1000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["loadouts"],
+      queryFn: async () => (await fetch("/api/loadouts")).json(),
       staleTime: 30 * 1000,
     });
   }, [queryClient]);

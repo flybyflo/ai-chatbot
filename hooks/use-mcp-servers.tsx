@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/enums";
 import { fetcher } from "@/lib/utils";
 
 export type UserMCPServer = {
@@ -56,7 +57,7 @@ type TestMCPServerResult = {
   connected: boolean;
 };
 
-const QUERY_KEY = ["mcp-servers"];
+const QUERY_KEY = QUERY_KEYS.MCP_SERVERS;
 
 export function useMCPServers() {
   const queryClient = useQueryClient();

@@ -17,7 +17,9 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
+import { useLoadouts } from "@/hooks/use-loadouts";
 import { useAllTools, useSelectedTools } from "@/hooks/use-tools";
+import { useLoadoutStore } from "@/lib/stores/loadout-store";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
@@ -30,6 +32,7 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from "./elements/prompt-input";
+import { LoadoutSelector } from "./loadout-selector";
 import { ModelSelectorCompact } from "./model-selector-compact";
 import { PreviewAttachment } from "./preview-attachment";
 import { ReasoningEffortSelector } from "./reasoning-effort-selector";
@@ -80,6 +83,8 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { loadouts } = useLoadouts();
+  const { activeLoadoutId, setActiveLoadout } = useLoadoutStore();
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -212,7 +217,12 @@ function PureMultimodalInput({
 
       {/* CONTAINER — minimal & modern: thin border, subtle shadow, tight padding */}
       <PromptInput
-        className="rounded-xl border border-border/30 bg-popover/70 p-2.5 shadow-sm backdrop-blur transition-colors duration-150 focus-within:border-border hover:border-muted-foreground/40"
+        className={cn(
+          "rounded-xl border bg-popover/70 p-2.5 shadow-sm backdrop-blur transition-colors duration-150",
+          activeLoadoutId
+            ? "border-purple-500/50 focus-within:border-purple-500 hover:border-purple-500/70"
+            : "border-border/30 focus-within:border-border hover:border-muted-foreground/40"
+        )}
         onSubmit={(event) => {
           event.preventDefault();
           if (status !== "ready") {
@@ -284,6 +294,34 @@ function PureMultimodalInput({
             <ReasoningEffortSelector
               onReasoningEffortChange={onReasoningEffortChange}
               selectedReasoningEffort={selectedReasoningEffort}
+            />
+
+            <LoadoutSelector
+              activeLoadoutId={activeLoadoutId}
+              loadouts={loadouts.map((l) => ({
+                id: l.id,
+                name: l.name,
+                description: l.description || undefined,
+                tags: l.tags || undefined,
+                isDefault: l.isDefault,
+                updatedAt:
+                  typeof l.updatedAt === "string"
+                    ? l.updatedAt
+                    : l.updatedAt?.toISOString?.() || new Date().toISOString(),
+              }))}
+              onActivate={(id) => {
+                setActiveLoadout(id);
+                if (!id) {
+                  // Deselected - no toast needed, just clear the loadout
+                  return;
+                }
+                const loadout = loadouts.find((l) => l.id === id);
+                if (loadout && onToolsChange) {
+                  // Apply selected tools from loadout
+                  onToolsChange(loadout.selectedTools || []);
+                  toast.success(`Activated loadout: ${loadout.name}`);
+                }
+              }}
             />
             <ToolsSelector
               a2aRegistry={a2aRegistry}

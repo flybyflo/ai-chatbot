@@ -16,6 +16,7 @@ import { useMCPServers } from "@/hooks/use-mcp-servers";
 const breadcrumbMap: Record<string, string> = {
   "/settings": "Settings",
   "/settings/memory": "Memory",
+  "/settings/loadouts": "Loadouts",
   "/settings/mcp-servers": "MCP Servers",
   "/settings/a2a-servers": "A2A Servers",
   "/settings/a2a-agents": "A2A Agents",

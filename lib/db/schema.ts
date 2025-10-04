@@ -195,3 +195,23 @@ export const userA2AServer = pgTable("UserA2AServer", {
 });
 
 export type UserA2AServer = InferSelectModel<typeof userA2AServer>;
+
+export const userLoadout = pgTable("UserLoadout", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: text("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  color: varchar("color", { length: 7 }).default("#8b5cf6"),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  isDefault: boolean("isDefault").notNull().default(false),
+  selectedTools: jsonb("selectedTools").$type<string[]>().default([]),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type UserLoadout = InferSelectModel<typeof userLoadout>;

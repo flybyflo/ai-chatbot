@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { PLANTUML_FORMATS, type PlantUMLFormat } from "@/lib/enums";
 
 export const runtime = "nodejs";
 
@@ -9,18 +10,20 @@ const END_RE = /@enduml/i;
 
 const plantUmlSchema = z.object({
   code: z.string().min(1, "PlantUML code is required"),
-  format: z.enum(["svg", "png"]).default("svg"),
+  format: z
+    .enum([PLANTUML_FORMATS.SVG, PLANTUML_FORMATS.PNG])
+    .default(PLANTUML_FORMATS.SVG),
 });
 
 function renderWithPlantumlCli(
   uml: string,
-  format: "svg" | "png",
+  format: PlantUMLFormat,
   debug: boolean
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const bin = process.env.PLANTUML_BIN || "plantuml";
     const args = [
-      format === "svg" ? "-tsvg" : "-tpng",
+      format === PLANTUML_FORMATS.SVG ? "-tsvg" : "-tpng",
       "-pipe",
       "-charset",
       "UTF-8",
@@ -53,7 +56,7 @@ function renderWithPlantumlCli(
 
 function renderWithJavaJar(
   uml: string,
-  format: "svg" | "png",
+  format: PlantUMLFormat,
   debug: boolean
 ): Promise<Buffer> {
   const jarPath = process.env.PLANTUML_JAR;
@@ -64,7 +67,7 @@ function renderWithJavaJar(
     const args = [
       "-jar",
       jarPath,
-      format === "svg" ? "-tsvg" : "-tpng",
+      format === PLANTUML_FORMATS.SVG ? "-tsvg" : "-tpng",
       "-pipe",
       "-charset",
       "UTF-8",
@@ -206,7 +209,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return appropriate response based on format
-    if (format === "svg") {
+    if (format === PLANTUML_FORMATS.SVG) {
       const svg = (buffer as Buffer).toString("utf-8");
       return new NextResponse(svg, {
         status: 200,

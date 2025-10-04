@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/enums";
 import { fetcher } from "@/lib/utils";
 
 export type UserMemory = {
@@ -30,7 +31,7 @@ type UpdateMemoryData = {
   isActive?: boolean;
 };
 
-const QUERY_KEY = ["memories"];
+const QUERY_KEY = QUERY_KEYS.MEMORIES;
 
 export function useMemories() {
   const queryClient = useQueryClient();

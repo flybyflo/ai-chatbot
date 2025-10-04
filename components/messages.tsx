@@ -7,7 +7,6 @@ import { useA2AEvents } from "@/hooks/use-a2a-events";
 import { useMessages } from "@/hooks/use-messages";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
-import { useDataStream } from "./data-stream-provider";
 import { Conversation, ConversationContent } from "./elements/conversation";
 import { Greeting } from "./greeting";
 import { PreviewMessage, ThinkingMessage } from "./message";
@@ -45,7 +44,6 @@ function PureMessages({
   });
 
   const events = useA2AEvents();
-  const { a2aSessions } = useDataStream();
 
   const eventsAfterMessage = useMemo(() => {
     const map = new Map<number, ReturnType<typeof useA2AEvents>[number][]>();

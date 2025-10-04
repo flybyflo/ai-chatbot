@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
+import { LOCAL_TOOL_IDS, QUERY_KEYS } from "@/lib/enums";
 import {
   type A2AAgentRegistry,
   type MCPToolRegistry,
@@ -19,7 +20,7 @@ import {
 import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
 import { fetcher } from "@/lib/utils";
 
-const TOOLS_QUERY_KEY = ["tools", "all"] as const;
+const TOOLS_QUERY_KEY = QUERY_KEYS.TOOLS_ALL;
 
 export function useAllTools() {
   const query = useQuery<ToolsResponse, Error>({
@@ -33,19 +34,23 @@ export function useAllTools() {
   });
 
   const list: ToolListItem[] = useMemo(() => {
-    const localToolIds = ["getWeather", "codeCompare", "plantuml"];
+    const localToolIds = [
+      LOCAL_TOOL_IDS.GET_WEATHER,
+      LOCAL_TOOL_IDS.CODE_COMPARE,
+      LOCAL_TOOL_IDS.PLANTUML,
+    ];
     const localTools: ToolListItem[] = localToolIds.map((id) => ({
       id,
       name:
-        id === "getWeather"
+        id === LOCAL_TOOL_IDS.GET_WEATHER
           ? "Get Weather"
-          : id === "codeCompare"
+          : id === LOCAL_TOOL_IDS.CODE_COMPARE
             ? "Code Compare"
             : "PlantUML Diagram",
       description:
-        id === "getWeather"
+        id === LOCAL_TOOL_IDS.GET_WEATHER
           ? "Get current weather information for a location"
-          : id === "codeCompare"
+          : id === LOCAL_TOOL_IDS.CODE_COMPARE
             ? "Render a side-by-side comparison given filename, before and after code"
             : "Create and render PlantUML diagrams with source code viewer",
       type: "local",
@@ -160,7 +165,7 @@ export function useSelectedTools(
 
     const parsed = selectedToolsSchema.parse(filteredSelection);
     // Keep a cache entry for last selected tools
-    queryClient.setQueryData(["tools", "selected"], parsed);
+    queryClient.setQueryData(QUERY_KEYS.TOOLS_SELECTED, parsed);
     // Persist via Zustand store
     setSelectedTools(parsed);
   }, [
@@ -180,7 +185,7 @@ export function useSelectedTools(
         return storeSelected;
       }
       return (
-        (queryClient.getQueryData(["tools", "selected"]) as string[]) || []
+        (queryClient.getQueryData(QUERY_KEYS.TOOLS_SELECTED) as string[]) || []
       );
     },
   };

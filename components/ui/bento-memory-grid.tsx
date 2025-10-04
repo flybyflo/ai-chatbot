@@ -1,16 +1,9 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { Brain, Edit, Eye, EyeOff, MoreVertical, Trash2 } from "lucide-react";
+import { Brain } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { UserMemory } from "@/hooks/use-memories";
 import { cn } from "@/lib/utils";
 

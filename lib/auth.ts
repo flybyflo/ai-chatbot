@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 // biome-ignore lint/performance/noNamespaceImport: adapter expects schema object shape
 import * as schema from "./db/schema";
+import type { UserType } from "./enums";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
@@ -48,4 +49,4 @@ export const auth = betterAuth({
 export type Session = typeof auth.$Infer.Session;
 export type User = typeof auth.$Infer.Session.user;
 
-export type UserType = "admin" | "regular";
+export type { UserType };
