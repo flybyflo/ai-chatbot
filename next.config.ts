@@ -14,6 +14,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    // Exclude a2a-samples from webpack compilation
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        ...(Array.isArray(config.watchOptions?.ignored)
+          ? config.watchOptions.ignored
+          : []),
+        "**/a2a-samples/**",
+      ],
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

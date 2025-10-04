@@ -37,8 +37,6 @@ const BentoMCPServerCard = ({
           </p>
         ) : null
       }
-      buttonColor="bg-green-600"
-      buttonHoverColor="hover:bg-green-700"
       className={className}
       detailsHref={`/settings/mcp-servers/${server.id}`}
       gradientClasses="from-green-50 to-emerald-100 dark:from-green-950/20 dark:to-emerald-900/20"

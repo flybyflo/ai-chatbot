@@ -18,6 +18,9 @@ const breadcrumbMap: Record<string, string> = {
   "/settings/memory": "Memory",
   "/settings/mcp-servers": "MCP Servers",
   "/settings/a2a-servers": "A2A Servers",
+  "/settings/a2a-agents": "A2A Agents",
+  "/settings/a2a-tasks": "A2A Tasks",
+  "/settings/a2a-events": "A2A Events",
 };
 
 export default function SettingsLayout({

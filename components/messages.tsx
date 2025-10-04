@@ -2,6 +2,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { ArrowDownIcon } from "lucide-react";
 import { Fragment, memo, useEffect, useMemo } from "react";
+import { A2ATaskProgress } from "@/components/a2a";
 import { useA2AEvents } from "@/hooks/use-a2a-events";
 import { useMessages } from "@/hooks/use-messages";
 import type { Vote } from "@/lib/db/schema";
@@ -44,7 +45,7 @@ function PureMessages({
   });
 
   const events = useA2AEvents();
-  useDataStream();
+  const { a2aSessions } = useDataStream();
 
   const eventsAfterMessage = useMemo(() => {
     const map = new Map<number, ReturnType<typeof useA2AEvents>[number][]>();
@@ -138,7 +139,21 @@ function PureMessages({
                     event.messages?.[event.messages.length - 1]?.messageId ||
                     event.timestamp ||
                     `${event.agentToolId}-${index}-${eventIndex}`;
-                  return <MessageA2A event={event} key={eventKey} />;
+
+                  const tasksForEvent = event.tasks || [];
+
+                  return (
+                    <Fragment key={eventKey}>
+                      <MessageA2A event={event} />
+                      {tasksForEvent.map((task) => (
+                        <A2ATaskProgress
+                          agentName={event.agentName}
+                          key={`${eventKey}-task-${task.taskId}`}
+                          task={task}
+                        />
+                      ))}
+                    </Fragment>
+                  );
                 })}
               </Fragment>
             );

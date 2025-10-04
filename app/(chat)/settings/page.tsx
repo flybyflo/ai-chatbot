@@ -42,6 +42,39 @@ const settingsFeatures = [
     ),
     className: "lg:col-span-1",
   },
+  {
+    Icon: () => null,
+    name: "A2A Agents",
+    description: "Browse agent capabilities and registry.",
+    href: "/settings/a2a-agents",
+    cta: "View Agents",
+    background: (
+      <div className="absolute inset-0 bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-950/20 dark:to-amber-900/20" />
+    ),
+    className: "lg:col-span-1",
+  },
+  {
+    Icon: () => null,
+    name: "A2A Tasks",
+    description: "Monitor task execution and artifacts.",
+    href: "/settings/a2a-tasks",
+    cta: "View Tasks",
+    background: (
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-950/20 dark:to-red-900/20" />
+    ),
+    className: "lg:col-span-1",
+  },
+  {
+    Icon: () => null,
+    name: "A2A Events",
+    description: "Debug A2A protocol interactions.",
+    href: "/settings/a2a-events",
+    cta: "View Events",
+    background: (
+      <div className="absolute inset-0 bg-gradient-to-br from-rose-50 to-pink-100 dark:from-rose-950/20 dark:to-pink-900/20" />
+    ),
+    className: "lg:col-span-1",
+  },
 ];
 
 export default function SettingsPage() {
@@ -68,7 +101,7 @@ export default function SettingsPage() {
         Configure your AI assistant and manage your preferences.
       </p>
 
-      <BentoGrid className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
+      <BentoGrid className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {settingsFeatures.map((feature) => (
           <BentoCard key={feature.name} {...feature} />
         ))}

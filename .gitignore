@@ -46,3 +46,6 @@ yarn-error.log*
 __pycache__/
 *.py[cod]
 *$py.class
+
+# A2A samples (excluded from build and version control)
+a2a-samples/

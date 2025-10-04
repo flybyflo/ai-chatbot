@@ -4,6 +4,7 @@ import { Plus, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo } from "react";
 import { useWindowSize } from "usehooks-ts";
+import { A2AStatusPanel } from "@/components/a2a";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "./ui/sidebar";
@@ -50,6 +51,7 @@ function PureChatHeader({
             <Settings className="h-4 w-4" />
             <span className="md:sr-only">Settings</span>
           </Button>
+          <A2AStatusPanel className="order-3" />
         </>
       )}
 

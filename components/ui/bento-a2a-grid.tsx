@@ -35,8 +35,6 @@ const BentoA2AServerCard = ({
 
   return (
     <BentoServerCard
-      buttonColor="bg-orange-600"
-      buttonHoverColor="hover:bg-orange-700"
       className={className}
       detailsHref={isUuid ? `/settings/a2a-servers/${server.id}` : undefined}
       gradientClasses="from-amber-50 to-orange-100 dark:from-amber-950/20 dark:to-orange-900/20"

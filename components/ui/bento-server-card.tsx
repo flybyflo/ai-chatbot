@@ -30,13 +30,11 @@ interface BentoServerCardProps extends ComponentPropsWithoutRef<"div"> {
     description?: string;
     isActive?: boolean;
   }) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void; // kept for API parity (unused here)
   onTest: (id: string) => void;
   className?: string;
   detailsHref?: string;
   gradientClasses: string;
-  buttonColor: string;
-  buttonHoverColor: string;
   additionalInfo?: ReactNode;
 }
 
@@ -58,16 +56,38 @@ const BentoServerGrid = ({
   );
 };
 
+const BadgePill = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => (
+  <span
+    className={cn(
+      "inline-flex items-center rounded px-1.5 py-0.5 text-[10px]",
+      "border border-border/40 bg-background/60 text-foreground/80",
+      className
+    )}
+  >
+    {children}
+  </span>
+);
+
+const CodeChip = ({ children }: { children: ReactNode }) => (
+  <code className="inline break-all rounded border border-border/30 bg-background/60 px-1.5 py-0.5 font-mono text-[11px]">
+    {children}
+  </code>
+);
+
 const BentoServerCard = ({
   server,
   onUpdate,
-  onDelete,
+  onDelete: _onDelete, // unused here
   onTest,
   className,
   detailsHref,
   gradientClasses,
-  buttonColor,
-  buttonHoverColor,
   additionalInfo,
   ...props
 }: BentoServerCardProps) => {
@@ -81,7 +101,7 @@ const BentoServerCard = ({
     if (server.lastConnectionStatus === "testing") {
       return <Clock className="h-4 w-4 text-yellow-500" />;
     }
-    return <Clock className="h-4 w-4 text-gray-400" />;
+    return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
 
   const getStatusText = () => {
@@ -92,7 +112,7 @@ const BentoServerCard = ({
       return "Failed";
     }
     if (server.lastConnectionStatus === "testing") {
-      return "Testing...";
+      return "Testing…";
     }
     return "Not tested";
   };
@@ -112,114 +132,81 @@ const BentoServerCard = ({
       )}
       {...props}
     >
-      {detailsHref && (
-        <Link
-          aria-label={`View details for ${server.name}`}
-          className="absolute inset-0 z-10"
-          href={detailsHref}
-        />
-      )}
-      <div className={cn("absolute inset-0 bg-gradient-to-br", gradientClasses)} />
-      <div className="p-4">
-        <div className="lg:group-hover:-translate-y-10 pointer-events-none z-20 flex transform-gpu flex-col gap-1 transition-all duration-300">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold text-lg text-neutral-700 dark:text-neutral-300">
-              {server.name}
-            </h3>
-            <div className="flex items-center gap-1">
-              {getStatusIcon()}
-              <span className="text-neutral-500 text-xs">
-                {getStatusText()}
-              </span>
-            </div>
-          </div>
-          <div className="mb-4 space-y-2">
-            <p className="break-all text-neutral-600 text-sm dark:text-neutral-400">
-              {displayUrl}
-            </p>
-            {server.description && (
-              <p className="line-clamp-2 text-neutral-500 text-xs">
-                {server.description}
-              </p>
-            )}
-            {additionalInfo}
-          </div>
-        </div>
-
-        <div className="pointer-events-none relative z-30 flex w-full translate-y-0 transform-gpu flex-row items-center transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:hidden">
-          <Button
-            className={cn(
-              "pointer-events-auto flex-1 text-white text-xs transition-all duration-200 hover:scale-105",
-              buttonColor,
-              buttonHoverColor
-            )}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onTest(server.id);
-            }}
-            size="sm"
-          >
-            Test
-          </Button>
-          <Button
-            className={cn(
-              "pointer-events-auto flex-1 text-white text-xs transition-all duration-200 hover:scale-105",
-              buttonColor,
-              buttonHoverColor
-            )}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onUpdate({ id: server.id, isActive: !server.isActive });
-            }}
-            size="sm"
-          >
-            {server.isActive ? "Disable" : "Enable"}
-          </Button>
-        </div>
-      </div>
-
+      {/* keep gradient background, but no hover effects */}
       <div
         className={cn(
-          "pointer-events-none absolute bottom-0 z-30 hidden w-full translate-y-10 transform-gpu flex-row items-center p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:flex"
+          "pointer-events-none absolute inset-0 bg-gradient-to-br",
+          gradientClasses
         )}
-      >
-        <div className="flex w-full gap-2">
+      />
+
+      <div className="relative z-10 flex h-full flex-col p-4">
+        {/* Header */}
+        <div className="mb-3 flex items-center justify-between">
+          {detailsHref ? (
+            <Link
+              className="truncate font-semibold text-base text-foreground hover:underline"
+              href={detailsHref}
+            >
+              {server.name}
+            </Link>
+          ) : (
+            <h3 className="truncate font-semibold text-base text-foreground">
+              {server.name}
+            </h3>
+          )}
+          <div className="flex items-center gap-1.5">
+            {getStatusIcon()}
+            <BadgePill>{getStatusText()}</BadgePill>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="mb-4 space-y-2">
+          {displayUrl && (
+            <p className="text-sm">
+              <CodeChip>{displayUrl}</CodeChip>
+            </p>
+          )}
+          {server.description && (
+            <p className="line-clamp-2 text-muted-foreground text-xs">
+              {server.description}
+            </p>
+          )}
+          {additionalInfo}
+        </div>
+
+        {/* Actions — always visible, compact outline buttons, no hover animation */}
+        <div className="mt-auto flex w-full gap-2">
           <Button
-            className={cn(
-              "pointer-events-auto flex-1 text-white text-xs transition-all duration-200 hover:scale-105",
-              buttonColor,
-              buttonHoverColor
-            )}
+            className="flex-1"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onTest(server.id);
             }}
             size="sm"
+            variant="outline"
           >
             Test
           </Button>
           <Button
-            className={cn(
-              "pointer-events-auto flex-1 text-white text-xs transition-all duration-200 hover:scale-105",
-              buttonColor,
-              buttonHoverColor
-            )}
+            className="flex-1"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onUpdate({ id: server.id, isActive: !server.isActive });
             }}
             size="sm"
+            variant="outline"
           >
             {server.isActive ? "Disable" : "Enable"}
           </Button>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-0 transform-gpu transition-all duration-300 group-hover:bg-black/[.03] group-hover:dark:bg-neutral-800/10" />
+      {/* remove hover overlay/animation */}
+      {/* (intentionally omitted) */}
     </div>
   );
 };

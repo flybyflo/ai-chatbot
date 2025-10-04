@@ -1,59 +1,135 @@
-# Hello World Example
+# Test A2A Agent
 
-Hello World example agent that only returns Message events
+A simple A2A (Agent-to-Agent) test agent powered by Azure OpenAI (GPT-5-mini).
 
-## Getting started
+## Features
 
-1. Start the server
+- ✅ Streaming responses
+- ✅ Conversation history per session
+- ✅ Task state management
+- ✅ Proper A2A protocol implementation
+- ✅ Uses your existing Azure OpenAI configuration
 
+## Setup
+
+1. **Install dependencies** (using uv):
    ```bash
-   uv run .
+   cd test-a2a
+   uv sync
    ```
 
-2. Run the test client
+2. **Configuration**:
+   The agent automatically uses your Azure OpenAI configuration from `../.env.local`.
+   No additional setup needed!
 
+3. **Run the agent**:
    ```bash
-   uv run test_client.py
+   pnpm a2a:server
    ```
 
-## Build Container Image
+   Or directly:
+   ```bash
+   cd test-a2a
+   uv run python __main__.py
+   ```
 
-Agent can also be built using a container file.
+   With custom host/port:
+   ```bash
+   uv run python __main__.py --host 0.0.0.0 --port 10000
+   ```
 
-1. Navigate to the directory `samples/python/agents/helloworld` directory:
+## Testing with Your Chatbot
 
-  ```bash
-  cd samples/python/agents/helloworld
-  ```
+1. **Start the test agent**: `pnpm a2a:server` (in the root directory)
 
-2. Build the container file
+2. **In your chatbot**, go to Settings → A2A Servers
 
-    ```bash
-    podman build . -t helloworld-a2a-server
-    ```
+3. **Add a new server**:
+   - Click "Add Server"
+   - **Agent Card URL**: `http://localhost:9999/`
+   - The agent card will be automatically fetched
 
-> [!Tip]  
-> Podman is a drop-in replacement for `docker` which can also be used in these commands.
+4. **Verify the agent**:
+   - Go to Settings → A2A Agents to see the agent capabilities
+   - You should see "Test AI Assistant" with streaming support
 
-3. Run you container
+5. **Start chatting!**
+   - The AI will automatically use the agent when appropriate
+   - Watch the chat header for active agent status
+   - See task progress inline in messages
 
-    ```bash
-    podman run -p 9999:9999 helloworld-a2a-server
-    ```
+## UI Integration
 
-## Validate
+Now that you have the full A2A UI, you can:
 
-To validate in a separate terminal, run the A2A client:
+- ✅ **Chat Header**: See "🤖 1 Agent Active" indicator
+- ✅ **Inline Progress**: Task cards appear below agent responses
+- ✅ **Agent Registry** (`/settings/a2a-agents`): Browse agent capabilities
+- ✅ **Task Dashboard** (`/settings/a2a-tasks`): Monitor all tasks
+- ✅ **Event Log** (`/settings/a2a-events`): Debug A2A interactions
 
-```bash
-cd samples/python/hosts/cli
-uv run . --agent http://localhost:9999
+## Agent Card
+
+The agent exposes the following information:
+
+- **Name**: Test AI Assistant
+- **Model**: Azure OpenAI GPT-5-mini
+- **Capabilities**: Streaming support
+- **Skills**: General AI Assistance
+- **Input/Output Modes**: Text only
+
+## Architecture
+
+```
+┌─────────────────────┐
+│   __main__.py       │  Server setup & agent card
+│   (Uvicorn + A2A)   │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ agent_executor.py   │  Bridges A2A events to agent
+│ (TestAgentExecutor) │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│    agent.py         │  Core agent logic
+│    (TestAgent)      │  Uses Azure OpenAI via LangChain
+└─────────────────────┘
 ```
 
+## Example Interactions
 
-## Disclaimer
-Important: The sample code provided is for demonstration purposes and illustrates the mechanics of the Agent-to-Agent (A2A) protocol. When building production applications, it is critical to treat any agent operating outside of your direct control as a potentially untrusted entity.
+**Simple Q&A:**
+```
+User: What is quantum computing?
+Agent: [Provides detailed explanation using GPT-5-mini]
+Status: ✅ Completed
+```
 
-All data received from an external agent—including but not limited to its AgentCard, messages, artifacts, and task statuses—should be handled as untrusted input. For example, a malicious agent could provide an AgentCard containing crafted data in its fields (e.g., description, name, skills.description). If this data is used without sanitization to construct prompts for a Large Language Model (LLM), it could expose your application to prompt injection attacks.  Failure to properly validate and sanitize this data before use can introduce security vulnerabilities into your application.
+**Multi-turn conversation:**
+```
+User: Can you help me understand neural networks?
+Agent: [Explains neural networks]
+Status: 🔄 Input Required
 
-Developers are responsible for implementing appropriate security measures, such as input validation and secure handling of credentials to protect their systems and users.
+User: What about deep learning?
+Agent: [Explains deep learning in context]
+Status: ✅ Completed
+```
+
+## Troubleshooting
+
+**Agent not showing up in chatbot:**
+- Ensure the agent is running: `pnpm a2a:server`
+- Check the server logs for errors
+- Verify the agent card URL is `http://localhost:9999/`
+
+**Azure OpenAI configuration issues:**
+- Check that `AZURE_API_KEY` and `AZURE_RESOURCE_NAME` are set in `../.env.local`
+- Verify the deployment name (defaults to `gpt-5-mini`)
+
+**Server won't start:**
+- Run `uv sync` to ensure dependencies are installed
+- Check port 9999 is not already in use: `lsof -i :9999`

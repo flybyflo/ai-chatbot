@@ -1,18 +1,7 @@
 "use client";
 
-import { Edit, Eye, EyeOff, MoreVertical, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import type { UserMemory } from "@/hooks/use-memories";
 import { cn } from "@/lib/utils";
 
@@ -25,41 +14,16 @@ type MemoryItemProps = {
     isActive?: boolean;
   }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onEdit: (memory: UserMemory) => void;
   isUpdating?: boolean;
 };
 
-export function MemoryItem({ memory, onUpdate, onDelete }: MemoryItemProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState(memory.title);
-  const [content, setContent] = useState(memory.content);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!title.trim()) {
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await onUpdate({
-        id: memory.id,
-        title: title.trim(),
-        content: content.trim(),
-      });
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Failed to update memory:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setTitle(memory.title);
-    setContent(memory.content);
-    setIsEditing(false);
-  };
-
+export function MemoryItem({
+  memory,
+  onUpdate,
+  onDelete,
+  onEdit,
+}: MemoryItemProps) {
   const handleToggleActive = async () => {
     try {
       await onUpdate({
@@ -82,90 +46,90 @@ export function MemoryItem({ memory, onUpdate, onDelete }: MemoryItemProps) {
   };
 
   return (
-    <Card
-      className={cn("transition-opacity", !memory.isActive && "opacity-60")}
+    <div
+      className={cn(
+        "group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-xl",
+        // light styles
+        "bg-background [box-shadow:0_0_0_1px_rgba(0,0,0,.03),0_2px_4px_rgba(0,0,0,.05),0_12px_24px_rgba(0,0,0,.05)]",
+        // dark styles
+        "transform-gpu dark:bg-background dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset]",
+        !memory.isActive && "opacity-60"
+      )}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        {isEditing ? (
-          <Input
-            className="font-semibold"
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Memory title..."
-            value={title}
-          />
-        ) : (
-          <h3 className="font-semibold text-sm">{memory.title}</h3>
+      {/* keep gradient background, but no hover effects */}
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 bg-gradient-to-br",
+          "from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-900/20"
         )}
+      />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="h-8 w-8 p-0" size="sm" variant="ghost">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsEditing(true)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleToggleActive}>
-              {memory.isActive ? (
-                <>
-                  <EyeOff className="mr-2 h-4 w-4" />
-                  Disable
-                </>
-              ) : (
-                <>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Enable
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={handleDelete}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardHeader>
-
-      <CardContent>
-        {isEditing ? (
-          <div className="space-y-3">
-            <Textarea
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Memory content..."
-              rows={3}
-              value={content}
-            />
-            <div className="flex justify-end gap-2">
-              <Button onClick={handleCancel} size="sm" variant="outline">
-                Cancel
-              </Button>
-              <Button
-                disabled={!title.trim() || isSaving}
-                onClick={handleSave}
-                size="sm"
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <p className="text-muted-foreground text-sm">{memory.content}</p>
-            {!memory.isActive && (
-              <p className="mt-2 text-muted-foreground text-xs italic">
-                This memory is disabled and won't be used in conversations.
-              </p>
+      <div className="relative z-10 flex h-full flex-col p-4">
+        {/* Header */}
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold text-base text-foreground">
+            {memory.title}
+          </h3>
+          <div className="flex items-center gap-1.5">
+            {memory.isActive ? (
+              <Eye className="h-4 w-4 text-green-500" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
             )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+            <span
+              className={cn(
+                "inline-flex items-center rounded px-1.5 py-0.5 text-[10px]",
+                "border border-border/40 bg-background/60 text-foreground/80"
+              )}
+            >
+              {memory.isActive ? "Active" : "Inactive"}
+            </span>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="mb-4 space-y-2">
+          <p className="line-clamp-2 text-muted-foreground text-xs">
+            {memory.content}
+          </p>
+          {!memory.isActive && (
+            <p className="text-muted-foreground text-xs italic">
+              This memory is disabled and won't be used in conversations.
+            </p>
+          )}
+        </div>
+
+        {/* Actions — always visible, compact outline buttons, no hover animation */}
+        <div className="mt-auto flex w-full gap-2">
+          <Button
+            className="flex-1"
+            onClick={() => onEdit(memory)}
+            size="sm"
+            variant="outline"
+          >
+            Edit
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={handleToggleActive}
+            size="sm"
+            variant="outline"
+          >
+            {memory.isActive ? "Disable" : "Enable"}
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={handleDelete}
+            size="sm"
+            variant="outline"
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+
+      {/* remove hover overlay/animation */}
+      {/* (intentionally omitted) */}
+    </div>
   );
 }
