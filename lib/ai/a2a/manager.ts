@@ -1,8 +1,10 @@
+import { EventEmitter } from "node:events";
 import { A2AClientWrapper } from "./client";
 import type {
   A2AAgentConfig,
   A2AAgentStatus,
   A2ASessionState,
+  A2AToolEventPayload,
   AgentCard,
 } from "./types";
 
@@ -16,7 +18,9 @@ type AgentRecord = {
   session?: A2ASessionState;
 };
 
-export class A2AManager {
+type ToolEventListener = (payload: A2AToolEventPayload) => void;
+
+export class A2AManager extends EventEmitter {
   private readonly clients: Map<AgentKey, A2AClientWrapper> = new Map();
   private registry: Record<AgentKey, AgentRecord> = {};
 
@@ -78,6 +82,17 @@ export class A2AManager {
     await Promise.allSettled(tasks);
   }
 
+  onToolEvent(listener: ToolEventListener): () => void {
+    this.on("tool-event", listener);
+    return () => {
+      this.off("tool-event", listener);
+    };
+  }
+
+  emitToolEvent(payload: A2AToolEventPayload): void {
+    this.emit("tool-event", payload);
+  }
+
   getStatus(): Record<AgentKey, A2AAgentStatus> {
     return Object.fromEntries(
       Object.entries(this.registry).map(([key, record]) => [key, record.status])
@@ -135,5 +150,6 @@ export class A2AManager {
   cleanup(): void {
     this.clients.clear();
     this.registry = {};
+    this.removeAllListeners();
   }
 }

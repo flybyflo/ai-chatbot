@@ -2,7 +2,6 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { ArrowDownIcon } from "lucide-react";
 import { Fragment, memo, useEffect, useMemo } from "react";
-import { A2ATaskProgress } from "@/components/a2a";
 import { useA2AEvents } from "@/hooks/use-a2a-events";
 import { useMessages } from "@/hooks/use-messages";
 import type { Vote } from "@/lib/db/schema";
@@ -10,7 +9,7 @@ import type { ChatMessage } from "@/lib/types";
 import { Conversation, ConversationContent } from "./elements/conversation";
 import { Greeting } from "./greeting";
 import { PreviewMessage, ThinkingMessage } from "./message";
-import { MessageA2A } from "./message-a2a";
+import MessageA2A from "./message-a2a";
 
 type MessagesProps = {
   chatId: string;
@@ -110,6 +109,42 @@ function PureMessages({
 
           {messages.map((message, index) => {
             const eventsForMessage = eventsAfterMessage.get(index) ?? [];
+            const latestEventsByTask = (() => {
+              if (eventsForMessage.length <= 1) {
+                return eventsForMessage;
+              }
+              const byTask = new Map<
+                string,
+                ReturnType<typeof useA2AEvents>[number]
+              >();
+              for (const event of eventsForMessage) {
+                const key =
+                  event.primaryTaskId ??
+                  event.contextId ??
+                  event.agentToolId ??
+                  `${index}`;
+                const existing = byTask.get(key);
+                if (!existing) {
+                  byTask.set(key, event);
+                  continue;
+                }
+                const existingTime = existing.timestamp
+                  ? new Date(existing.timestamp).getTime()
+                  : Number.NEGATIVE_INFINITY;
+                const currentTime = event.timestamp
+                  ? new Date(event.timestamp).getTime()
+                  : Number.POSITIVE_INFINITY;
+                if (currentTime >= existingTime) {
+                  byTask.set(key, event);
+                }
+              }
+              return Array.from(byTask.values());
+            })();
+            const showThinkingAfterMessage =
+              (status === "submitted" || status === "streaming") &&
+              index === messages.length - 1 &&
+              message.role === "user" &&
+              selectedModelId !== "chat-model-reasoning";
             return (
               <Fragment key={message.id}>
                 <PreviewMessage
@@ -132,36 +167,30 @@ function PureMessages({
                       : undefined
                   }
                 />
-                {eventsForMessage.map((event, eventIndex) => {
-                  const eventKey =
+                {showThinkingAfterMessage && <ThinkingMessage />}
+                {latestEventsByTask.map((event, eventIndex) => {
+                  const fallbackId = `${event.agentToolId ?? "a2a"}-${index}`;
+                  const eventIdentifier =
+                    event.primaryTaskId ||
+                    event.contextId ||
                     event.messages?.[event.messages.length - 1]?.messageId ||
-                    event.timestamp ||
-                    `${event.agentToolId}-${index}-${eventIndex}`;
-
-                  const tasksForEvent = event.tasks || [];
+                    fallbackId;
+                  const eventKey = `${eventIdentifier}-${event.timestamp ?? eventIndex}`;
 
                   return (
-                    <Fragment key={eventKey}>
-                      <MessageA2A event={event} />
-                      {tasksForEvent.map((task) => (
-                        <A2ATaskProgress
-                          agentName={event.agentName}
-                          key={`${eventKey}-task-${task.taskId}`}
-                          task={task}
-                        />
-                      ))}
-                    </Fragment>
+                    <MessageA2A
+                      enableAnimation={
+                        status === "streaming" && index === messages.length - 1
+                      }
+                      event={event}
+                      key={eventKey}
+                      tasks={event.tasks}
+                    />
                   );
                 })}
               </Fragment>
             );
           })}
-
-          {status === "submitted" &&
-            messages.length > 0 &&
-            messages.at(-1)?.role === "user" &&
-            selectedModelId !== "chat-model-reasoning" && <ThinkingMessage />}
-
           <div
             className="min-h-[24px] min-w-[24px] shrink-0"
             ref={messagesEndRef}

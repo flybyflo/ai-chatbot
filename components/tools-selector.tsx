@@ -53,7 +53,7 @@ function PureToolsSelector({
     "sticky top-0 z-10 flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-popover/95";
 
   // group tools by server/agent
-  const { mcpServers, a2aServers, localTools } = useMemo(() => {
+  const { mcpServers, a2aServers, localBucket } = useMemo(() => {
     const byKey = (
       items: ToolItem[],
       key: "serverName" | "agentName",
@@ -77,6 +77,17 @@ function PureToolsSelector({
         a.label.localeCompare(b.label)
       );
     };
+
+    const localTools = availableTools.filter(
+      (t) => t.type === TOOL_TYPES.LOCAL
+    );
+    const localToolsBucket: ServerBucket = {
+      id: "local",
+      label: "Local Tools",
+      kind: "mcp", // reuse "mcp" kind for styling purposes
+      tools: localTools,
+    };
+
     return {
       mcpServers: byKey(
         availableTools.filter((t) => t.type === TOOL_TYPES.MCP),
@@ -88,7 +99,7 @@ function PureToolsSelector({
         "agentName",
         "a2a"
       ),
-      localTools: availableTools.filter((t) => t.type === TOOL_TYPES.LOCAL),
+      localBucket: localToolsBucket,
     };
   }, [availableTools]);
 
@@ -111,14 +122,7 @@ function PureToolsSelector({
   };
   const filteredMCP = filterServers(mcpServers);
   const filteredA2A = filterServers(a2aServers);
-  const filteredLocal = searchTerm
-    ? localTools.filter(
-        (t) =>
-          t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          t.id.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : localTools;
+  const filteredLocal = filterServers([localBucket])[0] ? [localBucket] : [];
 
   // selection
   const isToolSelected = (id: string) => selectedTools.includes(id);
@@ -192,47 +196,19 @@ function PureToolsSelector({
               }
             />
           ) : (
-            <div className="space-y-1 p-1.5">
-              {filteredLocal.map((tool) => {
-                const checked = isToolSelected(tool.id);
-                return (
-                  <button
-                    className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-foreground/10"
-                    key={tool.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleTool(tool.id);
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    type="button"
-                  >
-                    <span
-                      className={[
-                        "mt-0.5 grid size-4 place-items-center rounded border border-border",
-                        checked
-                          ? "bg-foreground/80 text-background"
-                          : "bg-background",
-                      ].join(" ")}
-                    >
-                      {checked && <Check size={12} />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium text-xs">
-                          {tool.name}
-                        </span>
-                        <span className="rounded bg-green-100 px-1 py-0.5 text-[10px] text-green-700 dark:bg-green-900 dark:text-green-300">
-                          LOCAL
-                        </span>
-                      </div>
-                      <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
-                        {tool.description}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            filteredLocal.map((bucket) => (
+              <ServerRow
+                badge="LOCAL"
+                badgeClass="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                isToolSelected={isToolSelected}
+                key="local"
+                onClearAll={() => clearAllInServer(bucket)}
+                onSelectAll={() => selectAllInServer(bucket)}
+                onToggleTool={toggleTool}
+                selectedCount={selectedCountForServer(bucket)}
+                server={bucket}
+              />
+            ))
           )}
 
           {/* Divider */}

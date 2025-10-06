@@ -48,4 +48,3 @@ __pycache__/
 *$py.class
 
 # A2A samples (excluded from build and version control)
-a2a-samples/

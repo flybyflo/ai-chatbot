@@ -68,6 +68,11 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             },
           ],
         },
+        configuration: {
+          // Ensure we wait for task completion in streaming mode
+          // This keeps the stream open until the agent finishes
+          blocking: false, // Use non-blocking with streaming
+        },
       } satisfies Record<string, unknown>;
 
       if (existingSession?.contextId) {
@@ -86,131 +91,305 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
       let contextId: string | undefined = existingSession?.contextId;
       let latestTaskId: string | undefined = existingSession?.primaryTaskId;
 
-      for await (const event of client.sendMessageStream(streamParams)) {
-        if (!event || typeof event !== "object") {
-          continue;
-        }
+      // Terminal task states that indicate the agent has finished
+      const terminalStates = new Set([
+        "completed",
+        "failed",
+        "canceled",
+        "input_required",
+        "unknown",
+      ]);
 
-        const kind = (event as any).kind;
+      const emitProgressUpdate = (eventTimestamp?: string) => {
+        const tasksSnapshot = Array.from(taskMap.values()).map((task) => ({
+          ...task,
+          artifacts: task.artifacts
+            ? task.artifacts.map((artifact) => ({ ...artifact }))
+            : undefined,
+        }));
+        const statusSnapshot = statusUpdates.map((update) => ({ ...update }));
+        const artifactSnapshot = artifactUpdates.map((artifact) => ({
+          ...artifact,
+        }));
+        const messageSnapshot = messages.map((message) => ({ ...message }));
 
-        if (kind === "message") {
-          const message = event as any;
-          const textContent = extractTextFromParts(message.parts);
-          if (message.role === "agent" && textContent) {
-            agentResponses.push(textContent);
+        const payload: A2AToolEventPayload = {
+          agentKey: key,
+          agentId: metadata.id,
+          agentToolId: metadata.toolId,
+          agentName: metadata.displayName,
+          responseText: agentResponses.join("\n\n"),
+          contextId,
+          primaryTaskId: latestTaskId,
+          tasks: tasksSnapshot,
+          statusUpdates: statusSnapshot,
+          artifacts: artifactSnapshot,
+          messages: messageSnapshot,
+          timestamp: eventTimestamp ?? new Date().toISOString(),
+        };
+
+        for (const message of payload.messages) {
+          if (!message.messageId) {
+            message.messageId = `${payload.agentToolId}-${payload.timestamp}`;
           }
-          messages.push({
-            messageId: message.messageId,
-            role: message.role,
-            taskId: message.taskId,
-            text: textContent,
-          });
-          if (!contextId && message.contextId) {
-            contextId = message.contextId;
+          if (!message.text) {
+            message.text = payload.responseText;
           }
-          continue;
+          if (!message.role) {
+            message.role = "agent";
+          }
         }
 
-        if (kind === "task") {
-          const task = event as any;
-          contextId = task.contextId ?? contextId;
-          latestTaskId = task.id;
-          const taskSummary: A2ATaskSummary = {
-            taskId: task.id,
-            state: task.status?.state,
-            statusMessage: extractTextFromParts(task.status?.message?.parts),
-            contextId: task.contextId,
-            lastUpdated: new Date().toISOString(),
-            artifacts: Array.isArray(task.artifacts)
-              ? task.artifacts.map((artifact: any) => ({
-                  artifactId: artifact.artifactId,
-                  name: artifact.name,
-                  description: artifact.description,
-                }))
-              : undefined,
-          };
-          taskMap.set(task.id, taskSummary);
-          continue;
-        }
+        manager.emitToolEvent(payload);
+      };
 
-        if (kind === "status-update") {
-          const statusEvent = event as any;
-          contextId = statusEvent.contextId ?? contextId;
-          latestTaskId = statusEvent.taskId ?? latestTaskId;
-          const summary: A2ATaskStatusUpdateSummary = {
-            taskId: statusEvent.taskId,
-            contextId: statusEvent.contextId,
-            state: statusEvent.status?.state ?? "unknown",
-            message: extractTextFromParts(statusEvent.status?.message?.parts),
-            timestamp: statusEvent.status?.timestamp,
-          };
-          statusUpdates.push(summary);
-          const existing = taskMap.get(statusEvent.taskId);
-          if (existing) {
-            taskMap.set(statusEvent.taskId, {
-              ...existing,
-              state: summary.state,
-              statusMessage: summary.message ?? existing.statusMessage,
-              lastUpdated: summary.timestamp ?? existing.lastUpdated,
+      console.log("🔄 Starting A2A stream consumption", {
+        agent: metadata.displayName,
+        messageId,
+        hasExistingSession: !!existingSession,
+        existingContextId: existingSession?.contextId,
+      });
+
+      try {
+        let eventCount = 0;
+        let shouldContinue = true;
+
+        for await (const event of client.sendMessageStream(streamParams)) {
+          eventCount++;
+          if (!event || typeof event !== "object") {
+            console.warn("⚠️ Skipping invalid A2A event", {
+              agent: metadata.displayName,
+              eventCount,
+              event,
             });
-          } else {
-            taskMap.set(statusEvent.taskId, {
+            continue;
+          }
+
+          const kind = (event as any).kind;
+          console.log("📨 Received A2A event", {
+            agent: metadata.displayName,
+            eventCount,
+            kind,
+            eventPreview:
+              kind === "message"
+                ? (event as any).role
+                : kind === "task"
+                  ? (event as any).status?.state
+                  : kind === "status-update"
+                    ? (event as any).status?.state
+                    : kind,
+            fullEvent: event, // Log full event for debugging
+          });
+
+          if (kind === "message") {
+            const message = event as any;
+            const textContent = extractTextFromParts(message.parts);
+            if (message.role === "agent" && textContent) {
+              agentResponses.push(textContent);
+            }
+            messages.push({
+              messageId: message.messageId,
+              role: message.role,
+              taskId: message.taskId,
+              text: textContent,
+            });
+            if (!contextId && message.contextId) {
+              contextId = message.contextId;
+            }
+
+            emitProgressUpdate(message.timestamp);
+
+            // If we received an agent message and have a completed task, we can exit
+            if (
+              message.role === "agent" &&
+              taskMap.size > 0 &&
+              Array.from(taskMap.values()).some(
+                (t) => t.state && terminalStates.has(t.state)
+              )
+            ) {
+              console.log(
+                "🏁 Received agent message after terminal task, ending stream",
+                {
+                  agent: metadata.displayName,
+                  messageId: message.messageId,
+                  eventsProcessed: eventCount,
+                }
+              );
+              shouldContinue = false;
+              break;
+            }
+            continue;
+          }
+
+          if (kind === "task") {
+            const task = event as any;
+            contextId = task.contextId ?? contextId;
+            latestTaskId = task.id;
+            const taskSummary: A2ATaskSummary = {
+              taskId: task.id,
+              state: task.status?.state,
+              statusMessage: extractTextFromParts(task.status?.message?.parts),
+              contextId: task.contextId,
+              lastUpdated: new Date().toISOString(),
+              artifacts: Array.isArray(task.artifacts)
+                ? task.artifacts.map((artifact: any) => ({
+                    artifactId: artifact.artifactId,
+                    name: artifact.name,
+                    description: artifact.description,
+                  }))
+                : undefined,
+            };
+            taskMap.set(task.id, taskSummary);
+            emitProgressUpdate(task.status?.timestamp);
+
+            // Check if task has reached a terminal state
+            if (task.status?.state && terminalStates.has(task.status.state)) {
+              console.log("🏁 Task reached terminal state, ending stream", {
+                agent: metadata.displayName,
+                taskId: task.id,
+                state: task.status.state,
+                eventsProcessed: eventCount,
+              });
+              shouldContinue = false;
+              break;
+            }
+            continue;
+          }
+
+          if (kind === "status-update") {
+            const statusEvent = event as any;
+            contextId = statusEvent.contextId ?? contextId;
+            latestTaskId = statusEvent.taskId ?? latestTaskId;
+            const summary: A2ATaskStatusUpdateSummary = {
               taskId: statusEvent.taskId,
               contextId: statusEvent.contextId,
-              state: summary.state,
-              statusMessage: summary.message,
-              lastUpdated: summary.timestamp,
-            });
-          }
-          continue;
-        }
-
-        if (kind === "artifact-update") {
-          const artifactEvent = event as any;
-          contextId = artifactEvent.contextId ?? contextId;
-          latestTaskId = artifactEvent.taskId ?? latestTaskId;
-          const artifactSummary: A2AArtifactUpdateSummary = {
-            taskId: artifactEvent.taskId,
-            contextId: artifactEvent.contextId,
-            artifactId: artifactEvent.artifact?.artifactId,
-            name: artifactEvent.artifact?.name,
-            description: artifactEvent.artifact?.description,
-          };
-          artifactUpdates.push(artifactSummary);
-          const existing = taskMap.get(artifactEvent.taskId);
-          if (existing) {
-            const nextArtifacts = new Map(
-              (existing.artifacts ?? []).map((artifact) => [
-                artifact.artifactId,
-                artifact,
-              ])
-            );
-            if (artifactSummary.artifactId) {
-              nextArtifacts.set(artifactSummary.artifactId, {
-                artifactId: artifactSummary.artifactId,
-                name: artifactSummary.name,
-                description: artifactSummary.description,
+              state: statusEvent.status?.state ?? "unknown",
+              message: extractTextFromParts(statusEvent.status?.message?.parts),
+              timestamp: statusEvent.status?.timestamp,
+            };
+            statusUpdates.push(summary);
+            const existing = taskMap.get(statusEvent.taskId);
+            if (existing) {
+              taskMap.set(statusEvent.taskId, {
+                ...existing,
+                state: summary.state,
+                statusMessage: summary.message ?? existing.statusMessage,
+                lastUpdated: summary.timestamp ?? existing.lastUpdated,
+              });
+            } else {
+              taskMap.set(statusEvent.taskId, {
+                taskId: statusEvent.taskId,
+                contextId: statusEvent.contextId,
+                state: summary.state,
+                statusMessage: summary.message,
+                lastUpdated: summary.timestamp,
               });
             }
-            taskMap.set(artifactEvent.taskId, {
-              ...existing,
-              artifacts: Array.from(nextArtifacts.values()),
-            });
-          } else if (artifactSummary.artifactId) {
-            taskMap.set(artifactEvent.taskId, {
+
+            emitProgressUpdate(statusEvent.status?.timestamp);
+
+            // Check for the 'final' property which signals stream completion
+            if (statusEvent.final === true) {
+              console.log("🏁 Received final event, ending stream", {
+                agent: metadata.displayName,
+                taskId: statusEvent.taskId,
+                state: statusEvent.status?.state,
+                eventsProcessed: eventCount,
+              });
+              shouldContinue = false;
+              break;
+            }
+
+            // Also check if status update indicates terminal state
+            if (
+              statusEvent.status?.state &&
+              terminalStates.has(statusEvent.status.state)
+            ) {
+              console.log(
+                "🏁 Status update shows terminal state, ending stream",
+                {
+                  agent: metadata.displayName,
+                  taskId: statusEvent.taskId,
+                  state: statusEvent.status.state,
+                  eventsProcessed: eventCount,
+                }
+              );
+              shouldContinue = false;
+              break;
+            }
+            continue;
+          }
+
+          if (kind === "artifact-update") {
+            const artifactEvent = event as any;
+            contextId = artifactEvent.contextId ?? contextId;
+            latestTaskId = artifactEvent.taskId ?? latestTaskId;
+            const artifactSummary: A2AArtifactUpdateSummary = {
               taskId: artifactEvent.taskId,
               contextId: artifactEvent.contextId,
-              state: undefined,
-              artifacts: [
-                {
+              artifactId: artifactEvent.artifact?.artifactId,
+              name: artifactEvent.artifact?.name,
+              description: artifactEvent.artifact?.description,
+            };
+            artifactUpdates.push(artifactSummary);
+            const existing = taskMap.get(artifactEvent.taskId);
+            if (existing) {
+              const nextArtifacts = new Map(
+                (existing.artifacts ?? []).map((artifact) => [
+                  artifact.artifactId,
+                  artifact,
+                ])
+              );
+              if (artifactSummary.artifactId) {
+                nextArtifacts.set(artifactSummary.artifactId, {
                   artifactId: artifactSummary.artifactId,
                   name: artifactSummary.name,
                   description: artifactSummary.description,
-                },
-              ],
-            });
+                });
+              }
+              taskMap.set(artifactEvent.taskId, {
+                ...existing,
+                artifacts: Array.from(nextArtifacts.values()),
+              });
+            } else if (artifactSummary.artifactId) {
+              taskMap.set(artifactEvent.taskId, {
+                taskId: artifactEvent.taskId,
+                contextId: artifactEvent.contextId,
+                state: undefined,
+                artifacts: [
+                  {
+                    artifactId: artifactSummary.artifactId,
+                    name: artifactSummary.name,
+                    description: artifactSummary.description,
+                  },
+                ],
+              });
+            }
+
+            emitProgressUpdate(
+              artifactEvent.artifact?.timestamp ?? artifactEvent.timestamp
+            );
           }
         }
+
+        console.log("✅ A2A stream consumption completed", {
+          agent: metadata.displayName,
+          totalEvents: eventCount,
+          messagesReceived: messages.length,
+          tasksTracked: taskMap.size,
+          statusUpdates: statusUpdates.length,
+          artifactUpdates: artifactUpdates.length,
+          reason: shouldContinue ? "stream ended" : "terminal state reached",
+        });
+      } catch (error) {
+        console.error("❌ A2A stream consumption error", {
+          agent: metadata.displayName,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        throw new Error(
+          `Failed to consume A2A stream from ${metadata.displayName}: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
 
       const responseText = agentResponses.join("\n\n");
@@ -268,6 +447,8 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
         messageCount: payload.messages.length,
         responsePreview: responseText?.slice(0, 120),
       });
+
+      manager.emitToolEvent(payload);
 
       if (payload.tasks.length > 0) {
         console.log(

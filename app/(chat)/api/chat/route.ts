@@ -23,7 +23,7 @@ import type { ChatModel } from "@/lib/ai/models";
 import { chatModels } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
-import { getActiveTools, getAllTools } from "@/lib/ai/tools";
+import { getAllTools } from "@/lib/ai/tools";
 import { auth, type UserType } from "@/lib/auth";
 import { isAdminUser, isProductionEnvironment } from "@/lib/constants";
 import {
@@ -196,9 +196,22 @@ export async function POST(request: Request) {
       selectedReasoningEffort || selectedModel?.reasoningEffort || "medium";
 
     // Load all tools (local + MCP) and filter by selected tools
-    const { mcpRegistry, a2aRegistry } = await getAllTools(session.user.id);
+    const {
+      tools: allTools,
+      mcpRegistry,
+      a2aRegistry,
+      a2aManager,
+    } = await getAllTools(session.user.id);
     console.log("🔧 Backend: Received selectedTools:", selectedTools);
-    const tools = await getActiveTools(selectedTools, session.user.id);
+    const tools = Object.entries(allTools).reduce<Record<string, any>>(
+      (acc, [toolName, toolImpl]) => {
+        if (!selectedTools || selectedTools.includes(toolName)) {
+          acc[toolName] = toolImpl;
+        }
+        return acc;
+      },
+      {}
+    );
     console.log(
       "🔧 Backend: Active tools after filtering:",
       Object.keys(tools)
@@ -208,6 +221,16 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
+        let unsubscribeA2AEvents: (() => void) | undefined;
+        if (a2aManager) {
+          unsubscribeA2AEvents = a2aManager.onToolEvent((event) => {
+            dataStream.write({
+              type: "data-a2aEvents",
+              data: event,
+            });
+          });
+        }
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ requestHints, userMemories: memoryContext }),
@@ -339,7 +362,17 @@ export async function POST(request: Request) {
           },
         });
 
-        result.consumeStream();
+        const streamConsumption = result.consumeStream();
+        if (unsubscribeA2AEvents) {
+          streamConsumption
+            .catch(() => {
+              // Errors are surfaced via streamText handlers
+              return;
+            })
+            .finally(() => {
+              unsubscribeA2AEvents?.();
+            });
+        }
 
         dataStream.merge(
           result.toUIMessageStream({

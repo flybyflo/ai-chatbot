@@ -51,7 +51,13 @@ def main(host: str, port: int) -> None:
         http_handler=request_handler,
     )
 
-    uvicorn.run(server.build(), host=host, port=port)
+    uvicorn.run(
+        server.build(),
+        host=host,
+        port=port,
+        timeout_keep_alive=120,  # Keep connections alive for 120 seconds
+        timeout_graceful_shutdown=30,  # Allow 30 seconds for graceful shutdown
+    )
 
 
 def get_agent_card(host: str, port: int) -> AgentCard:

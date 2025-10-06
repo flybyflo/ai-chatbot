@@ -61,6 +61,39 @@ export function Chat({
   const { setDataStream } = useDataStream();
   const { setCurrentMessages } = useChatContext();
 
+  // Extract A2A events from initial messages and populate data stream
+  useEffect(() => {
+    const a2aEvents: any[] = [];
+
+    for (const message of initialMessages) {
+      if (message.role === "assistant" && message.parts) {
+        for (const part of message.parts) {
+          const partType = (part as any).type;
+          // Check if this is an A2A tool part
+          if (
+            typeof partType === "string" &&
+            partType.startsWith("tool-a2a_")
+          ) {
+            const output = (part as any).output;
+            if (output && typeof output === "object") {
+              a2aEvents.push({
+                type: "data-a2aEvents",
+                data: output,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    setDataStream(a2aEvents);
+    if (a2aEvents.length > 0) {
+      console.log(
+        `📥 Loaded ${a2aEvents.length} A2A events from message history`
+      );
+    }
+  }, [initialMessages, setDataStream]);
+
   const [input, setInput] = useState<string>("");
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
@@ -202,7 +235,9 @@ export function Chat({
   });
 
   useEffect(() => {
-    setDataStream([]);
+    return () => {
+      setDataStream([]);
+    };
   }, [setDataStream]);
 
   const searchParams = useSearchParams();

@@ -38,7 +38,10 @@ class TestAgentExecutor(AgentExecutor):
             task = new_task(context.message)
             await event_queue.enqueue_event(task)
 
-        # Stream agent responses
+        #  Collect full response
+        full_response = ""
+
+        # Stream agent responses - consume ALL events
         async for partial in self.agent.stream(query, task.context_id):
             is_done = partial.get("is_task_complete", False)
             require_input = partial.get("require_user_input", False)
@@ -46,33 +49,15 @@ class TestAgentExecutor(AgentExecutor):
             is_streaming = partial.get("is_streaming_chunk", False)
             is_final = partial.get("is_final", False)
 
-            # Send status updates
+            logger.info(f"Partial: is_final={is_final}, is_streaming={is_streaming}, content_len={len(text_content)}")
+
+            # Accumulate streaming chunks
             if is_streaming and text_content:
-                # Send streaming text chunks
-                await event_queue.enqueue_event(
-                    new_agent_text_message(
-                        text_content,
-                        task.context_id,
-                        task.id,
-                    )
-                )
-            elif is_done or is_final:
-                # Task completed
-                await event_queue.enqueue_event(
-                    TaskStatusUpdateEvent(
-                        status=TaskStatus(
-                            state=TaskState.completed,
-                            message=new_agent_text_message(
-                                text_content if is_final else "Task completed successfully.",
-                                task.context_id,
-                                task.id,
-                            ),
-                        ),
-                        final=True,
-                        context_id=task.context_id,
-                        task_id=task.id,
-                    )
-                )
+                full_response += text_content
+            elif is_final:
+                # This is the last event - save it
+                full_response = text_content if text_content else full_response
+                logger.info(f"Got final event, full response length: {len(full_response)}")
             elif require_input:
                 # Waiting for user input
                 await event_queue.enqueue_event(
@@ -107,6 +92,28 @@ class TestAgentExecutor(AgentExecutor):
                         task_id=task.id,
                     )
                 )
+
+        # After consuming all events, send ONLY the final status (no separate message)
+        # Include the response text in the final status message
+        logger.info(f"Loop complete. Sending final status with response. Response length: {len(full_response)}")
+
+        # Send final completion status with the full response in the message
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                status=TaskStatus(
+                    state=TaskState.completed,
+                    message=new_agent_text_message(
+                        full_response if full_response else "Task completed successfully.",
+                        task.context_id,
+                        task.id,
+                    ),
+                ),
+                final=True,
+                context_id=task.context_id,
+                task_id=task.id,
+            )
+        )
+        logger.info("Final status with response enqueued (final=True)")
 
     async def cancel(
         self, context: RequestContext, event_queue: EventQueue

@@ -65,14 +65,8 @@ export async function POST(request: NextRequest) {
       ).toResponse();
     }
     const body = await request.json();
-    const {
-      name,
-      description,
-      color,
-      tags,
-      isDefault,
-      selectedTools,
-    } = createLoadoutSchema.parse(body);
+    const { name, description, color, tags, isDefault, selectedTools } =
+      createLoadoutSchema.parse(body);
     const loadout = await createUserLoadout({
       userId: session.user.id,
       name,

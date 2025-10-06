@@ -1,5 +1,6 @@
 """Simple Test A2A Agent using Azure OpenAI."""
 
+import asyncio
 import logging
 import os
 from collections.abc import AsyncIterable
@@ -75,6 +76,11 @@ class TestAgent:
 
         messages = self.conversations[session_id] + [HumanMessage(content=user_input)]
 
+        # Simulate longer task processing time
+        logger.info("Starting 5-second delay to simulate longer task...")
+        await asyncio.sleep(5.0)
+        logger.info("Delay completed, starting LLM call...")
+
         # Get response
         response = await self.llm.ainvoke(messages)
 
@@ -116,6 +122,11 @@ class TestAgent:
             "require_user_input": False,
         }
 
+        # Simulate longer task processing time
+        logger.info("Starting 5-second delay to simulate longer task...")
+        await asyncio.sleep(5.0)
+        logger.info("Delay completed, starting LLM streaming...")
+
         # Stream the response
         full_response = ""
         async for chunk in self.llm.astream(messages):
@@ -132,14 +143,15 @@ class TestAgent:
         self.conversations[session_id].append(HumanMessage(content=user_input))
         self.conversations[session_id].append(AIMessage(content=full_response))
 
-        # Determine if task is complete
-        is_complete = self._is_task_complete(full_response)
+        # Final response is always considered complete
+        # The task is done when we've received the full LLM response
+        is_complete = True  # Always complete after streaming finishes
 
         # Yield final status
         yield {
             "content": full_response,
             "is_task_complete": is_complete,
-            "require_user_input": not is_complete,
+            "require_user_input": False,  # No more input needed
             "is_final": True,
         }
 

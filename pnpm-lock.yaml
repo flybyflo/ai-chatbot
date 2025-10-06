@@ -248,6 +248,9 @@ importers:
       papaparse:
         specifier: ^5.5.2
         version: 5.5.2
+      pnpm:
+        specifier: ^10.18.1
+        version: 10.18.1
       postgres:
         specifier: ^3.4.4
         version: 3.4.5
@@ -4376,6 +4379,11 @@ packages:
   playwright@1.51.0:
     resolution: {integrity: sha512-442pTfGM0xxfCYxuBa/Pu6B2OqxqqaYq39JS8QDMGThUvIOCd6s0ANDog3uwA0cHavVlnTQzGCN7Id2YekDSXA==}
     engines: {node: '>=18'}
+    hasBin: true
+
+  pnpm@10.18.1:
+    resolution: {integrity: sha512-d6iEoWXLui2NHBnjtIgO7m0vyr0Nh5Eh4oIZa4AEI1HV6zygk1+lmdodxRJlzGiBatK93Sot5eqf35KtvsfNNA==}
+    engines: {node: '>=18.12'}
     hasBin: true
 
   points-on-curve@0.2.0:
@@ -9408,6 +9416,8 @@ snapshots:
       playwright-core: 1.51.0
     optionalDependencies:
       fsevents: 2.3.2
+
+  pnpm@10.18.1: {}
 
   points-on-curve@0.2.0: {}
 

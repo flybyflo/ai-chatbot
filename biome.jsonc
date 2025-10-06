@@ -4,6 +4,8 @@
   "files": {
     "includes": [
       "**/*",
+      "!a2a-samples",
+      "!a2a-samples/**/*",
       "!components/ui",
       "!lib/utils.ts",
       "!hooks/use-mobile.ts",
@@ -19,7 +21,8 @@
       ".claude",
       "dist",
       "build",
-      "test-mcp"
+      "test-mcp",
+      "a2a-samples"
     ]
   },
   "linter": {
