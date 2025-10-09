@@ -8,6 +8,7 @@ import {
   PromptInputModelSelect,
   PromptInputModelSelectContent,
 } from "./elements/prompt-input";
+import { cn } from "@/lib/utils";
 
 function PureReasoningEffortSelector({
   selectedReasoningEffort,
@@ -30,9 +31,11 @@ function PureReasoningEffortSelector({
     { value: "high", label: "High" },
   ] as const;
 
-  const panelClass =
-    "z-[1000] w-[240px] rounded-lg border border-border/30 bg-popover p-0 text-popover-foreground shadow-md backdrop-blur " +
-    "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
+  const panelClass = cn(
+    "z-[1000] w-[240px] overflow-hidden rounded-xl border border-border/60 bg-white/95 text-foreground shadow-xl",
+    "backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-zinc-800 dark:bg-zinc-950/90",
+    "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+  );
 
   return (
     <PromptInputModelSelect
@@ -59,13 +62,18 @@ function PureReasoningEffortSelector({
       </Trigger>
 
       <PromptInputModelSelectContent className={panelClass}>
-        <div className="divide-y divide-border/20">
+        <div className="divide-y divide-border/30 bg-white/40 dark:divide-zinc-800/60 dark:bg-transparent">
           {effortOptions.map((effort) => (
             <SelectItem
-              className="relative w-full cursor-default select-none py-2 pr-2.5 pl-8 text-xs outline-none transition-colors hover:bg-foreground/10 focus:bg-foreground/10 data-[state=checked]:bg-foreground/15"
+              className={cn(
+                "flex w-full cursor-default select-none items-center gap-2 px-3 py-2 text-xs font-medium",
+                "text-foreground/90 transition-colors",
+                "data-[highlighted]:bg-muted/60 data-[state=checked]:bg-muted data-[state=checked]:text-foreground"
+              )}
               key={effort.value}
               value={effort.label}
             >
+              <span className="h-2 w-2 rounded-full bg-primary/70 dark:bg-primary" />
               {effort.label}
             </SelectItem>
           ))}

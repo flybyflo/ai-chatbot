@@ -8,13 +8,14 @@ import {
   Root,
 } from "@radix-ui/react-hover-card";
 import { Trigger } from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronRight, Wrench } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Plus, Wrench } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { TOOL_TYPES, type ToolType } from "@/lib/enums";
 import {
   PromptInputModelSelect,
   PromptInputModelSelectContent,
 } from "./elements/prompt-input";
+import { cn } from "@/lib/utils";
 
 type ToolItem = {
   id: string;
@@ -47,10 +48,14 @@ function PureToolsSelector({
   const [searchTerm, setSearchTerm] = useState("");
 
   // --- minimal main dropdown styles (modern + compact) ---
-  const mainPanelClass =
-    "z-[1000] w-[360px] rounded-lg border border-border/30 bg-popover p-0 text-popover-foreground shadow-md backdrop-blur";
-  const sectionHeaderClass =
-    "sticky top-0 z-10 flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-popover/95";
+  const mainPanelClass = cn(
+    "z-[1000] w-[360px] overflow-hidden rounded-xl border border-border/60 bg-white/95 p-0 text-foreground shadow-xl",
+    "backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-zinc-800 dark:bg-zinc-950/90"
+  );
+  const sectionHeaderClass = cn(
+    "sticky top-0 z-10 flex items-center gap-1.5 border-b border-transparent bg-white/90 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
+    "dark:bg-zinc-950/80"
+  );
 
   // group tools by server/agent
   const { mcpServers, a2aServers, localBucket } = useMemo(() => {
@@ -174,10 +179,10 @@ function PureToolsSelector({
       {/* MAIN DROPDOWN — minimal spacing */}
       <PromptInputModelSelectContent className={mainPanelClass}>
         {/* Search — edge-to-edge, no outer padding */}
-        <div className="border-border/20 border-b">
+        <div className="border-border/40 border-b bg-white/70 px-3 py-2 dark:bg-zinc-950/60">
           <input
             autoComplete="off"
-            className="block w-full bg-transparent px-2.5 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+            className="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-xs font-medium text-foreground/90 outline-none placeholder:text-muted-foreground focus:border-border focus:ring-0 dark:text-zinc-100"
             onChange={(e) => setSearchTerm(e.target.value)}
             onMouseDown={(e) => e.stopPropagation()}
             placeholder="Search servers or tools…"
@@ -212,7 +217,7 @@ function PureToolsSelector({
           )}
 
           {/* Divider */}
-          <div className="my-1 h-px w-full bg-border/30" />
+          <div className="my-1 h-px w-full bg-border/40" />
 
           {/* MCP */}
           <SectionHeader className={sectionHeaderClass} label="MCP Servers" />
@@ -239,7 +244,7 @@ function PureToolsSelector({
           )}
 
           {/* Divider */}
-          <div className="my-1 h-px w-full bg-border/30" />
+          <div className="my-1 h-px w-full bg-border/40" />
 
           {/* A2A */}
           <SectionHeader className={sectionHeaderClass} label="A2A Agents" />
@@ -280,8 +285,8 @@ function SectionHeader({
   className?: string;
 }) {
   return (
-    <div className={className}>
-      <Wrench size={12} />
+    <div className={cn("flex items-center gap-1.5 text-[10px]", className)}>
+      <Wrench className="text-muted-foreground" size={12} />
       {label}
     </div>
   );
@@ -289,7 +294,7 @@ function SectionHeader({
 
 function EmptyRow({ message }: { message: string }) {
   return (
-    <div className="px-2 py-2 text-center text-muted-foreground text-xs">
+    <div className="px-3 py-4 text-center text-muted-foreground text-xs">
       {message}
     </div>
   );
@@ -320,11 +325,11 @@ function ServerRow({
     <Root closeDelay={200} openDelay={80}>
       <HoverTrigger asChild>
         <button
-          className="group flex w-full items-center justify-between px-2 py-1.5 text-left transition-colors hover:bg-foreground/10"
+          className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted"
           type="button"
         >
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className={`rounded px-1 py-0.5 text-[10px] ${badgeClass}`}>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badgeClass}`}>
               {badge}
             </span>
             <span className="truncate font-medium text-xs">{server.label}</span>
@@ -334,7 +339,7 @@ function ServerRow({
               {selectedCount}/{total}
             </span>
             <ChevronRight
-              className="opacity-60 group-hover:opacity-100"
+              className="text-muted-foreground opacity-60 group-hover:opacity-100"
               size={12}
             />
           </div>
@@ -345,23 +350,29 @@ function ServerRow({
         {/* HOVER PANEL with its own edge-to-edge search */}
         <Content
           align="start"
-          className="data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 z-[1000] w-[360px] rounded-lg border border-border/40 bg-popover p-0 text-popover-foreground shadow-xl backdrop-blur-md data-[state=closed]:animate-out data-[state=open]:animate-in"
+          className={cn(
+            "z-[1000] w-[360px] overflow-hidden rounded-xl border border-border/60 bg-white/95 text-foreground shadow-2xl",
+            "backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:border-zinc-800 dark:bg-zinc-950/90",
+            "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+          )}
           side="right"
           sideOffset={8}
         >
           {/* Header + bulk actions */}
-          <div className="flex items-center justify-between px-2 py-1">
+          <div className="flex items-center justify-between border-border/40 border-b bg-white/80 px-3 py-2 dark:bg-zinc-950/70">
             <div className="flex items-center gap-2">
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] ${badgeClass}`}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badgeClass}`}
               >
                 {badge}
               </span>
-              <span className="font-semibold text-xs">{server.label}</span>
+              <span className="font-semibold text-xs text-foreground">
+                {server.label}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <button
-                className="rounded border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
+                className="flex items-center gap-1 rounded-md border border-border/60 px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectAll();
@@ -372,7 +383,7 @@ function ServerRow({
                 Select all
               </button>
               <button
-                className="rounded border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
+                className="flex items-center gap-1 rounded-md border border-border/60 px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClearAll();
@@ -386,12 +397,12 @@ function ServerRow({
           </div>
 
           {/* Tools */}
-          <div className="max-h-[280px] space-y-1 overflow-y-auto p-1.5">
+          <div className="max-h-[280px] space-y-1 overflow-y-auto bg-white/60 p-2 dark:bg-transparent">
             {server.tools.map((tool) => {
               const checked = isToolSelected(tool.id);
               return (
                 <button
-                  className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-foreground/10"
+                  className="flex w-full items-start gap-3 rounded-lg border border-transparent bg-white/60 p-2.5 text-left transition-colors hover:border-border/60 hover:bg-muted dark:bg-zinc-950/60"
                   key={tool.id}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -401,18 +412,18 @@ function ServerRow({
                   type="button"
                 >
                   <span
-                    className={[
-                      "mt-0.5 grid size-4 place-items-center rounded border border-border",
+                    className={cn(
+                      "mt-0.5 grid size-5 place-items-center rounded border",
                       checked
-                        ? "bg-foreground/80 text-background"
-                        : "bg-background",
-                    ].join(" ")}
+                        ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:border-emerald-400/50 dark:bg-emerald-400/10 dark:text-emerald-200"
+                        : "border-border/60 bg-white text-muted-foreground dark:border-zinc-800 dark:bg-zinc-950"
+                    )}
                   >
-                    {checked && <Check size={12} />}
+                    {checked ? <Check size={14} /> : <Plus size={14} />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate font-medium text-xs">
+                      <span className="truncate font-semibold text-xs text-foreground">
                         {tool.name}
                       </span>
                       <span className="truncate text-[10px] text-muted-foreground">
@@ -428,7 +439,7 @@ function ServerRow({
             })}
           </div>
 
-          <Arrow className="fill-popover" />
+          <Arrow className="fill-white/95 dark:fill-zinc-950/90" />
         </Content>
       </Portal>
     </Root>

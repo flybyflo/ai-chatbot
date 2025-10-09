@@ -14,6 +14,7 @@ import {
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import { SelectItem } from "@/components/ui/select";
 import { chatModels } from "@/lib/ai/models";
+import { cn } from "@/lib/utils";
 import {
   PromptInputModelSelect,
   PromptInputModelSelectContent,
@@ -84,9 +85,11 @@ function PureModelSelectorCompact({
     [onModelChange]
   );
 
-  const panelClass =
-    "z-[1000] w-[320px] rounded-lg border border-border/30 bg-popover p-0 text-popover-foreground shadow-md backdrop-blur " +
-    "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
+  const panelClass = cn(
+    "z-[1000] w-[320px] overflow-hidden rounded-xl border border-border/60 bg-white/95 text-foreground shadow-xl",
+    "backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-zinc-800 dark:bg-zinc-950/90",
+    "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+  );
 
   return (
     <PromptInputModelSelect
@@ -107,10 +110,10 @@ function PureModelSelectorCompact({
 
       <PromptInputModelSelectContent className={panelClass}>
         {/* Edge-to-edge search */}
-        <div className="border-border/20 border-b">
+        <div className="border-border/40 border-b bg-white/70 px-3 py-2 dark:bg-zinc-950/60">
           <input
             autoComplete="off"
-            className="block w-full bg-transparent px-2.5 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+            className="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-xs font-medium text-foreground/90 outline-none placeholder:text-muted-foreground focus:border-border focus:ring-0 dark:text-zinc-100"
             onChange={handleSearchChange}
             onMouseDown={(e) => e.stopPropagation()}
             placeholder="Search models…"
@@ -121,21 +124,30 @@ function PureModelSelectorCompact({
         </div>
 
         {/* List */}
-        <div className="max-h-[360px] overflow-y-auto">
+        <div className="max-h-[360px] overflow-y-auto bg-white/40 dark:bg-transparent">
           {filteredModels.length === 0 ? (
-            <div className="px-2 py-2 text-center text-muted-foreground text-xs">
+            <div className="px-3 py-4 text-center text-muted-foreground text-xs">
               No models match your search
             </div>
           ) : (
             filteredModels.map((model) => (
               <SelectItem
-                className="relative w-full cursor-default select-none py-2 pr-2.5 pl-8 text-xs outline-none transition-colors hover:bg-foreground/10 focus:bg-foreground/10 data-[state=checked]:bg-foreground/15"
+                className={cn(
+                  "group relative flex w-full cursor-default select-none flex-col gap-1 rounded-lg px-3 py-2 text-xs",
+                  "text-foreground/90 outline-none transition-colors",
+                  "data-[highlighted]:bg-muted/60 data-[state=checked]:bg-muted data-[state=checked]:text-foreground"
+                )}
                 key={model.id}
                 value={model.name}
               >
-                <div className="truncate font-medium">{model.name}</div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary/70 dark:bg-primary" />
+                  <div className="truncate font-semibold text-foreground">
+                    {model.name}
+                  </div>
+                </div>
                 {model.description && (
-                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground leading-tight">
+                  <div className="truncate text-[11px] text-muted-foreground leading-tight">
                     {model.description}
                   </div>
                 )}

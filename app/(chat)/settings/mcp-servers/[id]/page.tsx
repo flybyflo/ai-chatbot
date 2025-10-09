@@ -9,10 +9,11 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { Suspense, use, useEffect, useMemo, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MCPToolsTable } from "@/components/mcp-tools-table";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
 import { useAllTools } from "@/hooks/use-tools";
 import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
@@ -101,6 +102,8 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
 
   const server = mcpServers.find((s) => s.id === resolvedParams.id);
   const { mcpRegistry, isLoading: toolsLoading } = useAllTools();
+  const selectedTools = useMCPServerStore((s) => s.selectedTools);
+  const setStoreSelected = useMCPServerStore((s) => s.setSelectedTools);
 
   const loadingServer = !isMounted || serversLoading;
   const loadingTools = toolsLoading || loadingServer;
@@ -119,6 +122,37 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
         serverName: (meta as any).serverName as string | undefined,
       }));
   }, [mcpRegistry, server]);
+
+  useEffect(() => {
+    if (!isMounted) {
+      return;
+    }
+    if (selectedTools.length === 0) {
+      const stored = localStorage.getItem("selected-tools");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setStoreSelected(parsed.filter((value): value is string => typeof value === "string"));
+          }
+        } catch {
+          localStorage.removeItem("selected-tools");
+        }
+      }
+    }
+  }, [isMounted, selectedTools.length, setStoreSelected]);
+
+  const handleSelectedToolsChange = useCallback(
+    (next: string[]) => {
+      setStoreSelected(next);
+      try {
+        localStorage.setItem("selected-tools", JSON.stringify(next));
+      } catch {
+        // ignore storage write errors
+      }
+    },
+    [setStoreSelected]
+  );
 
   const getStatusIcon = () => {
     if (!server) {
@@ -457,26 +491,25 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
               </div>
             ))}
           </div>
-        ) : tools.length === 0 ? (
-          <div className="rounded-xl border border-border/40 border-dashed p-6 text-center">
-            <div className="text-muted-foreground text-sm">
-              No tools available
-            </div>
-            <div className="mt-1 text-muted-foreground text-xs">
-              {server?.isActive
-                ? "This server doesn’t provide any tools"
-                : "Server is not active"}
-            </div>
-          </div>
         ) : (
-          <div className="space-y-2">
-            {tools.map((tool) => (
-              <MCPToolToggle
-                key={tool.id}
-                serverName={tool.serverName}
-                tool={tool}
-              />
-            ))}
+          <div className="space-y-3">
+            <MCPToolsTable
+              onSelectedToolsChange={handleSelectedToolsChange}
+              selectedToolIds={selectedTools}
+              tools={tools}
+            />
+            {tools.length === 0 && (
+              <div className="rounded-xl border border-border/40 border-dashed px-4 py-5 text-center">
+                <div className="text-muted-foreground text-sm">
+                  No tools available
+                </div>
+                <div className="mt-1 text-muted-foreground text-xs">
+                  {server?.isActive
+                    ? "This server doesn’t provide any tools"
+                    : "Server is not active"}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -524,70 +557,3 @@ function KV({ label, children }: { label: string; children: React.ReactNode }) {
   );
 }
 
-function MCPToolToggle({
-  tool,
-  serverName,
-}: {
-  tool: { id: string; name: string; description?: string };
-  serverName?: string;
-}) {
-  const selectedTools = useMCPServerStore((s) => s.selectedTools);
-  const setStoreSelected = useMCPServerStore((s) => s.setSelectedTools);
-
-  useEffect(() => {
-    if (selectedTools.length === 0) {
-      const stored = localStorage.getItem("selected-tools");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setStoreSelected(parsed);
-          }
-        } catch {
-          localStorage.removeItem("selected-tools");
-        }
-      }
-    }
-  }, [selectedTools.length, setStoreSelected]);
-
-  const isActive = selectedTools.includes(tool.id);
-
-  const toggle = () => {
-    const next = isActive
-      ? selectedTools.filter((t) => t !== tool.id)
-      : [...selectedTools, tool.id];
-    setStoreSelected(next);
-    localStorage.setItem("selected-tools", JSON.stringify(next));
-  };
-
-  return (
-    <div className="flex items-start justify-between rounded-lg border border-border/30 bg-popover/60 p-2.5">
-      <div className="min-w-0 flex-1">
-        <div className="mb-0.5 flex items-center gap-2">
-          <span className="font-medium text-sm">{tool.name}</span>
-          <Badge className="text-[10px]" variant="secondary">
-            MCP
-          </Badge>
-          {serverName ? (
-            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-              {serverName}
-            </span>
-          ) : null}
-        </div>
-        {tool.description ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            {tool.description}
-          </p>
-        ) : null}
-      </div>
-      <Button
-        className={isActive ? "border-destructive text-destructive" : undefined}
-        onClick={toggle}
-        size="sm"
-        variant="outline"
-      >
-        {isActive ? "Deactivate" : "Activate"}
-      </Button>
-    </div>
-  );
-}
