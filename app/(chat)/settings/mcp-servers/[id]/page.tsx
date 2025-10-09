@@ -1,6 +1,5 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle,
   Clock,
@@ -91,12 +90,11 @@ function LoadingSkeleton() {
 function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
   const resolvedParams = use(params);
   const {
-    mcpServers,
-    testMCPServer,
-    updateMCPServer,
-    deleteMCPServer,
+    servers: mcpServers,
+    testServer: testMCPServer,
+    updateServer: updateMCPServer,
+    deleteServer: deleteMCPServer,
     isLoading: serversLoading,
-    hasCached,
   } = useMCPServers();
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
@@ -104,7 +102,7 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
   const server = mcpServers.find((s) => s.id === resolvedParams.id);
   const { mcpRegistry, isLoading: toolsLoading } = useAllTools();
 
-  const loadingServer = !isMounted || (serversLoading && !hasCached);
+  const loadingServer = !isMounted || serversLoading;
   const loadingTools = toolsLoading || loadingServer;
 
   const tools = useMemo(() => {
@@ -533,36 +531,33 @@ function MCPToolToggle({
   tool: { id: string; name: string; description?: string };
   serverName?: string;
 }) {
-  const queryClient = useQueryClient();
-  const storeSelected = useMCPServerStore((s) => s.selectedTools);
+  const selectedTools = useMCPServerStore((s) => s.selectedTools);
   const setStoreSelected = useMCPServerStore((s) => s.setSelectedTools);
-  const [selected, setSelected] = useState<string[]>(() => {
-    const fromStore = useMCPServerStore.getState().selectedTools;
-    if (fromStore && fromStore.length > 0) {
-      return fromStore;
-    }
-    return (queryClient.getQueryData(["tools", "selected"]) as string[]) || [];
-  });
 
   useEffect(() => {
-    if (storeSelected && storeSelected.length > 0) {
-      setSelected(storeSelected);
-      return;
+    if (selectedTools.length === 0) {
+      const stored = localStorage.getItem("selected-tools");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setStoreSelected(parsed);
+          }
+        } catch {
+          localStorage.removeItem("selected-tools");
+        }
+      }
     }
-    const cached =
-      (queryClient.getQueryData(["tools", "selected"]) as string[]) || [];
-    setSelected(cached);
-  }, [queryClient, storeSelected]);
+  }, [selectedTools.length, setStoreSelected]);
 
-  const isActive = selected.includes(tool.id);
+  const isActive = selectedTools.includes(tool.id);
 
   const toggle = () => {
     const next = isActive
-      ? selected.filter((t) => t !== tool.id)
-      : [...selected, tool.id];
-    setSelected(next);
-    queryClient.setQueryData(["tools", "selected"], next);
+      ? selectedTools.filter((t) => t !== tool.id)
+      : [...selectedTools, tool.id];
     setStoreSelected(next);
+    localStorage.setItem("selected-tools", JSON.stringify(next));
   };
 
   return (

@@ -19,14 +19,12 @@ import { useMCPServers } from "@/hooks/use-mcp-servers";
 
 export function MCPServerManager() {
   const {
-    mcpServers,
+    servers: mcpServers,
     isLoading,
-    hasCached,
-    createMCPServer,
-    updateMCPServer,
-    deleteMCPServer,
-    testMCPServer,
-    isCreating: isCreatingServer,
+    createServer,
+    updateServer,
+    deleteServer,
+    testServer,
   } = useMCPServers();
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
@@ -41,7 +39,7 @@ export function MCPServerManager() {
 
     setIsSaving(true);
     try {
-      await createMCPServer({
+      await createServer({
         name: newName.trim(),
         url: newUrl.trim(),
         description: newDescription.trim() || undefined,
@@ -68,7 +66,7 @@ export function MCPServerManager() {
     isActive?: boolean;
   }) => {
     try {
-      await updateMCPServer(data);
+      await updateServer(data);
       toast.success("MCP server updated successfully");
     } catch (error) {
       toast.error(
@@ -79,7 +77,7 @@ export function MCPServerManager() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteMCPServer(id);
+      await deleteServer(id);
       toast.success("MCP server deleted successfully");
     } catch (error) {
       toast.error(
@@ -95,7 +93,7 @@ export function MCPServerManager() {
         return;
       }
 
-      await testMCPServer({
+      await testServer({
         id: server.id,
         url: server.url,
         headers: server.headers,
@@ -129,7 +127,7 @@ export function MCPServerManager() {
         ))}
 
         {/* Loading State */}
-        {isLoading && !hasCached && mcpServers.length === 0 && (
+        {isLoading && mcpServers.length === 0 && (
           <div className="group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-xl bg-background [box-shadow:0_0_0_1px_rgba(0,0,0,.03),0_2px_4px_rgba(0,0,0,.05),0_12px_24px_rgba(0,0,0,.05)] dark:bg-background dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset]">
             <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950/20 dark:to-emerald-900/20" />
             <div className="relative p-4">
@@ -199,15 +197,10 @@ export function MCPServerManager() {
               />
               <div className="flex justify-end gap-2">
                 <Button
-                  disabled={
-                    !newName.trim() ||
-                    !newUrl.trim() ||
-                    isSaving ||
-                    isCreatingServer
-                  }
+                  disabled={!newName.trim() || !newUrl.trim() || isSaving}
                   onClick={handleCreate}
                 >
-                  {isSaving || isCreatingServer ? (
+                  {isSaving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Adding...

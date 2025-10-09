@@ -23,7 +23,7 @@ export function MemoryItem({
   onUpdate,
   onDelete,
   onEdit,
-}: MemoryItemProps) {
+}: Readonly<MemoryItemProps>) {
   const handleToggleActive = async () => {
     try {
       await onUpdate({

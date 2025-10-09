@@ -1,10 +1,8 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { useQueryClient } from "@tanstack/react-query";
-import { DefaultChatTransport } from "ai";
+import { useAction, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -19,15 +17,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
-import type { Vote } from "@/lib/db/schema";
-import { ChatSDKError } from "@/lib/errors";
+import { useSession } from "@/lib/auth-client";
 import { selectedToolsSchema } from "@/lib/schemas/tools";
 import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
+import { fetcher, generateUUID, getTextFromMessage } from "@/lib/utils";
 import { useChatContext } from "./chat-context";
 import { useDataStream } from "./data-stream-provider";
 import { Messages } from "./messages";
@@ -95,7 +94,7 @@ export function Chat({
   }, [initialMessages, setDataStream]);
 
   const [input, setInput] = useState<string>("");
-  const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
+  const [usage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const currentModelIdRef = useRef(currentModelId);
@@ -105,7 +104,6 @@ export function Chat({
   const [selectedTools, setSelectedTools] = useState<string[]>(["getWeather"]);
   const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
   const selectedToolsRef = useRef(selectedTools);
-  const queryClient = useQueryClient();
   const setStoreSelected = useMCPServerStore((s) => s.setSelectedTools);
 
   useEffect(() => {
@@ -122,36 +120,20 @@ export function Chat({
       setHasLoadedFromStorage(true);
       return;
     }
-    const cachedSelected = queryClient.getQueryData(["tools", "selected"]);
-    try {
-      const parsed = selectedToolsSchema.parse(cachedSelected ?? []);
-      if (parsed.length > 0) {
-        setSelectedTools(parsed);
-      } else {
-        const storedTools = localStorage.getItem("selected-tools");
-        if (storedTools) {
-          const parsedTools = JSON.parse(storedTools);
-          if (Array.isArray(parsedTools) && parsedTools.length > 0) {
-            setSelectedTools(parsedTools);
-          }
+    const storedTools = localStorage.getItem("selected-tools");
+    if (storedTools) {
+      try {
+        const parsedTools = JSON.parse(storedTools);
+        if (Array.isArray(parsedTools) && parsedTools.length > 0) {
+          const validated = selectedToolsSchema.parse(parsedTools);
+          setSelectedTools(validated);
         }
-      }
-    } catch {
-      // Fallback to localStorage on validation failure
-      const storedTools = localStorage.getItem("selected-tools");
-      if (storedTools) {
-        try {
-          const parsedTools = JSON.parse(storedTools);
-          if (Array.isArray(parsedTools) && parsedTools.length > 0) {
-            setSelectedTools(parsedTools);
-          }
-        } catch {
-          localStorage.removeItem("selected-tools");
-        }
+      } catch {
+        localStorage.removeItem("selected-tools");
       }
     }
     setHasLoadedFromStorage(true);
-  }, [queryClient]);
+  }, []);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
@@ -165,74 +147,158 @@ export function Chat({
       // Update shared cache as source of truth
       try {
         const validated = selectedToolsSchema.parse(selectedTools);
-        queryClient.setQueryData(["tools", "selected"], validated);
         setStoreSelected(validated);
       } catch {
         // ignore validation errors
       }
     }
-  }, [selectedTools, hasLoadedFromStorage, queryClient, setStoreSelected]);
+  }, [selectedTools, hasLoadedFromStorage, setStoreSelected]);
 
-  const {
-    messages,
-    setMessages,
-    sendMessage,
-    status,
-    stop,
-    regenerate,
-    resumeStream,
-  } = useChat<ChatMessage>({
-    id,
-    messages: initialMessages,
-    experimental_throttle: 100,
-    generateId: generateUUID,
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      fetch: fetchWithErrorHandlers,
-      prepareSendMessagesRequest(request) {
-        console.log(
-          "🔧 Frontend: Sending tools to API:",
-          selectedToolsRef.current
-        );
-        return {
-          body: {
-            id: request.id,
-            message: request.messages.at(-1),
-            selectedChatModel: currentModelIdRef.current,
-            selectedVisibilityType: visibilityType,
-            selectedReasoningEffort: currentReasoningEffort,
-            selectedTools: selectedToolsRef.current,
-            ...request.body,
-          },
-        };
-      },
-    }),
-    onData: (dataPart) => {
-      console.debug("🪄 UI data part", dataPart.type, dataPart);
-      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
-      if (dataPart.type === "data-usage") {
-        setUsage(dataPart.data);
-      }
-      if (dataPart.type === "data-a2aEvents") {
-        console.debug("🛰️ UI received A2A events", dataPart.data);
-      }
-    },
-    onFinish: () => {
-      mutate(unstable_serialize(getChatHistoryPaginationKey));
-    },
-    onError: (error) => {
-      if (error instanceof ChatSDKError) {
-        // Check if it's a credit card error
-        if (
-          error.message?.includes("AI Gateway requires a valid credit card")
-        ) {
-          setShowCreditCardAlert(true);
-        } else {
-          toast.error(error.message);
-        }
-      }
-    },
+  // Get current user session
+  const { data: session } = useSession();
+
+  // Subscribe to real-time messages from Convex
+  const messagesFromConvex = useQuery(api.queries.getMessagesByChatId, {
+    chatId: id as Id<"chats">,
   });
+
+  // Mutation to start a new message pair
+  const startMessagePair = useAction(api.ai.startChatMessagePair);
+
+  // Local state for optimistic UI updates
+  const [localMessages, setLocalMessages] =
+    useState<ChatMessage[]>(initialMessages);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Convert Convex messages to UI format
+  useEffect(() => {
+    if (messagesFromConvex) {
+      const uiMessages: ChatMessage[] = messagesFromConvex.map((msg) => {
+        // For streaming messages, use combined chunks as temporary content
+        let parts = msg.parts;
+        if (msg.chunks && msg.chunks.length > 0 && msg.combinedContent) {
+          parts = [{ type: "text", text: msg.combinedContent }];
+        }
+
+        return {
+          id: msg._id,
+          role: msg.role,
+          parts: parts || [],
+          attachments: msg.attachments || [],
+          createdAt: new Date(msg.createdAt),
+          experimental_isStreaming: !msg.isComplete,
+        };
+      });
+
+      setLocalMessages(uiMessages);
+    }
+  }, [messagesFromConvex]);
+
+  const messages = localMessages;
+  const status =
+    isLoading || messagesFromConvex?.some((m) => !m.isComplete)
+      ? "in_progress"
+      : "ready";
+
+  // Send message function
+  const sendMessage = useCallback(
+    async (message: ChatMessage) => {
+      if (!session?.user) {
+        toast.error("You must be logged in to send messages");
+        return;
+      }
+
+      console.log(
+        "🔧 Frontend: Sending tools to API:",
+        selectedToolsRef.current
+      );
+
+      setIsLoading(true);
+
+      // Optimistically add user message to UI
+      const userMessage: ChatMessage = {
+        id: message.id || generateUUID(),
+        role: "user",
+        parts:
+          message.parts && message.parts.length > 0
+            ? message.parts
+            : [{ type: "text", text: getTextFromMessage(message) || input }],
+        attachments: message.attachments || [],
+        createdAt: new Date(),
+      };
+
+      setLocalMessages((prev) => [...prev, userMessage]);
+
+      try {
+        await startMessagePair({
+          chatId: id,
+          userMessage: {
+            id: userMessage.id,
+            role: userMessage.role,
+            parts: userMessage.parts,
+            attachments: userMessage.attachments,
+          },
+          userId: session.user.id,
+          selectedChatModel: currentModelIdRef.current,
+          selectedVisibilityType: visibilityType,
+          selectedReasoningEffort: currentReasoningEffort,
+          selectedTools: selectedToolsRef.current,
+        });
+
+        // Invalidate chat history
+        mutate(unstable_serialize(getChatHistoryPaginationKey));
+      } catch (error) {
+        console.error("Failed to send message:", error);
+
+        if (error instanceof Error) {
+          if (
+            error.message?.includes("AI Gateway requires a valid credit card")
+          ) {
+            setShowCreditCardAlert(true);
+          } else {
+            toast.error(error.message || "Failed to send message");
+          }
+        }
+
+        // Remove optimistic message on error
+        setLocalMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      session,
+      id,
+      startMessagePair,
+      visibilityType,
+      currentReasoningEffort,
+      mutate,
+      input,
+    ]
+  );
+
+  const setMessages = useCallback(
+    (newMessages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+      if (typeof newMessages === "function") {
+        setLocalMessages(newMessages);
+      } else {
+        setLocalMessages(newMessages);
+      }
+    },
+    []
+  );
+
+  const stop = useCallback(() => {
+    console.warn("Stop not yet implemented for Convex streaming");
+  }, []);
+
+  const regenerate = useCallback(() => {
+    console.warn("Regenerate not yet implemented for Convex streaming");
+  }, []);
+
+  const resumeStream = useCallback(() => {
+    console.warn("Resume stream not yet implemented for Convex streaming");
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -394,3 +460,8 @@ export function Chat({
     </>
   );
 }
+type Vote = {
+  chatId: string;
+  messageId: string;
+  isUpvoted: boolean;
+};

@@ -5,7 +5,13 @@ import { motion } from "framer-motion";
 import { memo, useState } from "react";
 import { CodeComparison } from "@/components/ui/code-comparison";
 import { PlantUMLViewer } from "@/components/ui/plantuml-viewer";
-import type { Vote } from "@/lib/db/schema";
+
+type Vote = {
+  chatId: string;
+  messageId: string;
+  isUpvoted: boolean;
+};
+
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
@@ -45,7 +51,7 @@ const PurePreviewMessage = ({
 }) => {
   const [mode, setMode] = useState<"view" | "edit">("view");
 
-  const attachmentsFromMessage = message.parts.filter(
+  const attachmentsFromMessage = (message.parts ?? []).filter(
     (part) => part.type === "file"
   );
 

@@ -1,13 +1,11 @@
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { headers as getHeaders } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { auth } from "@/lib/auth";
-import {
-  createUserMCPServer,
-  deleteUserMCPServer,
-  getUserMCPServers,
-  updateUserMCPServer,
-} from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 const createMCPServerSchema = z.object({
@@ -34,6 +32,24 @@ const deleteMCPServerSchema = z.object({
   id: z.string().uuid(),
 });
 
+const serializeMCPServer = (server: any) => ({
+  id: server._id,
+  userId: server.userId,
+  name: server.name,
+  url: server.url,
+  description: server.description ?? null,
+  headers: server.headers ?? {},
+  isActive: server.isActive,
+  lastConnectionTest: server.lastConnectionTest
+    ? new Date(server.lastConnectionTest).toISOString()
+    : null,
+  lastConnectionStatus: server.lastConnectionStatus ?? null,
+  lastError: server.lastError ?? null,
+  toolCount: server.toolCount ?? 0,
+  createdAt: new Date(server.createdAt).toISOString(),
+  updatedAt: new Date(server.updatedAt).toISOString(),
+});
+
 export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await getHeaders() });
@@ -45,8 +61,20 @@ export async function GET() {
       ).toResponse();
     }
 
-    const mcpServers = await getUserMCPServers(session.user.id);
-    return NextResponse.json(mcpServers);
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
+    const mcpServers = await fetchQuery(
+      api.queries.getUserMCPServers,
+      { userId: session.user.id },
+      { token }
+    );
+    return NextResponse.json(mcpServers.map(serializeMCPServer));
   } catch (error) {
     if (error instanceof ChatSDKError) {
       return error.toResponse();
@@ -69,19 +97,31 @@ export async function POST(request: NextRequest) {
       ).toResponse();
     }
 
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     const body = await request.json();
     const { name, url, description, headers } =
       createMCPServerSchema.parse(body);
 
-    const mcpServer = await createUserMCPServer({
-      userId: session.user.id,
-      name,
-      url,
-      description,
-      headers,
-    });
+    const mcpServer = await fetchMutation(
+      api.mutations.createUserMCPServer,
+      {
+        userId: session.user.id,
+        name,
+        url,
+        description,
+        headers,
+      },
+      { token }
+    );
 
-    return NextResponse.json(mcpServer, { status: 201 });
+    return NextResponse.json(serializeMCPServer(mcpServer), { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
@@ -107,13 +147,27 @@ export async function PUT(request: NextRequest) {
       ).toResponse();
     }
 
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     const body = await request.json();
     const validatedData = updateMCPServerSchema.parse(body);
 
-    const mcpServer = await updateUserMCPServer({
-      ...validatedData,
-      userId: session.user.id,
-    });
+    const mcpServer = await fetchMutation(
+      api.mutations.updateUserMCPServer,
+      {
+        ...validatedData,
+        lastConnectionTest: validatedData.lastConnectionTest?.getTime(),
+        id: validatedData.id as Id<"userMCPServers">,
+        userId: session.user.id,
+      },
+      { token }
+    );
 
     if (!mcpServer) {
       return new ChatSDKError(
@@ -122,7 +176,7 @@ export async function PUT(request: NextRequest) {
       ).toResponse();
     }
 
-    return NextResponse.json(mcpServer);
+    return NextResponse.json(serializeMCPServer(mcpServer));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
@@ -148,13 +202,25 @@ export async function DELETE(request: NextRequest) {
       ).toResponse();
     }
 
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     const body = await request.json();
     const { id } = deleteMCPServerSchema.parse(body);
 
-    const success = await deleteUserMCPServer({
-      id,
-      userId: session.user.id,
-    });
+    const success = await fetchMutation(
+      api.mutations.deleteUserMCPServer,
+      {
+        id: id as Id<"userMCPServers">,
+        userId: session.user.id,
+      },
+      { token }
+    );
 
     if (!success) {
       return new ChatSDKError(

@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { getAllTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
+import { getToken } from "@/lib/auth-server";
 
 export async function GET() {
   try {
@@ -10,7 +11,11 @@ export async function GET() {
 
     // Get tools for the authenticated user (if any)
     const userId = session?.user?.id;
-    const { tools, mcpRegistry, a2aRegistry } = await getAllTools(userId);
+    const token = await getToken();
+    const { tools, mcpRegistry, a2aRegistry } = await getAllTools(
+      userId,
+      token
+    );
 
     return Response.json({
       tools: Object.keys(tools),

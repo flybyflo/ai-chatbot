@@ -1,8 +1,8 @@
 import type { InferUITool, UIMessage } from "ai";
 import type { A2AAgentRegistry, A2AToolEventPayload } from "./ai/a2a/types";
 import type { MCPToolRegistry } from "./ai/mcp/types";
-import type { codeCompare } from "./ai/tools/code-compare";
-import type { getWeather } from "./ai/tools/get-weather";
+import type { codeCompare } from "./ai/tools/code_compare";
+import type { getWeather } from "./ai/tools/get_weather";
 import type { AppUsage } from "./usage";
 
 export type MessageMetadata = {
@@ -31,7 +31,9 @@ export type ChatMessage = UIMessage<
   MessageMetadata,
   CustomUIDataTypes,
   ChatTools
->;
+> & {
+  attachments?: Attachment[];
+};
 
 export type Attachment = {
   name: string;

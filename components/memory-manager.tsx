@@ -20,14 +20,8 @@ import type { UserMemory } from "@/hooks/use-memories";
 import { useMemories } from "@/hooks/use-memories";
 
 export function MemoryManager() {
-  const {
-    memories,
-    isLoading,
-    createMemory,
-    updateMemory,
-    deleteMemory,
-    isCreating: isCreatingMemory,
-  } = useMemories();
+  const { memories, isLoading, createMemory, updateMemory, deleteMemory } =
+    useMemories();
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -189,12 +183,10 @@ export function MemoryManager() {
               <div className="flex justify-end gap-2">
                 <Button
                   className="bg-blue-600 text-white hover:bg-blue-700"
-                  disabled={!newTitle.trim() || isSaving || isCreatingMemory}
+                  disabled={!newTitle.trim() || isSaving}
                   onClick={handleCreate}
                 >
-                  {isSaving || isCreatingMemory
-                    ? "Creating..."
-                    : "Create Memory"}
+                  {isSaving ? "Creating..." : "Create Memory"}
                 </Button>
               </div>
             </div>

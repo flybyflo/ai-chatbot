@@ -1,9 +1,12 @@
+import { fetchMutation } from "convex/nextjs";
 import { headers as getHeaders } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { MCPClientWrapper } from "@/lib/ai/mcp/client";
 import { auth } from "@/lib/auth";
-import { updateUserMCPServer } from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 const testMCPServerSchema = z.object({
@@ -12,11 +15,37 @@ const testMCPServerSchema = z.object({
   headers: z.record(z.string()).optional(),
 });
 
+const serializeMCPServer = (server: any) => ({
+  id: server._id,
+  userId: server.userId,
+  name: server.name,
+  url: server.url,
+  description: server.description ?? null,
+  headers: server.headers ?? {},
+  isActive: server.isActive,
+  lastConnectionTest: server.lastConnectionTest
+    ? new Date(server.lastConnectionTest).toISOString()
+    : null,
+  lastConnectionStatus: server.lastConnectionStatus ?? null,
+  lastError: server.lastError ?? null,
+  toolCount: server.toolCount ?? 0,
+  createdAt: new Date(server.createdAt).toISOString(),
+  updatedAt: new Date(server.updatedAt).toISOString(),
+});
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await getHeaders() });
 
     if (!session?.user?.id) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
+    const token = await getToken();
+    if (!token) {
       return new ChatSDKError(
         "unauthorized:api",
         "Not authenticated"
@@ -60,14 +89,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the server with connection test results
-    const updatedServer = await updateUserMCPServer({
-      id,
-      userId: session.user.id,
-      lastConnectionTest: testStartTime,
-      lastConnectionStatus: connectionStatus,
-      lastError,
-      toolCount,
-    });
+    const updatedServer = await fetchMutation(
+      api.mutations.updateUserMCPServer,
+      {
+        id: id as Id<"userMCPServers">,
+        userId: session.user.id,
+        lastConnectionTest: testStartTime.getTime(),
+        lastConnectionStatus: connectionStatus,
+        lastError,
+        toolCount,
+      },
+      { token }
+    );
 
     if (!updatedServer) {
       return new ChatSDKError(
@@ -77,7 +110,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      server: updatedServer,
+      server: serializeMCPServer(updatedServer),
       tools,
       connected: connectionStatus === "connected",
     });

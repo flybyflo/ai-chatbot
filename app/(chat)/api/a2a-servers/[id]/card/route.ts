@@ -1,9 +1,12 @@
+import { fetchQuery } from "convex/nextjs";
 import { headers as getHeaders } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { A2AClientWrapper } from "@/lib/ai/a2a/client";
 import { auth } from "@/lib/auth";
-import { getUserA2AServerById } from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 const paramsSchema = z.object({ id: z.string().uuid() });
@@ -21,8 +24,20 @@ export async function GET(
       ).toResponse();
     }
 
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     const { id } = paramsSchema.parse(await context.params);
-    const server = await getUserA2AServerById({ id, userId: session.user.id });
+    const server = await fetchQuery(
+      api.queries.getUserA2AServerById,
+      { id: id as Id<"userA2AServers">, userId: session.user.id },
+      { token }
+    );
     if (!server) {
       return new ChatSDKError(
         "not_found:api",
@@ -31,10 +46,10 @@ export async function GET(
     }
 
     const client = new A2AClientWrapper({
-      id: server.id,
+      id: server._id,
       name: server.name,
       cardUrl: server.cardUrl,
-      headers: server.headers || undefined,
+      headers: server.headers ?? undefined,
     });
     const ok = await client.init();
     if (!ok) {

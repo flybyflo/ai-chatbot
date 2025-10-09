@@ -1,13 +1,11 @@
 import { createUIMessageStream, JsonToSseTransformStream } from "ai";
+import { fetchQuery } from "convex/nextjs";
 import { differenceInSeconds } from "date-fns";
 import { headers } from "next/headers";
+import { api } from "@/convex/_generated/api";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { auth } from "@/lib/auth";
-import {
-  getChatById,
-  getMessagesByChatId,
-  getStreamIdsByChatId,
-} from "@/lib/db/queries";
-import type { Chat } from "@/lib/db/schema";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
 import { getStreamContext } from "../../route";
@@ -37,10 +35,16 @@ export async function GET(
     return new ChatSDKError("unauthorized:chat").toResponse();
   }
 
-  let chat: Chat | null;
+  const token = await getToken();
+
+  let chat: Doc<"chats"> | null;
 
   try {
-    chat = await getChatById({ id: chatId });
+    chat = await fetchQuery(
+      api.queries.getChatById,
+      { id: chatId as Id<"chats"> },
+      token ? { token } : undefined
+    );
   } catch {
     return new ChatSDKError("not_found:chat").toResponse();
   }
@@ -53,7 +57,11 @@ export async function GET(
     return new ChatSDKError("forbidden:chat").toResponse();
   }
 
-  const streamIds = await getStreamIdsByChatId({ chatId });
+  const streamIds = await fetchQuery(
+    api.queries.getStreamIdsByChatId,
+    { chatId: chatId as Id<"chats"> },
+    token ? { token } : undefined
+  );
 
   if (!streamIds.length) {
     return new ChatSDKError("not_found:stream").toResponse();
@@ -79,7 +87,15 @@ export async function GET(
    * but the resumable stream has concluded at this point.
    */
   if (!stream) {
-    const messages = await getMessagesByChatId({ id: chatId });
+    const rawMessages = await fetchQuery(
+      api.queries.getMessagesByChatId,
+      { chatId: chatId as Id<"chats"> },
+      token ? { token } : undefined
+    );
+    const messages = rawMessages.map((message) => ({
+      ...message,
+      createdAt: new Date(message.createdAt),
+    }));
     const mostRecentMessage = messages.at(-1);
 
     if (!mostRecentMessage) {

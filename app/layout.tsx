@@ -1,7 +1,7 @@
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
-import { QueryProvider } from "@/components/providers/query-provider";
+import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -66,10 +66,10 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <QueryProvider>
+          <ConvexClientProvider>
             <Toaster position="top-center" />
             {children}
-          </QueryProvider>
+          </ConvexClientProvider>
         </ThemeProvider>
       </body>
     </html>

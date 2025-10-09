@@ -1,1 +1,0 @@
-ALTER TABLE "UserLoadout" ADD COLUMN "color" varchar(7) DEFAULT '#8b5cf6';

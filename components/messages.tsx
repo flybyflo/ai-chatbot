@@ -4,7 +4,13 @@ import { ArrowDownIcon } from "lucide-react";
 import { Fragment, memo, useEffect, useMemo } from "react";
 import { useA2AEvents } from "@/hooks/use-a2a-events";
 import { useMessages } from "@/hooks/use-messages";
-import type { Vote } from "@/lib/db/schema";
+
+type Vote = {
+  chatId: string;
+  messageId: string;
+  isUpvoted: boolean;
+};
+
 import type { ChatMessage } from "@/lib/types";
 import { Conversation, ConversationContent } from "./elements/conversation";
 import { Greeting } from "./greeting";

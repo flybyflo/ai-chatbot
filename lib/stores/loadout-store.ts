@@ -2,7 +2,19 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { UserLoadout } from "@/lib/db/schema";
+
+export type UserLoadout = {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string | null;
+  color?: string | null;
+  tags: string[];
+  isDefault: boolean;
+  selectedTools: string[];
+  createdAt: string;
+  updatedAt: string;
+};
 
 type LoadoutState = {
   loadouts: UserLoadout[];

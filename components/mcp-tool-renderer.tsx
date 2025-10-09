@@ -22,21 +22,16 @@ export function MCPToolRenderer({
 
   // Handle different MCP tool types with custom UI
   const renderToolOutput = () => {
-    switch (toolName) {
-      case "greet":
-        console.log("🎨 Rendering GreetingToolUI");
-        return <GreetingToolUI output={output} />;
-
-      default:
-        console.log("🎨 Rendering GenericToolUI");
-        return <GenericToolUI output={output} toolName={toolName} />;
+    if (toolName === "greet") {
+      return <GreetingToolUI output={output} />;
     }
+    return <GenericToolUI output={output} toolName={toolName} />;
   };
 
   return renderToolOutput();
 }
 
-function GreetingToolUI({ output }: { output: any }) {
+function GreetingToolUI({ output }: Readonly<{ output: any }>) {
   // Extract the greeting message from the MCP output
   const message =
     output?.structuredContent?.result ||
@@ -65,10 +60,10 @@ function GreetingToolUI({ output }: { output: any }) {
 function GenericToolUI({
   toolName,
   output,
-}: {
+}: Readonly<{
   toolName: string;
   output: any;
-}) {
+}>) {
   const displayOutput = () => {
     if (typeof output === "string") {
       return output;

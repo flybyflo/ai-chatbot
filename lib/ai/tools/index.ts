@@ -1,14 +1,13 @@
-import {
-  getActiveUserA2AServers,
-  getActiveUserMCPServers,
-} from "@/lib/db/queries";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import type { Doc } from "@/convex/_generated/dataModel";
 import { A2AManager } from "../a2a/manager";
 import { buildA2ATools } from "../a2a/tools";
 import type { A2AAgentRegistry } from "../a2a/types";
 import { MCPManager } from "../mcp";
 import type { MCPServerConfig, MCPToolRegistry } from "../mcp/types";
-import { codeCompare } from "./code-compare";
-import { getWeather } from "./get-weather";
+import { codeCompare } from "./code_compare";
+import { getWeather } from "./get_weather";
 import { plantuml } from "./plantuml";
 
 type LocalTools = {
@@ -32,8 +31,18 @@ const localTools: LocalTools = {
   plantuml,
 };
 
+async function fetchServers<T extends Doc<any>>(fetcher: () => Promise<T[]>) {
+  try {
+    return await fetcher();
+  } catch (error) {
+    console.warn("Failed to load user servers", error);
+    return [];
+  }
+}
+
 export async function getAllTools(
-  userId?: string
+  userId?: string,
+  token?: string
 ): Promise<CombinedToolsResult> {
   // Always include local tools
   const result: CombinedToolsResult = {
@@ -42,15 +51,23 @@ export async function getAllTools(
   };
 
   // Add user A2A and MCP tools if userId is provided
-  if (userId) {
+  if (userId && token) {
     try {
-      const a2aServers = await getActiveUserA2AServers(userId);
+      const [a2aServers, mcpServers] = await Promise.all([
+        fetchServers(() =>
+          fetchQuery(api.queries.getActiveUserA2AServers, { userId }, { token })
+        ),
+        fetchServers(() =>
+          fetchQuery(api.queries.getActiveUserMCPServers, { userId }, { token })
+        ),
+      ]);
+
       if (a2aServers.length > 0) {
         const a2aManager = new A2AManager();
 
         await a2aManager.initializeAgents(
           a2aServers.map((server) => ({
-            id: server.id,
+            id: server._id,
             name: server.name,
             cardUrl: server.cardUrl,
             description: server.description ?? undefined,
@@ -68,13 +85,11 @@ export async function getAllTools(
         result.a2aManager = a2aManager;
       }
 
-      const userServers = await getActiveUserMCPServers(userId);
-
-      if (userServers.length > 0) {
+      if (mcpServers.length > 0) {
         const mcpManager = new MCPManager();
 
         // Convert user servers to MCP server configs
-        const serverConfigs: MCPServerConfig[] = userServers.map((server) => ({
+        const serverConfigs: MCPServerConfig[] = mcpServers.map((server) => ({
           name: server.name,
           url: server.url,
           headers: server.headers || {},
@@ -105,9 +120,10 @@ export async function getAllTools(
 
 export async function getActiveTools(
   activeToolNames?: string[],
-  userId?: string
+  userId?: string,
+  token?: string
 ): Promise<Record<string, any>> {
-  const { tools } = await getAllTools(userId);
+  const { tools } = await getAllTools(userId, token);
 
   if (!activeToolNames) {
     return tools;
