@@ -10,7 +10,6 @@ import { getToken } from "@/lib/auth-server";
 import { isAdminUser } from "@/lib/constants";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
-import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
@@ -83,9 +82,6 @@ export async function POST(request: Request) {
       country: country ?? null,
     };
 
-    // Generate title for new chats
-    const title = await generateTitleFromUserMessage({ message });
-
     // Get auth token for Convex authenticated calls (reuse existing token)
 
     // Call Convex action to handle everything
@@ -105,7 +101,6 @@ export async function POST(request: Request) {
         selectedReasoningEffort,
         selectedTools,
         requestHints,
-        title,
       },
       { token }
     );
