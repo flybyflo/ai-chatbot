@@ -253,6 +253,7 @@ export const generateAssistantMessage = internalAction({
       const finalResult = await result;
       const rawReasoning = (finalResult as any)?.reasoning;
       console.log("🧪 Final result diagnostics:", {
+        // biome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
         hasReasoningProperty: Object.prototype.hasOwnProperty.call(
           finalResult,
           "reasoning"
@@ -279,6 +280,7 @@ export const generateAssistantMessage = internalAction({
           : typeof rawReasoning === "string"
             ? rawReasoning.substring(0, 120)
             : null,
+        // biome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
         hasResponse: Object.prototype.hasOwnProperty.call(
           finalResult,
           "response"
@@ -659,8 +661,9 @@ export const generateChatTitle = internalAction({
           };
         })
         .filter(
-          (entry: { role: string; text: string } | null):
-            entry is { role: string; text: string } => entry !== null
+          (
+            entry: { role: string; text: string } | null
+          ): entry is { role: string; text: string } => entry !== null
         );
 
       if (completeMessages.length === 0) {
