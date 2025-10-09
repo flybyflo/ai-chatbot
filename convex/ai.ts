@@ -2,6 +2,7 @@
 
 import {
   convertToModelMessages,
+  generateText,
   smoothStream,
   stepCountIs,
   streamText,
@@ -436,6 +437,10 @@ export const generateAssistantMessage = internalAction({
           console.warn("Failed to save usage context:", usageError);
         }
       }
+
+      await ctx.scheduler.runAfter(0, internal.ai.generateChatTitle, {
+        chatId: args.chatId,
+      });
     } catch (error) {
       console.error("Error generating assistant message:", error);
 
@@ -593,5 +598,132 @@ export const startChatMessagePair = action({
       userMessageId,
       assistantMessageId,
     };
+  },
+});
+
+export const generateChatTitle = internalAction({
+  args: {
+    chatId: v.id("chats"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    try {
+      const chat = await ctx.runQuery(api.queries.getChatById, {
+        id: args.chatId,
+      });
+
+      if (!chat) {
+        return null;
+      }
+
+      const messages = await ctx.runQuery(api.queries.getMessagesByChatId, {
+        chatId: args.chatId,
+      });
+
+      const completeMessages = messages
+        .filter((message: any) => message.isComplete)
+        .map((message: any) => {
+          const rawParts = Array.isArray(message.parts)
+            ? message.parts
+            : message.parts
+              ? [message.parts]
+              : [];
+
+          const text = rawParts
+            .map((part: any) => {
+              if (part && typeof part.text === "string") {
+                return part.text.trim();
+              }
+              if (typeof part === "string") {
+                return part.trim();
+              }
+              return "";
+            })
+            .filter((value: string) => value.length > 0)
+            .join("\n")
+            .trim();
+
+          if (!text) {
+            return null;
+          }
+
+          return {
+            role: message.role,
+            text,
+          };
+        })
+        .filter(
+          (entry: { role: string; text: string } | null):
+            entry is { role: string; text: string } => entry !== null
+        );
+
+      if (completeMessages.length === 0) {
+        return null;
+      }
+
+      const lastAssistantMessage = [...completeMessages]
+        .reverse()
+        .find((entry) => entry.role === "assistant");
+
+      if (!lastAssistantMessage) {
+        return null;
+      }
+
+      const limitedMessages = completeMessages.slice(-12);
+      const conversationForPrompt = limitedMessages
+        .map((entry) => {
+          const speaker = entry.role === "assistant" ? "Assistant" : "User";
+          return `${speaker}: ${entry.text}`;
+        })
+        .join("\n\n");
+
+      if (!conversationForPrompt) {
+        return null;
+      }
+
+      const { MODEL_IDS } = await import("./lib/enums");
+      const { myProvider } = await import("./lib/ai/providers");
+      const prompt = [
+        `Conversation transcript:\n${conversationForPrompt}`,
+        `Most recent assistant response:\n${lastAssistantMessage.text}`,
+        "Return only the title.",
+      ].join("\n\n");
+
+      const { text: generatedTitle } = await generateText({
+        model: myProvider.languageModel(MODEL_IDS.TITLE_MODEL),
+        system: [
+          "You create concise, descriptive titles for chat conversations.",
+          "Focus on summarizing the assistant's most recent response while",
+          "considering the conversation context provided.",
+          "Return at most 80 characters and avoid quotation marks.",
+        ].join(" "),
+        prompt,
+        maxOutputTokens: 64,
+      });
+
+      const normalizedTitle = generatedTitle.trim().replace(/\s+/g, " ");
+
+      if (!normalizedTitle) {
+        return null;
+      }
+
+      const truncatedTitle =
+        normalizedTitle.length > 80
+          ? normalizedTitle.slice(0, 80).trimEnd()
+          : normalizedTitle;
+
+      if (truncatedTitle === chat.title) {
+        return null;
+      }
+
+      await ctx.runMutation(api.mutations.updateChatTitle, {
+        chatId: args.chatId,
+        title: truncatedTitle,
+      });
+    } catch (error) {
+      console.warn("Failed to generate chat title:", error);
+    }
+
+    return null;
   },
 });

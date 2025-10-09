@@ -82,6 +82,16 @@ export const updateChatLastContext = mutation({
   },
 });
 
+export const updateChatTitle = mutation({
+  args: {
+    chatId: v.id("chats"),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.chatId, { title: args.title });
+  },
+});
+
 // ============================================================================
 // Message Mutations
 // ============================================================================
