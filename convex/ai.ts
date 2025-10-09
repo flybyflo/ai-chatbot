@@ -250,9 +250,19 @@ export const generateAssistantMessage = internalAction({
 
       // Get the final result for usage tracking
       const finalResult = await result;
-      const rawReasoning = (finalResult as any)?.reasoning;
+      const finalResultObject =
+        typeof finalResult === "object" && finalResult !== null
+          ? (finalResult as Record<string, unknown>)
+          : undefined;
+      const rawReasoning = finalResultObject?.reasoning;
+      const responseValue = finalResultObject?.response;
       console.log("🧪 Final result diagnostics:", {
-        hasReasoningProperty: Object.hasOwn(finalResult, "reasoning"),
+        hasReasoningProperty:
+          finalResultObject !== undefined &&
+          Object.prototype.hasOwnProperty.call(
+            finalResultObject,
+            "reasoning"
+          ),
         reasoningType: rawReasoning === null ? "null" : typeof rawReasoning,
         reasoningConstructor:
           rawReasoning &&
@@ -275,11 +285,15 @@ export const generateAssistantMessage = internalAction({
           : typeof rawReasoning === "string"
             ? rawReasoning.substring(0, 120)
             : null,
-        hasResponse: Object.hasOwn(finalResult, "response"),
+        hasResponse:
+          finalResultObject !== undefined &&
+          Object.prototype.hasOwnProperty.call(
+            finalResultObject,
+            "response"
+          ),
         responseKeys:
-          typeof (finalResult as any).response === "object" &&
-          (finalResult as any).response !== null
-            ? Object.keys((finalResult as any).response)
+          typeof responseValue === "object" && responseValue !== null
+            ? Object.keys(responseValue as Record<string, unknown>)
             : null,
       });
 
