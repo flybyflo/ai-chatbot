@@ -47,6 +47,16 @@ export default defineSchema({
     .index("by_messageId", ["messageId"])
     .index("by_messageId_sequence", ["messageId", "sequence"]),
 
+  // Reasoning chunks for streaming AI thinking/reasoning
+  reasoningChunks: defineTable({
+    messageId: v.id("messages"),
+    content: v.string(), // Partial reasoning chunk
+    sequence: v.number(), // Order of chunk (0, 1, 2, ...)
+    createdAt: v.number(), // timestamp
+  })
+    .index("by_messageId", ["messageId"])
+    .index("by_messageId_sequence", ["messageId", "sequence"]),
+
   votes: defineTable({
     chatId: v.id("chats"),
     messageId: v.id("messages"),

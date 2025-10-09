@@ -23,22 +23,25 @@ export const getUserByEmail = query({
 export const getChatById = query({
   args: { id: v.union(v.id("chats"), v.string()) },
   handler: async (ctx, args) => {
-    const attemptingId = args.id as Id<"chats">;
-    const byId = await ctx.db.get(attemptingId);
-    if (byId) {
-      return byId;
+    // Try direct ID lookup first
+    try {
+      const byId = await ctx.db.get(args.id as Id<"chats">);
+      if (byId) {
+        return byId;
+      }
+    } catch (error) {
+      // ID lookup failed, will try slug below
     }
 
-    if (typeof args.id === "string") {
-      try {
-        const bySlug = await ctx.db
-          .query("chats")
-          .withIndex("by_slug", (q) => q.eq("slug", args.id))
-          .unique();
-        return bySlug ?? null;
-      } catch (error) {
-        console.warn("Failed to locate chat by slug", error);
-      }
+    // If not found by ID, try slug lookup
+    try {
+      const bySlug = await ctx.db
+        .query("chats")
+        .withIndex("by_slug", (q) => q.eq("slug", args.id as string))
+        .unique();
+      return bySlug ?? null;
+    } catch (error) {
+      console.warn("Failed to locate chat by slug", error);
     }
 
     return null;
@@ -80,21 +83,63 @@ export const getChatsByUserId = query({
 
 export const getMessagesByChatId = query({
   args: { chatId: v.union(v.id("chats"), v.string()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("messages"),
+      _creationTime: v.number(),
+      chatId: v.id("chats"),
+      role: v.union(v.literal("user"), v.literal("assistant")),
+      parts: v.any(),
+      attachments: v.any(),
+      isComplete: v.boolean(),
+      createdAt: v.number(),
+      chunks: v.array(
+        v.object({
+          _id: v.id("messageChunks"),
+          _creationTime: v.number(),
+          messageId: v.id("messages"),
+          content: v.string(),
+          sequence: v.number(),
+          createdAt: v.number(),
+        })
+      ),
+      reasoningChunks: v.array(
+        v.object({
+          _id: v.id("reasoningChunks"),
+          _creationTime: v.number(),
+          messageId: v.id("messages"),
+          content: v.string(),
+          sequence: v.number(),
+          createdAt: v.number(),
+        })
+      ),
+      combinedContent: v.union(v.string(), v.null()),
+      combinedReasoning: v.union(v.string(), v.null()),
+    })
+  ),
   handler: async (ctx, args) => {
     let chatId: Id<"chats"> | null = null;
 
-    if (typeof args.chatId === "string") {
+    // Try to use as Convex ID first
+    try {
+      const directLookup = await ctx.db.get(args.chatId as Id<"chats">);
+      if (directLookup) {
+        chatId = args.chatId as Id<"chats">;
+      } else {
+        // If not found by ID, try slug lookup
+        const chat = await ctx.db
+          .query("chats")
+          .withIndex("by_slug", (q) => q.eq("slug", args.chatId as string))
+          .unique();
+        chatId = chat?._id ?? null;
+      }
+    } catch {
+      // If ID parsing fails, try slug lookup
       const chat = await ctx.db
         .query("chats")
-        .withIndex("by_slug", (q) => q.eq("slug", args.chatId))
+        .withIndex("by_slug", (q) => q.eq("slug", args.chatId as string))
         .unique();
       chatId = chat?._id ?? null;
-    } else {
-      chatId = args.chatId;
-    }
-
-    if (!chatId) {
-      return [];
     }
 
     if (!chatId) {
@@ -107,7 +152,7 @@ export const getMessagesByChatId = query({
       .order("asc")
       .collect();
 
-    // Fetch chunks for each message and combine them
+    // Fetch chunks (both text and reasoning) for each message and combine them
     const messagesWithChunks = await Promise.all(
       messages.map(async (message) => {
         const chunks = await ctx.db
@@ -116,17 +161,47 @@ export const getMessagesByChatId = query({
           .order("asc")
           .collect();
 
-        // If message has chunks, combine them into parts
+        const reasoningChunks = await ctx.db
+          .query("reasoningChunks")
+          .withIndex("by_messageId", (q) => q.eq("messageId", message._id))
+          .order("asc")
+          .collect();
+
+        console.log(`🔍 [getMessagesByChatId] Message ${message._id}:`, {
+          role: message.role,
+          textChunksCount: chunks.length,
+          reasoningChunksCount: reasoningChunks.length,
+          isComplete: message.isComplete,
+        });
+
+        // Combine text chunks
+        let combinedContent = null;
         if (chunks.length > 0) {
-          const combinedText = chunks.map((c) => c.content).join("");
-          return {
-            ...message,
-            chunks, // Include raw chunks for debugging/streaming UI
-            combinedContent: combinedText, // Combined text for convenience
-          };
+          combinedContent = chunks.map((c) => c.content).join("");
+          console.log(`📝 [getMessagesByChatId] Combined text: ${combinedContent.length} chars`);
         }
 
-        return { ...message, chunks: [], combinedContent: null };
+        // Combine reasoning chunks
+        let combinedReasoning = null;
+        if (reasoningChunks.length > 0) {
+          combinedReasoning = reasoningChunks.map((c) => c.content).join("");
+          console.log(`🧠 [getMessagesByChatId] Combined reasoning: ${combinedReasoning.length} chars`);
+        }
+
+        return {
+          _id: message._id,
+          _creationTime: message._creationTime,
+          chatId: message.chatId,
+          role: message.role as "user" | "assistant",
+          parts: message.parts,
+          attachments: message.attachments,
+          isComplete: message.isComplete ?? false,
+          createdAt: message.createdAt,
+          chunks,
+          reasoningChunks,
+          combinedContent,
+          combinedReasoning,
+        };
       })
     );
 

@@ -36,10 +36,14 @@ export const generateAssistantMessage = internalAction({
     const { convertToUIMessages } = await import("./lib/utils");
     const { isProductionEnvironment } = await import("./lib/constants");
 
-    let chunkSequence = 0;
-    let buffer = "";
+    let textChunkSequence = 0;
+    let reasoningChunkSequence = 0;
+    let textBuffer = "";
+    let reasoningBuffer = "";
+    let streamedReasoning = "";
     const bufferThreshold = 50; // characters
-    let lastFlushTime = Date.now();
+    let lastTextFlushTime = Date.now();
+    let lastReasoningFlushTime = Date.now();
     const timeThreshold = 200; // ms
 
     try {
@@ -52,19 +56,36 @@ export const generateAssistantMessage = internalAction({
       );
 
       // Convert to UI messages format
+      // Only filter out incomplete messages - keep all complete messages regardless of parts
+      const filteredMessages = messagesFromDb.filter((msg: any) => {
+        // Keep all complete messages
+        if (!msg.isComplete) {
+          return false;
+        }
+
+        // Ensure parts exists and is a valid array
+        if (!msg.parts) {
+          return false;
+        }
+
+        // Handle both array and non-array parts
+        const partsArray = Array.isArray(msg.parts) ? msg.parts : [msg.parts];
+
+        // Keep messages with at least one part
+        return partsArray.length > 0;
+      });
+
       const uiMessages = convertToUIMessages(
-        messagesFromDb
-          .filter((msg) => msg.isComplete && msg.parts && msg.parts.length > 0)
-          .map(
-            (msg): DBMessage => ({
-              id: msg._id,
-              chatId: msg.chatId,
-              role: msg.role,
-              parts: msg.parts,
-              attachments: msg.attachments,
-              createdAt: new Date(msg.createdAt),
-            })
-          )
+        filteredMessages.map(
+          (msg: any): DBMessage => ({
+            id: msg._id,
+            chatId: msg.chatId,
+            role: msg.role,
+            parts: msg.parts,
+            attachments: msg.attachments,
+            createdAt: new Date(msg.createdAt),
+          })
+        )
       );
 
       // 2. Fetch user's MCP and A2A servers
@@ -126,38 +147,127 @@ export const generateAssistantMessage = internalAction({
         },
       });
 
-      // 5. Stream tokens and write chunks to database
-      for await (const textChunk of result.textStream) {
-        buffer += textChunk;
+      // 5. Stream all parts (text AND reasoning) and write chunks to database
+      console.log('🌊 Starting fullStream processing...');
+      let partCount = 0;
+      let textDeltaCount = 0;
+      let reasoningDeltaCount = 0;
+
+      for await (const part of result.fullStream) {
+        partCount++;
+        console.log(`📦 Part #${partCount}: type=${part.type}`);
+
         const now = Date.now();
 
-        // Flush buffer if threshold reached or time elapsed
-        if (
-          (buffer.length >= bufferThreshold ||
-            now - lastFlushTime >= timeThreshold) &&
-          buffer.length > 0
-        ) {
-          await ctx.runMutation(api.mutations.createMessageChunk, {
-            messageId: args.assistantMessageId,
-            content: buffer,
-            sequence: chunkSequence++,
-          });
-          buffer = "";
-          lastFlushTime = now;
+        // Handle text deltas
+        if (part.type === 'text-delta') {
+          textDeltaCount++;
+          textBuffer += part.text; // AI SDK v5 uses 'text' not 'textDelta'
+          console.log(`✍️ Text delta #${textDeltaCount}, buffer length: ${textBuffer.length}`);
+
+          // Flush text buffer if threshold reached or time elapsed
+          if (
+            (textBuffer.length >= bufferThreshold ||
+              now - lastTextFlushTime >= timeThreshold) &&
+            textBuffer.length > 0
+          ) {
+            console.log(`💾 Flushing text buffer (${textBuffer.length} chars)`);
+            await ctx.runMutation(api.mutations.createMessageChunk, {
+              messageId: args.assistantMessageId,
+              content: textBuffer,
+              sequence: textChunkSequence++,
+            });
+            textBuffer = "";
+            lastTextFlushTime = now;
+          }
+        }
+
+        // Handle reasoning deltas (thinking content from models like O1)
+        if (part.type === 'reasoning-delta') {
+          reasoningDeltaCount++;
+          reasoningBuffer += part.text; // AI SDK v5 uses 'text' not 'reasoningDelta'
+          console.log(`🧠 Reasoning delta #${reasoningDeltaCount}, buffer length: ${reasoningBuffer.length}, text: "${part.text.substring(0, 50)}..."`);
+
+          // Flush reasoning buffer if threshold reached or time elapsed
+          if (
+            (reasoningBuffer.length >= bufferThreshold ||
+              now - lastReasoningFlushTime >= timeThreshold) &&
+            reasoningBuffer.length > 0
+          ) {
+            console.log(`💾 Flushing reasoning buffer (${reasoningBuffer.length} chars)`);
+            const reasoningToPersist = reasoningBuffer;
+            await ctx.runMutation(api.mutations.createReasoningChunk, {
+              messageId: args.assistantMessageId,
+              content: reasoningToPersist,
+              sequence: reasoningChunkSequence++,
+            });
+            streamedReasoning += reasoningToPersist;
+            reasoningBuffer = "";
+            lastReasoningFlushTime = now;
+          }
         }
       }
 
-      // Final flush
-      if (buffer.length > 0) {
+      console.log(`✅ Stream complete: ${partCount} total parts (${textDeltaCount} text, ${reasoningDeltaCount} reasoning)`);
+      console.log("🧾 Stream summary snapshot:", {
+        textChunkSequence,
+        reasoningChunkSequence,
+        textBufferLength: textBuffer.length,
+        reasoningBufferLength: reasoningBuffer.length,
+      });
+
+      // Final flush for both text and reasoning
+      if (textBuffer.length > 0) {
+        console.log(`💾 Final text flush (${textBuffer.length} chars)`);
         await ctx.runMutation(api.mutations.createMessageChunk, {
           messageId: args.assistantMessageId,
-          content: buffer,
-          sequence: chunkSequence++,
+          content: textBuffer,
+          sequence: textChunkSequence++,
         });
+      }
+
+      if (reasoningBuffer.length > 0) {
+        console.log(`💾 Final reasoning flush (${reasoningBuffer.length} chars)`);
+        const reasoningToPersist = reasoningBuffer;
+        await ctx.runMutation(api.mutations.createReasoningChunk, {
+          messageId: args.assistantMessageId,
+          content: reasoningToPersist,
+          sequence: reasoningChunkSequence++,
+        });
+        streamedReasoning += reasoningToPersist;
+        reasoningBuffer = "";
       }
 
       // Get the final result for usage tracking
       const finalResult = await result;
+      const rawReasoning = (finalResult as any)?.reasoning;
+      console.log("🧪 Final result diagnostics:", {
+        hasReasoningProperty: Object.prototype.hasOwnProperty.call(finalResult, "reasoning"),
+        reasoningType: rawReasoning === null ? "null" : typeof rawReasoning,
+        reasoningConstructor:
+          rawReasoning && typeof rawReasoning === "object" && rawReasoning.constructor
+            ? rawReasoning.constructor.name
+            : null,
+        reasoningIsPromise:
+          rawReasoning && typeof rawReasoning === "object" && typeof (rawReasoning as Promise<unknown>).then === "function",
+        reasoningIsArray: Array.isArray(rawReasoning),
+        reasoningLength: Array.isArray(rawReasoning)
+          ? rawReasoning.length
+          : 0,
+        reasoningPreview: Array.isArray(rawReasoning)
+          ? rawReasoning
+              .map((r: any) => (typeof r?.text === "string" ? r.text.substring(0, 80) : null))
+              .filter((r: string | null) => r)
+          : typeof rawReasoning === "string"
+            ? rawReasoning.substring(0, 120)
+            : null,
+        hasResponse: Object.prototype.hasOwnProperty.call(finalResult, "response"),
+        responseKeys: typeof (finalResult as any).response === "object" && (finalResult as any).response !== null
+          ? Object.keys((finalResult as any).response)
+          : null,
+      });
+
+      // Extract final text
       let finalText: string | null = null;
       if (typeof finalResult.text === "string") {
         finalText = finalResult.text;
@@ -168,24 +278,91 @@ export const generateAssistantMessage = internalAction({
         finalText = await finalResult.text;
       }
 
-      // 6. Update message parts with final content
-      const allChunks = await ctx.runQuery(api.queries.getMessageById, {
-        id: args.assistantMessageId,
+      // Extract final reasoning
+      // In AI SDK v5, reasoning is an array of ReasoningOutput objects
+      let finalReasoning: string | null = null;
+      console.log('🔍 Checking finalResult.reasoning:', {
+        hasReasoning: !!finalResult.reasoning,
+        isArray: Array.isArray(finalResult.reasoning),
+        length: Array.isArray(finalResult.reasoning) ? finalResult.reasoning.length : 0,
       });
 
-      // Update the message with final parts (combining chunks into proper format)
-      if (allChunks && finalText) {
-        await ctx.runMutation(api.mutations.saveMessages, {
-          messages: [
-            {
-              chatId: args.chatId,
-              role: "assistant",
-              parts: [{ type: "text", text: finalText }],
-              attachments: [],
-              createdAt: Date.now(),
-              isComplete: true,
-            },
-          ],
+      if (rawReasoning && typeof (rawReasoning as Promise<unknown>).then === "function") {
+        try {
+          const awaitedReasoning = await rawReasoning;
+          if (Array.isArray(awaitedReasoning)) {
+            finalReasoning = awaitedReasoning
+              .map((r: any) => r?.text || "")
+              .filter((t: string) => t.length > 0)
+              .join("\n\n");
+            console.log(`🧠 Awaited reasoning array extracted: ${finalReasoning.length} chars`);
+          } else if (typeof awaitedReasoning === "string") {
+            finalReasoning = awaitedReasoning;
+            console.log(`🧠 Awaited reasoning string extracted: ${finalReasoning.length} chars`);
+          } else if (awaitedReasoning && typeof awaitedReasoning === "object") {
+            const maybeText = (awaitedReasoning as any).text;
+            if (typeof maybeText === "string" && maybeText.length > 0) {
+              finalReasoning = maybeText;
+              console.log(`🧠 Awaited reasoning object text extracted: ${finalReasoning.length} chars`);
+            }
+          }
+        } catch (awaitError) {
+          console.warn("⚠️ Failed to await reasoning promise:", awaitError);
+        }
+      } else if (Array.isArray(rawReasoning)) {
+        // Combine all reasoning outputs into a single string
+        finalReasoning = rawReasoning
+          .map((r: any) => r.text || '')
+          .filter((t: string) => t.length > 0)
+          .join('\n\n');
+        console.log(`🧠 Final reasoning extracted: ${finalReasoning.length} chars`);
+      } else if (typeof rawReasoning === "string" && rawReasoning.length > 0) {
+        finalReasoning = rawReasoning;
+        console.log(`🧠 Final reasoning string extracted: ${finalReasoning.length} chars`);
+      } else if (rawReasoning && typeof rawReasoning === "object") {
+        const maybeText = (rawReasoning as any).text;
+        if (typeof maybeText === "string" && maybeText.length > 0) {
+          finalReasoning = maybeText;
+          console.log(`🧠 Final reasoning object text extracted: ${finalReasoning.length} chars`);
+        } else {
+          console.log("🧠 Reasoning object did not include text field:", {
+            keys: Object.keys(rawReasoning),
+          });
+        }
+      } else {
+        console.log("⚠️ No finalResult.reasoning returned by provider. Falling back to streamed chunks.", {
+          reasoningChunkSequence,
+          reasoningBufferLength: reasoningBuffer.length,
+          streamedReasoningLength: streamedReasoning.length,
+        });
+        if (!finalReasoning && streamedReasoning.length > 0) {
+          finalReasoning = streamedReasoning;
+          console.log(`🧠 Using streamed reasoning fallback (${finalReasoning.length} chars)`);
+        }
+      }
+
+      // 6. Update message parts with final content (reasoning + text)
+      const parts: Array<{ type: string; text: string }> = [];
+
+      // Add reasoning part first (if exists) so it appears before text
+      if (finalReasoning) {
+        console.log(`➕ Adding reasoning part (${finalReasoning.length} chars)`);
+        parts.push({ type: "reasoning", text: finalReasoning });
+      }
+
+      // Add text part
+      if (finalText) {
+        console.log(`➕ Adding text part (${finalText.length} chars)`);
+        parts.push({ type: "text", text: finalText });
+      }
+
+      console.log(`📝 Updating message parts: ${parts.length} parts total`);
+
+      // Update message with all parts
+      if (parts.length > 0) {
+        await ctx.runMutation(api.mutations.updateMessageParts, {
+          messageId: args.assistantMessageId,
+          parts,
         });
       }
 
@@ -197,10 +374,24 @@ export const generateAssistantMessage = internalAction({
 
       // 8. Update chat usage context
       if (finalResult.usage) {
-        await ctx.runMutation(api.mutations.updateChatLastContext, {
-          chatId: args.chatId,
-          context: finalResult.usage,
-        });
+        try {
+          // Await the usage promise if needed
+          const usage: any = await finalResult.usage;
+
+          // Extract usage data - handle both old and new AI SDK formats
+          const serializableUsage = {
+            promptTokens: usage.promptTokens || usage.inputTokens || 0,
+            completionTokens: usage.completionTokens || usage.outputTokens || 0,
+            totalTokens: usage.totalTokens || (usage.promptTokens || usage.inputTokens || 0) + (usage.completionTokens || usage.outputTokens || 0),
+          };
+
+          await ctx.runMutation(api.mutations.updateChatLastContext, {
+            chatId: args.chatId,
+            context: serializableUsage,
+          });
+        } catch (usageError) {
+          console.warn('Failed to save usage context:', usageError);
+        }
       }
     } catch (error) {
       console.error("Error generating assistant message:", error);
@@ -209,7 +400,7 @@ export const generateAssistantMessage = internalAction({
       await ctx.runMutation(api.mutations.createMessageChunk, {
         messageId: args.assistantMessageId,
         content: `\n\n[Error: ${error instanceof Error ? error.message : "Failed to generate response"}]`,
-        sequence: chunkSequence++,
+        sequence: textChunkSequence++,
       });
 
       // Still mark as complete to stop loading state
@@ -311,7 +502,8 @@ export const startChatMessagePair = action({
     );
 
     // 3. Schedule AI generation in background
-    await ctx.scheduler.runAfter(0, internal.ai.generateAssistantMessage, {
+    // NOTE: Add a small delay to ensure mutations are committed before querying
+    await ctx.scheduler.runAfter(100, internal.ai.generateAssistantMessage, {
       chatId,
       assistantMessageId,
       userId: args.userId,

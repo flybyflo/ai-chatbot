@@ -127,6 +127,24 @@ export const createMessageChunk = mutation({
   },
 });
 
+// Create a reasoning chunk for streaming AI thinking/reasoning
+export const createReasoningChunk = mutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.string(),
+    sequence: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const chunkId = await ctx.db.insert("reasoningChunks", {
+      messageId: args.messageId,
+      content: args.content,
+      sequence: args.sequence,
+      createdAt: Date.now(),
+    });
+    return chunkId;
+  },
+});
+
 // Mark a message as complete (streaming finished)
 export const updateMessageComplete = mutation({
   args: {
@@ -135,6 +153,17 @@ export const updateMessageComplete = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.messageId, { isComplete: args.isComplete });
+  },
+});
+
+// Update message parts (for finalizing streaming message)
+export const updateMessageParts = mutation({
+  args: {
+    messageId: v.id("messages"),
+    parts: v.any(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.messageId, { parts: args.parts });
   },
 });
 

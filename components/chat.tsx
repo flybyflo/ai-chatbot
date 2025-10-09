@@ -168,16 +168,58 @@ export function Chat({
   // Local state for optimistic UI updates
   const [localMessages, setLocalMessages] =
     useState<ChatMessage[]>(initialMessages);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Convert Convex messages to UI format
   useEffect(() => {
     if (messagesFromConvex) {
       const uiMessages: ChatMessage[] = messagesFromConvex.map((msg) => {
-        // For streaming messages, use combined chunks as temporary content
-        let parts = msg.parts;
-        if (msg.chunks && msg.chunks.length > 0 && msg.combinedContent) {
-          parts = [{ type: "text", text: msg.combinedContent }];
+        // For streaming messages, build parts from chunks
+        let parts: any[] = Array.isArray(msg.parts)
+          ? [...msg.parts]
+          : msg.parts
+            ? [msg.parts]
+            : [];
+
+        if (!msg.isComplete) {
+          const streamingParts: any[] = [];
+
+          // Add reasoning part if available
+          if (msg.reasoningChunks && msg.reasoningChunks.length > 0 && msg.combinedReasoning) {
+            streamingParts.push({
+              type: "reasoning",
+              text: msg.combinedReasoning,
+            });
+          } else if (msg.role === "assistant") {
+            streamingParts.push({
+              type: "reasoning",
+              text: "Reasoning...",
+            });
+          }
+
+          // Add text part if available
+          if (msg.chunks && msg.chunks.length > 0 && msg.combinedContent) {
+            streamingParts.push({
+              type: "text",
+              text: msg.combinedContent,
+            });
+          }
+
+          if (streamingParts.length > 0) {
+            parts = streamingParts;
+          }
+        } else if (
+          msg.role === "assistant" &&
+          msg.combinedReasoning &&
+          (msg.reasoningChunks?.length ?? 0) > 0 &&
+          !parts.some((part) => part?.type === "reasoning")
+        ) {
+          parts = [
+            {
+              type: "reasoning",
+              text: msg.combinedReasoning,
+            },
+            ...parts,
+          ];
         }
 
         return {
@@ -195,14 +237,22 @@ export function Chat({
   }, [messagesFromConvex]);
 
   const messages = localMessages;
-  const status =
-    isLoading || messagesFromConvex?.some((m) => !m.isComplete)
-      ? "in_progress"
-      : "ready";
+  const status = messagesFromConvex?.some((m) => !m.isComplete)
+    ? "streaming"
+    : "awaiting_message";
+
+  console.log('🚦 [Chat] Status check:', {
+    status,
+    hasMessagesFromConvex: !!messagesFromConvex,
+    messageCount: messagesFromConvex?.length || 0,
+    incompleteMessages: messagesFromConvex?.filter((m) => !m.isComplete).map(m => m._id) || [],
+  });
 
   // Send message function
   const sendMessage = useCallback(
     async (message: ChatMessage) => {
+      console.log('📤 [Chat] Attempting to send message, current status:', status);
+
       if (!session?.user) {
         toast.error("You must be logged in to send messages");
         return;
@@ -212,8 +262,6 @@ export function Chat({
         "🔧 Frontend: Sending tools to API:",
         selectedToolsRef.current
       );
-
-      setIsLoading(true);
 
       // Optimistically add user message to UI
       const userMessage: ChatMessage = {
@@ -227,7 +275,22 @@ export function Chat({
         createdAt: new Date(),
       };
 
-      setLocalMessages((prev) => [...prev, userMessage]);
+      const placeholderId = generateUUID();
+      const assistantPlaceholder: ChatMessage = {
+        id: placeholderId,
+        role: "assistant",
+        parts: [
+          {
+            type: "reasoning",
+            text: "Reasoning...",
+          },
+        ],
+        attachments: [],
+        createdAt: new Date(),
+        experimental_isStreaming: true,
+      };
+
+      setLocalMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
 
       try {
         await startMessagePair({
@@ -261,9 +324,9 @@ export function Chat({
         }
 
         // Remove optimistic message on error
-        setLocalMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
-      } finally {
-        setIsLoading(false);
+        setLocalMessages((prev) =>
+          prev.filter((m) => m.id !== userMessage.id && m.id !== placeholderId)
+        );
       }
     },
     [
