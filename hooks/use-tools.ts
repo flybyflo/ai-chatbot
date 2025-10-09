@@ -19,7 +19,7 @@ type ServerToolsResponse = ReturnType<typeof serverToolsResponseSchema.parse>;
 export function useAllTools() {
   const { data, error, isLoading, isValidating } = useSWR<ToolsResponse>(
     "/api/tools",
-    async (url) => {
+    async (url: string) => {
       const raw = await fetcher(url);
       return toolsResponseSchema.parse(raw);
     }
@@ -94,7 +94,7 @@ export function useAllTools() {
 export function useMCPServerTools(serverId: string | undefined) {
   const { data, error, isLoading, isValidating } = useSWR<ServerToolsResponse>(
     serverId ? `/api/mcp-servers/${serverId}/tools` : null,
-    async (url) => {
+    async (url: string) => {
       const raw = await fetcher(url);
       return serverToolsResponseSchema.parse(raw);
     }

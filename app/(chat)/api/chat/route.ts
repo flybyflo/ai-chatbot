@@ -1,6 +1,11 @@
 import { geolocation } from "@vercel/functions";
 import { fetchAction, fetchMutation, fetchQuery } from "convex/nextjs";
 import { headers } from "next/headers";
+import { after } from "next/server";
+import {
+  createResumableStreamContext,
+  type ResumableStreamContext,
+} from "resumable-stream";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { api } from "@/convex/_generated/api";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
@@ -13,6 +18,21 @@ import type { ChatMessage } from "@/lib/types";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
+
+let streamContext: ResumableStreamContext | null | undefined;
+
+export function getStreamContext(): ResumableStreamContext | null {
+  if (streamContext === undefined) {
+    try {
+      streamContext = createResumableStreamContext({ waitUntil: after });
+    } catch (error) {
+      console.error("Failed to create stream context", error);
+      streamContext = null;
+    }
+  }
+
+  return streamContext ?? null;
+}
 
 /**
  * New Convex-based chat API

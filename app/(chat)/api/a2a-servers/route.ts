@@ -148,13 +148,18 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const validated = updateA2AServerSchema.parse(body);
+    const { id, lastConnectionTest, ...rest } = validated;
+    const mutationInput = {
+      ...rest,
+      id: id as Id<"userA2AServers">,
+      userId: session.user.id,
+      ...(lastConnectionTest
+        ? { lastConnectionTest: lastConnectionTest.getTime() }
+        : {}),
+    };
     const a2a = await fetchMutation(
       api.mutations.updateUserA2AServer,
-      {
-        ...validated,
-        id: validated.id as Id<"userA2AServers">,
-        userId: session.user.id,
-      },
+      mutationInput,
       { token }
     );
     if (!a2a) {

@@ -22,7 +22,7 @@ import { useAllTools, useSelectedTools } from "@/hooks/use-tools";
 import { useLoadoutStore } from "@/lib/stores/loadout-store";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import { AttachmentsButton } from "./attachments-button";
 import { Context } from "./elements/context";
 import {
@@ -70,7 +70,7 @@ function PureMultimodalInput({
   setAttachments: Dispatch<SetStateAction<Attachment[]>>;
   messages: UIMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
-  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
+  sendMessage: (message: ChatMessage) => Promise<void>;
   className?: string;
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
@@ -135,14 +135,15 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, "", `/chat/${chatId}`);
 
-    const fileAttachments = attachments.map((attachment) => ({
-      type: "file" as const,
-      filename: attachment.name,
-      mediaType: attachment.contentType,
-      url: attachment.url,
-    }));
+    const message: ChatMessage = {
+      id: generateUUID(),
+      role: "user",
+      parts: [{ type: "text", text: input }],
+      attachments,
+      metadata: { createdAt: new Date().toISOString() },
+    };
 
-    sendMessage({ text: input, files: fileAttachments });
+    void sendMessage(message);
 
     setAttachments([]);
     setLocalStorageInput("");
@@ -298,17 +299,34 @@ function PureMultimodalInput({
 
             <LoadoutSelector
               activeLoadoutId={activeLoadoutId}
-              loadouts={loadouts.map((l) => ({
-                id: l.id,
-                name: l.name,
-                description: l.description || undefined,
-                tags: l.tags || undefined,
-                isDefault: l.isDefault,
-                updatedAt:
-                  typeof l.updatedAt === "string"
-                    ? l.updatedAt
-                    : l.updatedAt?.toISOString?.() || new Date().toISOString(),
-              }))}
+              loadouts={loadouts.map((l) => {
+                const updatedAtValue = l.updatedAt as unknown;
+                let updatedAt: string | undefined;
+                if (typeof updatedAtValue === "string") {
+                  updatedAt = updatedAtValue;
+                } else if (typeof updatedAtValue === "number") {
+                  updatedAt = new Date(updatedAtValue).toISOString();
+                } else if (
+                  typeof updatedAtValue === "object" &&
+                  updatedAtValue !== null &&
+                  "toISOString" in updatedAtValue &&
+                  typeof (updatedAtValue as { toISOString?: unknown }).toISOString ===
+                    "function"
+                ) {
+                  updatedAt = (
+                    updatedAtValue as { toISOString: () => string }
+                  ).toISOString();
+                }
+
+                return {
+                  id: l.id,
+                  name: l.name,
+                  description: l.description || undefined,
+                  tags: l.tags || undefined,
+                  isDefault: l.isDefault,
+                  updatedAt,
+                };
+              })}
               onActivate={(id) => {
                 setActiveLoadout(id);
                 if (!id) {

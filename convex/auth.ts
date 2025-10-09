@@ -5,10 +5,12 @@ import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 
-const siteUrl = process.env.SITE_URL;
+const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
 
-if (!siteUrl) {
-  throw new Error("SITE_URL environment variable must be set for Better Auth.");
+if (!process.env.SITE_URL) {
+  console.warn(
+    "SITE_URL environment variable is not set. Falling back to http://localhost:3000 for Better Auth."
+  );
 }
 
 // The component client has methods needed for integrating Convex with Better Auth,
