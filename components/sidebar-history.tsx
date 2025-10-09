@@ -25,28 +25,36 @@ import {
 } from "@/components/ui/sidebar";
 import { useMessageSearch } from "@/hooks/use-message-search";
 import type { User } from "@/lib/auth";
-import type { Chat } from "@/lib/db/schema";
 import { fetcher } from "@/lib/utils";
 import { SearchBar } from "./search-bar";
 import { SearchResults } from "./search-results";
 import { ChatItem } from "./sidebar-history-item";
 
+type HistoryChat = {
+  id: string;
+  userId: string;
+  title: string;
+  visibility: "public" | "private";
+  createdAt: string;
+  lastContext: unknown | null;
+};
+
 type GroupedChats = {
-  today: Chat[];
-  yesterday: Chat[];
-  lastWeek: Chat[];
-  lastMonth: Chat[];
-  older: Chat[];
+  today: HistoryChat[];
+  yesterday: HistoryChat[];
+  lastWeek: HistoryChat[];
+  lastMonth: HistoryChat[];
+  older: HistoryChat[];
 };
 
 export type ChatHistory = {
-  chats: Chat[];
+  chats: HistoryChat[];
   hasMore: boolean;
 };
 
 const PAGE_SIZE = 20;
 
-const groupChatsByDate = (chats: Chat[]): GroupedChats => {
+const groupChatsByDate = (chats: HistoryChat[]): GroupedChats => {
   const now = new Date();
   const oneWeekAgo = subWeeks(now, 1);
   const oneMonthAgo = subMonths(now, 1);

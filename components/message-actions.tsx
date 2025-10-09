@@ -4,7 +4,13 @@ import { memo } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
-import type { Vote } from "@/lib/db/schema";
+
+type Vote = {
+  chatId: string;
+  messageId: string;
+  isUpvoted: boolean;
+};
+
 import type { ChatMessage } from "@/lib/types";
 import { Action, Actions } from "./elements/actions";
 

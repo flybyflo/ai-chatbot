@@ -5,7 +5,13 @@ import { motion } from "framer-motion";
 import { memo, useState } from "react";
 import { CodeComparison } from "@/components/ui/code-comparison";
 import { PlantUMLViewer } from "@/components/ui/plantuml-viewer";
-import type { Vote } from "@/lib/db/schema";
+
+type Vote = {
+  chatId: string;
+  messageId: string;
+  isUpvoted: boolean;
+};
+
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
@@ -45,7 +51,7 @@ const PurePreviewMessage = ({
 }) => {
   const [mode, setMode] = useState<"view" | "edit">("view");
 
-  const attachmentsFromMessage = message.parts.filter(
+  const attachmentsFromMessage = (message.parts ?? []).filter(
     (part) => part.type === "file"
   );
 
@@ -93,6 +99,13 @@ const PurePreviewMessage = ({
           )}
 
           {(() => {
+            console.log(`🎨 [Message] Rendering message ${message.id}:`, {
+              role: message.role,
+              partsCount: message.parts?.length || 0,
+              partTypes: message.parts?.map((p) => p.type) || [],
+              isLoading,
+            });
+
             const flowItems: Array<
               | { kind: "reasoning"; content: string; originalIndex: number }
               | { kind: "text"; index: number }
@@ -107,6 +120,7 @@ const PurePreviewMessage = ({
 
             const flushReasoning = () => {
               if (currentReasoning) {
+                console.log(`🧠 [Message] Flushing reasoning: ${currentReasoning.length} chars, index ${firstReasoningIndex}`);
                 flowItems.push({
                   kind: "reasoning",
                   content: currentReasoning,
@@ -118,7 +132,14 @@ const PurePreviewMessage = ({
             };
 
             message.parts?.forEach((part, index) => {
+              console.log(`📦 [Message] Processing part ${index}:`, {
+                type: part.type,
+                hasText: !!part.text,
+                textLength: part.text?.length || 0,
+              });
+
               if (part.type === "reasoning" && part.text?.trim()) {
+                console.log(`🧠 [Message] Found reasoning part at index ${index}`);
                 if (currentReasoning === "") {
                   firstReasoningIndex = index;
                   currentReasoning = part.text;
@@ -160,6 +181,13 @@ const PurePreviewMessage = ({
             // Trailing reasoning, if any
             flushReasoning();
 
+            console.log(`📊 [Message] Flow items built:`, {
+              totalFlowItems: flowItems.length,
+              flowItemTypes: flowItems.map((item) => item.kind),
+              reasoningItems: flowItems.filter((item) => item.kind === "reasoning").length,
+              textItems: flowItems.filter((item) => item.kind === "text").length,
+            });
+
             const hasRenderedBeforeFlow = attachmentsFromMessage.length > 0;
 
             return flowItems.map((item, flowIndex) => {
@@ -167,6 +195,11 @@ const PurePreviewMessage = ({
 
               if (item.kind === "reasoning") {
                 const key = `message-${message.id}-reasoning-${item.originalIndex}`;
+                console.log(`🎯 [Message] Rendering MessageReasoning component:`, {
+                  key,
+                  contentLength: item.content.length,
+                  isLoading: isLoading && flowIndex === flowItems.length - 1,
+                });
                 return (
                   <MessageReasoning
                     className={needsTopMargin ? "mt-3" : undefined}

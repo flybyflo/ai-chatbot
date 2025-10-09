@@ -2,8 +2,6 @@
 
 export const dynamic = "force-dynamic";
 
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
 
 const settingsFeatures = [
@@ -90,27 +88,6 @@ const settingsFeatures = [
 ];
 
 export default function SettingsPage() {
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    // Warm the cache for instant render on navigation
-    queryClient.prefetchQuery({
-      queryKey: ["mcp-servers"],
-      queryFn: async () => (await fetch("/api/mcp-servers")).json(),
-      staleTime: 30 * 1000,
-    });
-    queryClient.prefetchQuery({
-      queryKey: ["memories"],
-      queryFn: async () => (await fetch("/api/memories")).json(),
-      staleTime: 30 * 1000,
-    });
-    queryClient.prefetchQuery({
-      queryKey: ["loadouts"],
-      queryFn: async () => (await fetch("/api/loadouts")).json(),
-      staleTime: 30 * 1000,
-    });
-  }, [queryClient]);
-
   return (
     <div className="mb-8">
       <h1 className="font-bold text-3xl text-foreground">Settings</h1>

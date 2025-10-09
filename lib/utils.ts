@@ -2,9 +2,17 @@ import type { UIMessagePart } from 'ai';
 import { type ClassValue, clsx } from 'clsx';
 import { formatISO } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
-import type { DBMessage } from '@/lib/db/schema';
 import { ChatSDKError, type ErrorCode } from './errors';
 import type { ChatMessage, ChatTools, CustomUIDataTypes } from './types';
+
+export type DBMessage = {
+  id: string;
+  chatId: string;
+  role: string;
+  parts: unknown;
+  attachments?: unknown;
+  createdAt: number | string | Date;
+};
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -68,12 +76,19 @@ export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
     role: message.role as 'user' | 'assistant' | 'system',
     parts: message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[],
     metadata: {
-      createdAt: formatISO(message.createdAt),
+      createdAt: formatISO(
+        message.createdAt instanceof Date
+          ? message.createdAt
+          : new Date(message.createdAt)
+      ),
     },
   }));
 }
 
 export function getTextFromMessage(message: ChatMessage): string {
+  if (!message.parts) {
+    return '';
+  }
   return message.parts
     .filter((part) => part.type === 'text')
     .map((part) => part.text)

@@ -44,8 +44,8 @@ export function MCPServerItem({
   server,
   onUpdate,
   onDelete,
-}: MCPServerItemProps) {
-  const { testMCPServer } = useMCPServers();
+}: Readonly<MCPServerItemProps>) {
+  const { testServer } = useMCPServers();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(server.name);
   const [url, setUrl] = useState(server.url);
@@ -105,7 +105,7 @@ export function MCPServerItem({
   const handleTest = async () => {
     setIsTesting(true);
     try {
-      const result = await testMCPServer({
+      const result = await testServer({
         id: server.id,
         url: server.url,
         headers: server.headers,

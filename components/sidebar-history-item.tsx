@@ -9,7 +9,13 @@ import {
 import Link from "next/link";
 import { memo } from "react";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
-import type { Chat } from "@/lib/db/schema";
+
+type HistoryChat = {
+  id: string;
+  title: string;
+  visibility: "public" | "private";
+};
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +38,7 @@ const PureChatItem = ({
   onDelete,
   setOpenMobile,
 }: {
-  chat: Chat;
+  chat: HistoryChat;
   isActive: boolean;
   onDelete: (chatId: string) => void;
   setOpenMobile: (open: boolean) => void;

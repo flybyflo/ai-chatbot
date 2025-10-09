@@ -1,9 +1,12 @@
+import { fetchQuery } from "convex/nextjs";
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { MCPClientWrapper } from "@/lib/ai/mcp/client";
 import { auth } from "@/lib/auth";
-import { getUserMCPServers } from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 const executeToolSchema = z.object({
@@ -27,9 +30,23 @@ export async function GET(
 
     const { id } = await params;
 
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     // Get the user's MCP servers and find the requested one
-    const userServers = await getUserMCPServers(session.user.id);
-    const server = userServers.find((s) => s.id === id);
+    const userServers = await fetchQuery(
+      api.queries.getUserMCPServers,
+      { userId: session.user.id },
+      { token }
+    );
+    const server = userServers.find(
+      (s) => s._id === (id as Id<"userMCPServers">)
+    );
 
     if (!server) {
       return new ChatSDKError(
@@ -50,7 +67,7 @@ export async function GET(
       const client = new MCPClientWrapper({
         name: server.name,
         url: server.url,
-        headers: server.headers || {},
+        headers: server.headers ?? {},
       });
 
       const connected = await client.connect();
@@ -69,7 +86,7 @@ export async function GET(
       await client.close();
 
       return NextResponse.json({
-        serverId: server.id,
+        serverId: server._id,
         serverName: server.name,
         tools,
       });
@@ -109,9 +126,23 @@ export async function POST(
 
     const { id } = await params;
 
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     // Get the user's MCP servers and find the requested one
-    const userServers = await getUserMCPServers(session.user.id);
-    const server = userServers.find((s) => s.id === id);
+    const userServers = await fetchQuery(
+      api.queries.getUserMCPServers,
+      { userId: session.user.id },
+      { token }
+    );
+    const server = userServers.find(
+      (s) => s._id === (id as Id<"userMCPServers">)
+    );
 
     if (!server) {
       return new ChatSDKError(
@@ -132,7 +163,7 @@ export async function POST(
       const client = new MCPClientWrapper({
         name: server.name,
         url: server.url,
-        headers: server.headers || {},
+        headers: server.headers ?? {},
       });
 
       const connected = await client.connect();
@@ -156,7 +187,7 @@ export async function POST(
       // Execute the tool (this will depend on the AI SDK implementation)
       // For now, we'll return the tool info and arguments
       const result = {
-        serverId: server.id,
+        serverId: server._id,
         serverName: server.name,
         toolName,
         arguments: toolArgs,

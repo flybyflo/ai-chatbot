@@ -30,8 +30,8 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { mcpServers } = useMCPServers();
-  const { a2aServers } = useA2AServers();
+  const { servers: mcpServers } = useMCPServers();
+  const { servers: a2aServers } = useA2AServers();
 
   // Generate breadcrumbs based on current path
   const generateBreadcrumbs = () => {

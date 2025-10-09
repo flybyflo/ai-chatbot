@@ -1,7 +1,9 @@
+import { fetchQuery } from "convex/nextjs";
 import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
+import { api } from "@/convex/_generated/api";
 import { auth } from "@/lib/auth";
-import { getChatsByUserId } from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
@@ -26,12 +28,30 @@ export async function GET(request: NextRequest) {
     return new ChatSDKError("unauthorized:chat").toResponse();
   }
 
-  const chats = await getChatsByUserId({
-    id: session.user.id,
-    limit,
-    startingAfter,
-    endingBefore,
-  });
+  const token = await getToken();
+  if (!token) {
+    return new ChatSDKError("unauthorized:chat").toResponse();
+  }
 
-  return Response.json(chats);
+  const response = await fetchQuery(
+    api.queries.getChatsByUserId,
+    {
+      userId: session.user.id,
+      limit,
+      cursor: startingAfter ?? endingBefore ?? undefined,
+      direction: endingBefore ? "backward" : "forward",
+    },
+    { token }
+  );
+
+  const normalizedChats = response.chats.map((chat) => ({
+    id: chat._id,
+    title: chat.title,
+    userId: chat.userId,
+    visibility: chat.visibility,
+    createdAt: new Date(chat.createdAt).toISOString(),
+    lastContext: chat.lastContext ?? null,
+  }));
+
+  return Response.json({ chats: normalizedChats, hasMore: response.hasMore });
 }

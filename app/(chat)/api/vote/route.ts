@@ -1,6 +1,9 @@
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { headers } from "next/headers";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { auth } from "@/lib/auth";
-import { getChatById, getVotesByChatId, voteMessage } from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 export async function GET(request: Request) {
@@ -20,7 +23,16 @@ export async function GET(request: Request) {
     return new ChatSDKError("unauthorized:vote").toResponse();
   }
 
-  const chat = await getChatById({ id: chatId });
+  const token = await getToken();
+  if (!token) {
+    return new ChatSDKError("unauthorized:vote").toResponse();
+  }
+
+  const chat = await fetchQuery(
+    api.queries.getChatById,
+    { id: chatId as Id<"chats"> },
+    { token }
+  );
 
   if (!chat) {
     return new ChatSDKError("not_found:chat").toResponse();
@@ -30,7 +42,11 @@ export async function GET(request: Request) {
     return new ChatSDKError("forbidden:vote").toResponse();
   }
 
-  const votes = await getVotesByChatId({ id: chatId });
+  const votes = await fetchQuery(
+    api.queries.getVotesByChatId,
+    { chatId: chat._id },
+    { token }
+  );
 
   return Response.json(votes, { status: 200 });
 }
@@ -56,7 +72,16 @@ export async function PATCH(request: Request) {
     return new ChatSDKError("unauthorized:vote").toResponse();
   }
 
-  const chat = await getChatById({ id: chatId });
+  const token = await getToken();
+  if (!token) {
+    return new ChatSDKError("unauthorized:vote").toResponse();
+  }
+
+  const chat = await fetchQuery(
+    api.queries.getChatById,
+    { id: chatId as Id<"chats"> },
+    { token }
+  );
 
   if (!chat) {
     return new ChatSDKError("not_found:vote").toResponse();
@@ -66,11 +91,15 @@ export async function PATCH(request: Request) {
     return new ChatSDKError("forbidden:vote").toResponse();
   }
 
-  await voteMessage({
-    chatId,
-    messageId,
-    type,
-  });
+  await fetchMutation(
+    api.mutations.voteMessage,
+    {
+      chatId: chat._id,
+      messageId: messageId as Id<"messages">,
+      isUpvoted: type === "up",
+    },
+    { token }
+  );
 
   return new Response("Message voted", { status: 200 });
 }

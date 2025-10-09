@@ -1,14 +1,13 @@
 "use server";
 
 import { generateText, type UIMessage } from "ai";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { cookies } from "next/headers";
 import type { VisibilityType } from "@/components/visibility-selector";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { myProvider } from "@/lib/ai/providers";
-import {
-  deleteMessagesByChatIdAfterTimestamp,
-  getMessageById,
-  updateChatVisiblityById,
-} from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 
 export async function saveChatModelAsCookie(model: string) {
   const cookieStore = await cookies();
@@ -34,12 +33,29 @@ export async function generateTitleFromUserMessage({
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {
-  const [message] = await getMessageById({ id });
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Unable to authenticate request");
+  }
 
-  await deleteMessagesByChatIdAfterTimestamp({
-    chatId: message.chatId,
-    timestamp: message.createdAt,
-  });
+  const message = await fetchQuery(
+    api.queries.getMessageById,
+    { id: id as Id<"messages"> },
+    { token }
+  );
+
+  if (!message) {
+    return;
+  }
+
+  await fetchMutation(
+    api.mutations.deleteMessagesByChatIdAfterTimestamp,
+    {
+      chatId: message.chatId,
+      timestamp: message.createdAt,
+    },
+    { token }
+  );
 }
 
 export async function updateChatVisibility({
@@ -49,5 +65,17 @@ export async function updateChatVisibility({
   chatId: string;
   visibility: VisibilityType;
 }) {
-  await updateChatVisiblityById({ chatId, visibility });
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Unable to authenticate request");
+  }
+
+  await fetchMutation(
+    api.mutations.updateChatVisibility,
+    {
+      chatId: chatId as Id<"chats">,
+      visibility,
+    },
+    { token }
+  );
 }

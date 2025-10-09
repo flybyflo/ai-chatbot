@@ -1,13 +1,11 @@
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { headers as getHeaders } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { auth } from "@/lib/auth";
-import {
-  createUserA2AServer,
-  deleteUserA2AServer,
-  getUserA2AServers,
-  updateUserA2AServer,
-} from "@/lib/db/queries";
+import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 const createA2AServerSchema = z.object({
@@ -33,6 +31,23 @@ const deleteA2AServerSchema = z.object({
   id: z.string().uuid(),
 });
 
+const serializeA2AServer = (server: any) => ({
+  id: server._id,
+  userId: server.userId,
+  name: server.name,
+  cardUrl: server.cardUrl,
+  description: server.description ?? null,
+  headers: server.headers ?? {},
+  isActive: server.isActive,
+  lastConnectionTest: server.lastConnectionTest
+    ? new Date(server.lastConnectionTest).toISOString()
+    : null,
+  lastConnectionStatus: server.lastConnectionStatus ?? null,
+  lastError: server.lastError ?? null,
+  createdAt: new Date(server.createdAt).toISOString(),
+  updatedAt: new Date(server.updatedAt).toISOString(),
+});
+
 export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await getHeaders() });
@@ -42,8 +57,21 @@ export async function GET() {
         "Not authenticated"
       ).toResponse();
     }
-    const a2aServers = await getUserA2AServers(session.user.id);
-    return NextResponse.json(a2aServers);
+
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
+    const a2aServers = await fetchQuery(
+      api.queries.getUserA2AServers,
+      { userId: session.user.id },
+      { token }
+    );
+    return NextResponse.json(a2aServers.map(serializeA2AServer));
   } catch (error) {
     if (error instanceof ChatSDKError) {
       return error.toResponse();
@@ -64,17 +92,29 @@ export async function POST(request: NextRequest) {
         "Not authenticated"
       ).toResponse();
     }
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     const body = await request.json();
     const { name, cardUrl, description, headers } =
       createA2AServerSchema.parse(body);
-    const a2a = await createUserA2AServer({
-      userId: session.user.id,
-      name,
-      cardUrl,
-      description,
-      headers,
-    });
-    return NextResponse.json(a2a, { status: 201 });
+    const a2a = await fetchMutation(
+      api.mutations.createUserA2AServer,
+      {
+        userId: session.user.id,
+        name,
+        cardUrl,
+        description,
+        headers,
+      },
+      { token }
+    );
+    return NextResponse.json(serializeA2AServer(a2a), { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
@@ -98,19 +138,32 @@ export async function PUT(request: NextRequest) {
         "Not authenticated"
       ).toResponse();
     }
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     const body = await request.json();
     const validated = updateA2AServerSchema.parse(body);
-    const a2a = await updateUserA2AServer({
-      ...validated,
-      userId: session.user.id,
-    });
+    const a2a = await fetchMutation(
+      api.mutations.updateUserA2AServer,
+      {
+        ...validated,
+        id: validated.id as Id<"userA2AServers">,
+        userId: session.user.id,
+      },
+      { token }
+    );
     if (!a2a) {
       return new ChatSDKError(
         "not_found:api",
         "A2A server not found"
       ).toResponse();
     }
-    return NextResponse.json(a2a);
+    return NextResponse.json(serializeA2AServer(a2a));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
@@ -134,9 +187,21 @@ export async function DELETE(request: NextRequest) {
         "Not authenticated"
       ).toResponse();
     }
+    const token = await getToken();
+    if (!token) {
+      return new ChatSDKError(
+        "unauthorized:api",
+        "Not authenticated"
+      ).toResponse();
+    }
+
     const body = await request.json();
     const { id } = deleteA2AServerSchema.parse(body);
-    const success = await deleteUserA2AServer({ id, userId: session.user.id });
+    const success = await fetchMutation(
+      api.mutations.deleteUserA2AServer,
+      { id: id as Id<"userA2AServers">, userId: session.user.id },
+      { token }
+    );
     if (!success) {
       return new ChatSDKError(
         "not_found:api",

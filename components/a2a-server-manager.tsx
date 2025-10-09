@@ -19,14 +19,12 @@ import { useA2AServers } from "@/hooks/use-a2a-servers";
 
 export function A2AServerManager() {
   const {
-    a2aServers,
+    servers: a2aServers,
     isLoading,
-    hasCached,
-    createA2AServer,
-    updateA2AServer,
-    deleteA2AServer,
-    testA2AServer,
-    isCreating,
+    createServer,
+    updateServer,
+    deleteServer,
+    testServer,
   } = useA2AServers();
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
@@ -40,7 +38,7 @@ export function A2AServerManager() {
     }
     setIsSaving(true);
     try {
-      await createA2AServer({
+      await createServer({
         name: newName.trim(),
         cardUrl: newUrl.trim(),
         description: newDescription.trim() || undefined,
@@ -67,7 +65,7 @@ export function A2AServerManager() {
     isActive?: boolean;
   }) => {
     try {
-      await updateA2AServer(data);
+      await updateServer(data);
       toast.success("A2A server updated successfully");
     } catch (error) {
       toast.error(
@@ -78,7 +76,7 @@ export function A2AServerManager() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteA2AServer(id);
+      await deleteServer(id);
       toast.success("A2A server deleted successfully");
     } catch (error) {
       toast.error(
@@ -93,7 +91,7 @@ export function A2AServerManager() {
       if (!server) {
         return;
       }
-      await testA2AServer({
+      await testServer({
         id: server.id,
         cardUrl: server.cardUrl,
         headers: server.headers,
@@ -126,7 +124,7 @@ export function A2AServerManager() {
         ))}
 
         {/* Loading State */}
-        {isLoading && !hasCached && a2aServers.length === 0 && (
+        {isLoading && a2aServers.length === 0 && (
           <div className="group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-xl bg-background [box-shadow:0_0_0_1px_rgba(0,0,0,.03),0_2px_4px_rgba(0,0,0,.05),0_12px_24px_rgba(0,0,0,.05)] dark:bg-background dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset]">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950/20 dark:to-orange-900/20" />
             <div className="relative p-4">
@@ -194,12 +192,10 @@ export function A2AServerManager() {
               <div className="flex justify-end gap-2">
                 <Button
                   className="bg-orange-600 text-white hover:bg-orange-700"
-                  disabled={
-                    !newName.trim() || !newUrl.trim() || isSaving || isCreating
-                  }
+                  disabled={!newName.trim() || !newUrl.trim() || isSaving}
                   onClick={handleCreate}
                 >
-                  {isSaving || isCreating ? (
+                  {isSaving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Adding...

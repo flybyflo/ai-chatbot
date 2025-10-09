@@ -1,8 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Chat } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
+
+type HistoryChat = {
+  id: string;
+  title: string;
+  createdAt: string;
+};
 
 export type SearchResult = {
   chatId: string;
@@ -15,7 +20,7 @@ export type SearchResult = {
 
 export function useMessageSearch(
   currentMessages: ChatMessage[] = [],
-  chatHistory: Chat[] = []
+  chatHistory: HistoryChat[] = []
 ) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -59,7 +64,7 @@ export function useMessageSearch(
         messageId: "",
         messageContent: "",
         chatTitle: chat.title,
-        createdAt: chat.createdAt,
+        createdAt: new Date(chat.createdAt),
         messageIndex: -1,
       }));
 
