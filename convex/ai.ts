@@ -253,7 +253,10 @@ export const generateAssistantMessage = internalAction({
       const finalResult = await result;
       const rawReasoning = (finalResult as any)?.reasoning;
       console.log("🧪 Final result diagnostics:", {
-        hasReasoningProperty: Object.hasOwn(finalResult, "reasoning"),
+        hasReasoningProperty: Object.prototype.hasOwnProperty.call(
+          finalResult,
+          "reasoning"
+        ),
         reasoningType: rawReasoning === null ? "null" : typeof rawReasoning,
         reasoningConstructor:
           rawReasoning &&
@@ -276,7 +279,10 @@ export const generateAssistantMessage = internalAction({
           : typeof rawReasoning === "string"
             ? rawReasoning.substring(0, 120)
             : null,
-        hasResponse: Object.hasOwn(finalResult, "response"),
+        hasResponse: Object.prototype.hasOwnProperty.call(
+          finalResult,
+          "response"
+        ),
         responseKeys:
           typeof (finalResult as any).response === "object" &&
           (finalResult as any).response !== null
