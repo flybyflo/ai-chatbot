@@ -132,19 +132,23 @@ const PurePreviewMessage = ({
             };
 
             message.parts?.forEach((part, index) => {
+              const partText =
+                typeof (part as { text?: string }).text === "string"
+                  ? (part as { text?: string }).text
+                  : undefined;
               console.log(`📦 [Message] Processing part ${index}:`, {
                 type: part.type,
-                hasText: !!part.text,
-                textLength: part.text?.length || 0,
+                hasText: !!partText,
+                textLength: partText?.length || 0,
               });
 
-              if (part.type === "reasoning" && part.text?.trim()) {
+              if (part.type === "reasoning" && partText?.trim()) {
                 console.log(`🧠 [Message] Found reasoning part at index ${index}`);
                 if (currentReasoning === "") {
                   firstReasoningIndex = index;
-                  currentReasoning = part.text;
+                  currentReasoning = partText;
                 } else {
-                  currentReasoning += `\n\n${part.text}`;
+                  currentReasoning += `\n\n${partText}`;
                 }
                 return;
               }
@@ -152,7 +156,7 @@ const PurePreviewMessage = ({
               // Non-reasoning: flush any pending reasoning before handling
               flushReasoning();
 
-              if (part.type === "text" && part.text?.trim()) {
+              if (part.type === "text" && partText?.trim()) {
                 flowItems.push({ kind: "text", index });
                 return;
               }

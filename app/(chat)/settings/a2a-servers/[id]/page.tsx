@@ -1,8 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,47 +30,171 @@ export default function A2AServerDetailPage() {
   const [copyFeedback, setCopyFeedback] = useState<"main" | "dialog" | null>(
     null
   );
+  const [server, setServer] = useState<any | null>(null);
+  const [loadingServer, setLoadingServer] = useState(true);
+  const [serverError, setServerError] = useState<Error | null>(null);
+  const [agentCard, setAgentCard] = useState<any | null>(null);
+  const [loadingCard, setLoadingCard] = useState(false);
+  const [cardError, setCardError] = useState<Error | null>(null);
 
   const routeParams = useParams<{ id: string }>();
   const idParam = Array.isArray(routeParams?.id)
     ? routeParams?.id?.[0]
     : routeParams?.id;
 
-  const fetchWithConsoleLog = async (path: string) => {
-    const method = "GET";
-    const started = Date.now();
-    const res = await fetch(path);
-    const ms = Date.now() - started;
-    setConsoleLogs((prev) => [
-      ...prev,
-      {
-        type: "api",
-        ts: Date.now(),
-        line: `${method} ${path} ${res.status} in ${ms}ms`,
-      },
-    ]);
-    if (!res.ok) {
-      throw new Error(`Request failed: ${res.status}`);
+  const toError = (error: unknown) =>
+    error instanceof Error ? error : new Error(String(error));
+
+  const fetchWithConsoleLog = useCallback(
+    async (path: string, init?: RequestInit) => {
+      const method = init?.method?.toUpperCase() ?? "GET";
+      const started = Date.now();
+      let response: Response | null = null;
+
+      try {
+        response = await fetch(path, init);
+
+        const resolvedResponse = response;
+
+        if (!resolvedResponse) {
+          throw new Error("No response received");
+        }
+
+        if (!resolvedResponse.ok) {
+          throw new Error(
+            `Request failed: ${resolvedResponse.status} ${resolvedResponse.statusText}`.trim()
+          );
+        }
+
+        const json = await resolvedResponse.json();
+        const ms = Date.now() - started;
+        setConsoleLogs((prev) => [
+          ...prev,
+          {
+            type: "api",
+            ts: Date.now(),
+            line: `${method} ${path} ${resolvedResponse.status} in ${ms}ms`,
+          },
+        ]);
+        return json;
+      } catch (error) {
+        const ms = Date.now() - started;
+        const isAbortError =
+          error instanceof DOMException && error.name === "AbortError";
+        const statusPart = response ? `${response.status} ` : "";
+        setConsoleLogs((prev) => [
+          ...prev,
+          {
+            type: "api",
+            ts: Date.now(),
+            line: `${method} ${path} ${
+              isAbortError
+                ? `aborted after ${ms}ms`
+                : `${statusPart}failed after ${ms}ms`
+            }`,
+          },
+        ]);
+        throw error;
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!idParam) {
+      setServer(null);
+      setLoadingServer(false);
+      setServerError(null);
+      return;
     }
-    return res.json();
-  };
 
-  const { data: server, isLoading: loadingServer } = useQuery({
-    queryKey: ["a2a-server", idParam],
-    queryFn: async () => fetchWithConsoleLog(`/api/a2a-servers/${idParam}`),
-    enabled: !!idParam,
-  });
+    let cancelled = false;
+    setLoadingServer(true);
+    setServerError(null);
 
-  const {
-    data: agentCard,
-    isLoading: loadingCard,
-    error: cardError,
-  } = useQuery({
-    queryKey: ["a2a-server-card", idParam],
-    queryFn: async () =>
-      fetchWithConsoleLog(`/api/a2a-servers/${idParam}/card`),
-    enabled: !!server && !!idParam,
-  });
+    const controller = new AbortController();
+
+    fetchWithConsoleLog(`/api/a2a-servers/${idParam}`, {
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+        setServer(data);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        if (!controller.signal.aborted) {
+          console.error("Failed to fetch server", error);
+        }
+        setServer(null);
+        if (!controller.signal.aborted) {
+          setServerError(toError(error));
+        }
+      })
+      .finally(() => {
+        if (cancelled || controller.signal.aborted) {
+          return;
+        }
+        setLoadingServer(false);
+      });
+
+    return () => {
+      controller.abort();
+      cancelled = true;
+    };
+  }, [fetchWithConsoleLog, idParam]);
+
+  useEffect(() => {
+    if (!idParam || !server) {
+      setAgentCard(null);
+      setLoadingCard(false);
+      setCardError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingCard(true);
+    setCardError(null);
+
+    const controller = new AbortController();
+
+    fetchWithConsoleLog(`/api/a2a-servers/${idParam}/card`, {
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+        setAgentCard(data);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        if (!controller.signal.aborted) {
+          console.error("Failed to fetch agent card", error);
+        }
+        setAgentCard(null);
+        if (!controller.signal.aborted) {
+          setCardError(toError(error));
+        }
+      })
+      .finally(() => {
+        if (cancelled || controller.signal.aborted) {
+          return;
+        }
+        setLoadingCard(false);
+      });
+
+    return () => {
+      controller.abort();
+      cancelled = true;
+    };
+  }, [fetchWithConsoleLog, idParam, server]);
 
   useEffect(() => {
     if (!idParam) {
@@ -210,6 +333,10 @@ export default function A2AServerDetailPage() {
                 <Skeleton className="h-4 w-52" />
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-4 w-48" />
+              </div>
+            ) : serverError ? (
+              <div className="mt-2 text-red-500 text-sm">
+                Failed to fetch server details
               </div>
             ) : server ? (
               <dl className="mt-1 grid gap-2">

@@ -3,6 +3,8 @@
 import { useAction, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ChatStatus } from "ai";
+import type { UseChatHelpers } from "@ai-sdk/react";
 import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -222,14 +224,20 @@ export function Chat({
           ];
         }
 
-        return {
+        const normalized: ChatMessage & {
+          experimental_isStreaming?: boolean;
+        } = {
           id: msg._id,
           role: msg.role,
           parts: parts || [],
           attachments: msg.attachments || [],
-          createdAt: new Date(msg.createdAt),
+          metadata: {
+            createdAt: new Date(msg.createdAt).toISOString(),
+          },
           experimental_isStreaming: !msg.isComplete,
         };
+
+        return normalized;
       });
 
       setLocalMessages(uiMessages);
@@ -237,9 +245,9 @@ export function Chat({
   }, [messagesFromConvex]);
 
   const messages = localMessages;
-  const status = messagesFromConvex?.some((m) => !m.isComplete)
+  const status: ChatStatus = messagesFromConvex?.some((m) => !m.isComplete)
     ? "streaming"
-    : "awaiting_message";
+    : "ready";
 
   console.log('🚦 [Chat] Status check:', {
     status,
@@ -272,11 +280,15 @@ export function Chat({
             ? message.parts
             : [{ type: "text", text: getTextFromMessage(message) || input }],
         attachments: message.attachments || [],
-        createdAt: new Date(),
+        metadata: {
+          createdAt: new Date().toISOString(),
+        },
       };
 
       const placeholderId = generateUUID();
-      const assistantPlaceholder: ChatMessage = {
+      const assistantPlaceholder: ChatMessage & {
+        experimental_isStreaming?: boolean;
+      } = {
         id: placeholderId,
         role: "assistant",
         parts: [
@@ -286,7 +298,9 @@ export function Chat({
           },
         ],
         attachments: [],
-        createdAt: new Date(),
+        metadata: {
+          createdAt: new Date().toISOString(),
+        },
         experimental_isStreaming: true,
       };
 
@@ -351,15 +365,19 @@ export function Chat({
     []
   );
 
-  const stop = useCallback(() => {
+  const stop = useCallback<UseChatHelpers<ChatMessage>["stop"]>(async () => {
     console.warn("Stop not yet implemented for Convex streaming");
   }, []);
 
-  const regenerate = useCallback(() => {
+  const regenerate = useCallback<
+    UseChatHelpers<ChatMessage>["regenerate"]
+  >(async () => {
     console.warn("Regenerate not yet implemented for Convex streaming");
   }, []);
 
-  const resumeStream = useCallback(() => {
+  const resumeStream = useCallback<
+    UseChatHelpers<ChatMessage>["resumeStream"]
+  >(async () => {
     console.warn("Resume stream not yet implemented for Convex streaming");
   }, []);
 
@@ -376,9 +394,11 @@ export function Chat({
 
   useEffect(() => {
     if (query && !hasAppendedQuery) {
-      sendMessage({
+      void sendMessage({
+        id: generateUUID(),
         role: "user" as const,
         parts: [{ type: "text", text: query }],
+        metadata: { createdAt: new Date().toISOString() },
       });
 
       setHasAppendedQuery(true);

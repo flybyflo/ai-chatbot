@@ -17,10 +17,10 @@ interface BentoServerCardProps extends ComponentPropsWithoutRef<"div"> {
     name: string;
     url?: string;
     cardUrl?: string;
-    description?: string;
+    description?: string | null;
     isActive: boolean;
-    lastConnectionStatus?: string;
-    toolCount?: number;
+    lastConnectionStatus?: string | null;
+    toolCount?: number | null;
   };
   onUpdate: (data: {
     id: string;
