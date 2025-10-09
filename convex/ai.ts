@@ -148,7 +148,7 @@ export const generateAssistantMessage = internalAction({
       });
 
       // 5. Stream all parts (text AND reasoning) and write chunks to database
-      console.log('🌊 Starting fullStream processing...');
+      console.log("🌊 Starting fullStream processing...");
       let partCount = 0;
       let textDeltaCount = 0;
       let reasoningDeltaCount = 0;
@@ -160,10 +160,12 @@ export const generateAssistantMessage = internalAction({
         const now = Date.now();
 
         // Handle text deltas
-        if (part.type === 'text-delta') {
+        if (part.type === "text-delta") {
           textDeltaCount++;
           textBuffer += part.text; // AI SDK v5 uses 'text' not 'textDelta'
-          console.log(`✍️ Text delta #${textDeltaCount}, buffer length: ${textBuffer.length}`);
+          console.log(
+            `✍️ Text delta #${textDeltaCount}, buffer length: ${textBuffer.length}`
+          );
 
           // Flush text buffer if threshold reached or time elapsed
           if (
@@ -183,10 +185,12 @@ export const generateAssistantMessage = internalAction({
         }
 
         // Handle reasoning deltas (thinking content from models like O1)
-        if (part.type === 'reasoning-delta') {
+        if (part.type === "reasoning-delta") {
           reasoningDeltaCount++;
           reasoningBuffer += part.text; // AI SDK v5 uses 'text' not 'reasoningDelta'
-          console.log(`🧠 Reasoning delta #${reasoningDeltaCount}, buffer length: ${reasoningBuffer.length}, text: "${part.text.substring(0, 50)}..."`);
+          console.log(
+            `🧠 Reasoning delta #${reasoningDeltaCount}, buffer length: ${reasoningBuffer.length}, text: "${part.text.substring(0, 50)}..."`
+          );
 
           // Flush reasoning buffer if threshold reached or time elapsed
           if (
@@ -194,7 +198,9 @@ export const generateAssistantMessage = internalAction({
               now - lastReasoningFlushTime >= timeThreshold) &&
             reasoningBuffer.length > 0
           ) {
-            console.log(`💾 Flushing reasoning buffer (${reasoningBuffer.length} chars)`);
+            console.log(
+              `💾 Flushing reasoning buffer (${reasoningBuffer.length} chars)`
+            );
             const reasoningToPersist = reasoningBuffer;
             await ctx.runMutation(api.mutations.createReasoningChunk, {
               messageId: args.assistantMessageId,
@@ -208,7 +214,9 @@ export const generateAssistantMessage = internalAction({
         }
       }
 
-      console.log(`✅ Stream complete: ${partCount} total parts (${textDeltaCount} text, ${reasoningDeltaCount} reasoning)`);
+      console.log(
+        `✅ Stream complete: ${partCount} total parts (${textDeltaCount} text, ${reasoningDeltaCount} reasoning)`
+      );
       console.log("🧾 Stream summary snapshot:", {
         textChunkSequence,
         reasoningChunkSequence,
@@ -227,7 +235,9 @@ export const generateAssistantMessage = internalAction({
       }
 
       if (reasoningBuffer.length > 0) {
-        console.log(`💾 Final reasoning flush (${reasoningBuffer.length} chars)`);
+        console.log(
+          `💾 Final reasoning flush (${reasoningBuffer.length} chars)`
+        );
         const reasoningToPersist = reasoningBuffer;
         await ctx.runMutation(api.mutations.createReasoningChunk, {
           messageId: args.assistantMessageId,
@@ -242,29 +252,35 @@ export const generateAssistantMessage = internalAction({
       const finalResult = await result;
       const rawReasoning = (finalResult as any)?.reasoning;
       console.log("🧪 Final result diagnostics:", {
-        hasReasoningProperty: Object.prototype.hasOwnProperty.call(finalResult, "reasoning"),
+        hasReasoningProperty: Object.hasOwn(finalResult, "reasoning"),
         reasoningType: rawReasoning === null ? "null" : typeof rawReasoning,
         reasoningConstructor:
-          rawReasoning && typeof rawReasoning === "object" && rawReasoning.constructor
+          rawReasoning &&
+          typeof rawReasoning === "object" &&
+          rawReasoning.constructor
             ? rawReasoning.constructor.name
             : null,
         reasoningIsPromise:
-          rawReasoning && typeof rawReasoning === "object" && typeof (rawReasoning as Promise<unknown>).then === "function",
+          rawReasoning &&
+          typeof rawReasoning === "object" &&
+          typeof (rawReasoning as Promise<unknown>).then === "function",
         reasoningIsArray: Array.isArray(rawReasoning),
-        reasoningLength: Array.isArray(rawReasoning)
-          ? rawReasoning.length
-          : 0,
+        reasoningLength: Array.isArray(rawReasoning) ? rawReasoning.length : 0,
         reasoningPreview: Array.isArray(rawReasoning)
           ? rawReasoning
-              .map((r: any) => (typeof r?.text === "string" ? r.text.substring(0, 80) : null))
+              .map((r: any) =>
+                typeof r?.text === "string" ? r.text.substring(0, 80) : null
+              )
               .filter((r: string | null) => r)
           : typeof rawReasoning === "string"
             ? rawReasoning.substring(0, 120)
             : null,
-        hasResponse: Object.prototype.hasOwnProperty.call(finalResult, "response"),
-        responseKeys: typeof (finalResult as any).response === "object" && (finalResult as any).response !== null
-          ? Object.keys((finalResult as any).response)
-          : null,
+        hasResponse: Object.hasOwn(finalResult, "response"),
+        responseKeys:
+          typeof (finalResult as any).response === "object" &&
+          (finalResult as any).response !== null
+            ? Object.keys((finalResult as any).response)
+            : null,
       });
 
       // Extract final text
@@ -281,13 +297,18 @@ export const generateAssistantMessage = internalAction({
       // Extract final reasoning
       // In AI SDK v5, reasoning is an array of ReasoningOutput objects
       let finalReasoning: string | null = null;
-      console.log('🔍 Checking finalResult.reasoning:', {
+      console.log("🔍 Checking finalResult.reasoning:", {
         hasReasoning: !!finalResult.reasoning,
         isArray: Array.isArray(finalResult.reasoning),
-        length: Array.isArray(finalResult.reasoning) ? finalResult.reasoning.length : 0,
+        length: Array.isArray(finalResult.reasoning)
+          ? finalResult.reasoning.length
+          : 0,
       });
 
-      if (rawReasoning && typeof (rawReasoning as Promise<unknown>).then === "function") {
+      if (
+        rawReasoning &&
+        typeof (rawReasoning as Promise<unknown>).then === "function"
+      ) {
         try {
           const awaitedReasoning = await rawReasoning;
           if (Array.isArray(awaitedReasoning)) {
@@ -295,15 +316,21 @@ export const generateAssistantMessage = internalAction({
               .map((r: any) => r?.text || "")
               .filter((t: string) => t.length > 0)
               .join("\n\n");
-            console.log(`🧠 Awaited reasoning array extracted: ${finalReasoning.length} chars`);
+            console.log(
+              `🧠 Awaited reasoning array extracted: ${finalReasoning.length} chars`
+            );
           } else if (typeof awaitedReasoning === "string") {
             finalReasoning = awaitedReasoning;
-            console.log(`🧠 Awaited reasoning string extracted: ${finalReasoning.length} chars`);
+            console.log(
+              `🧠 Awaited reasoning string extracted: ${finalReasoning.length} chars`
+            );
           } else if (awaitedReasoning && typeof awaitedReasoning === "object") {
             const maybeText = (awaitedReasoning as any).text;
             if (typeof maybeText === "string" && maybeText.length > 0) {
               finalReasoning = maybeText;
-              console.log(`🧠 Awaited reasoning object text extracted: ${finalReasoning.length} chars`);
+              console.log(
+                `🧠 Awaited reasoning object text extracted: ${finalReasoning.length} chars`
+              );
             }
           }
         } catch (awaitError) {
@@ -312,32 +339,43 @@ export const generateAssistantMessage = internalAction({
       } else if (Array.isArray(rawReasoning)) {
         // Combine all reasoning outputs into a single string
         finalReasoning = rawReasoning
-          .map((r: any) => r.text || '')
+          .map((r: any) => r.text || "")
           .filter((t: string) => t.length > 0)
-          .join('\n\n');
-        console.log(`🧠 Final reasoning extracted: ${finalReasoning.length} chars`);
+          .join("\n\n");
+        console.log(
+          `🧠 Final reasoning extracted: ${finalReasoning.length} chars`
+        );
       } else if (typeof rawReasoning === "string" && rawReasoning.length > 0) {
         finalReasoning = rawReasoning;
-        console.log(`🧠 Final reasoning string extracted: ${finalReasoning.length} chars`);
+        console.log(
+          `🧠 Final reasoning string extracted: ${finalReasoning.length} chars`
+        );
       } else if (rawReasoning && typeof rawReasoning === "object") {
         const maybeText = (rawReasoning as any).text;
         if (typeof maybeText === "string" && maybeText.length > 0) {
           finalReasoning = maybeText;
-          console.log(`🧠 Final reasoning object text extracted: ${finalReasoning.length} chars`);
+          console.log(
+            `🧠 Final reasoning object text extracted: ${finalReasoning.length} chars`
+          );
         } else {
           console.log("🧠 Reasoning object did not include text field:", {
             keys: Object.keys(rawReasoning),
           });
         }
       } else {
-        console.log("⚠️ No finalResult.reasoning returned by provider. Falling back to streamed chunks.", {
-          reasoningChunkSequence,
-          reasoningBufferLength: reasoningBuffer.length,
-          streamedReasoningLength: streamedReasoning.length,
-        });
+        console.log(
+          "⚠️ No finalResult.reasoning returned by provider. Falling back to streamed chunks.",
+          {
+            reasoningChunkSequence,
+            reasoningBufferLength: reasoningBuffer.length,
+            streamedReasoningLength: streamedReasoning.length,
+          }
+        );
         if (!finalReasoning && streamedReasoning.length > 0) {
           finalReasoning = streamedReasoning;
-          console.log(`🧠 Using streamed reasoning fallback (${finalReasoning.length} chars)`);
+          console.log(
+            `🧠 Using streamed reasoning fallback (${finalReasoning.length} chars)`
+          );
         }
       }
 
@@ -346,7 +384,9 @@ export const generateAssistantMessage = internalAction({
 
       // Add reasoning part first (if exists) so it appears before text
       if (finalReasoning) {
-        console.log(`➕ Adding reasoning part (${finalReasoning.length} chars)`);
+        console.log(
+          `➕ Adding reasoning part (${finalReasoning.length} chars)`
+        );
         parts.push({ type: "reasoning", text: finalReasoning });
       }
 
@@ -382,7 +422,10 @@ export const generateAssistantMessage = internalAction({
           const serializableUsage = {
             promptTokens: usage.promptTokens || usage.inputTokens || 0,
             completionTokens: usage.completionTokens || usage.outputTokens || 0,
-            totalTokens: usage.totalTokens || (usage.promptTokens || usage.inputTokens || 0) + (usage.completionTokens || usage.outputTokens || 0),
+            totalTokens:
+              usage.totalTokens ||
+              (usage.promptTokens || usage.inputTokens || 0) +
+                (usage.completionTokens || usage.outputTokens || 0),
           };
 
           await ctx.runMutation(api.mutations.updateChatLastContext, {
@@ -390,7 +433,7 @@ export const generateAssistantMessage = internalAction({
             context: serializableUsage,
           });
         } catch (usageError) {
-          console.warn('Failed to save usage context:', usageError);
+          console.warn("Failed to save usage context:", usageError);
         }
       }
     } catch (error) {
@@ -439,6 +482,38 @@ export const startChatMessagePair = action({
     ctx,
     args
   ): Promise<{ userMessageId: unknown; assistantMessageId: unknown }> => {
+    const deriveTitleFromMessage = (): string => {
+      const parts = Array.isArray(args.userMessage.parts)
+        ? args.userMessage.parts
+        : [];
+
+      const textPart = parts.find(
+        (part: any) =>
+          part && typeof part.text === "string" && part.type === "text"
+      );
+
+      const raw = typeof textPart?.text === "string" ? textPart.text : "";
+      const normalized = raw.trim().replace(/\s+/g, " ");
+      if (!normalized) {
+        return "New Chat";
+      }
+      return normalized.length > 80
+        ? normalized.slice(0, 80).trimEnd()
+        : normalized;
+    };
+
+    const resolveTitle = (): string => {
+      if (typeof args.title === "string") {
+        const trimmed = args.title.trim();
+        if (trimmed.length > 0) {
+          return trimmed.length > 80 ? trimmed.slice(0, 80).trimEnd() : trimmed;
+        }
+      }
+      return deriveTitleFromMessage();
+    };
+
+    const chatTitle = resolveTitle();
+
     // Check if chat exists, if not create it
     let chatId: any;
     try {
@@ -453,7 +528,7 @@ export const startChatMessagePair = action({
       } else {
         chatId = await ctx.runMutation(api.mutations.saveChat, {
           userId: args.userId,
-          title: args.title || "New Chat",
+          title: chatTitle,
           visibility: args.selectedVisibilityType,
           slug: args.chatId,
         });
@@ -462,7 +537,7 @@ export const startChatMessagePair = action({
       // If parsing fails, create new chat
       chatId = await ctx.runMutation(api.mutations.saveChat, {
         userId: args.userId,
-        title: args.title || "New Chat",
+        title: chatTitle,
         visibility: args.selectedVisibilityType,
         slug: args.chatId,
       });
