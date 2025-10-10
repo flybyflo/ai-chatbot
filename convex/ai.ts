@@ -388,8 +388,69 @@ export const generateAssistantMessage = internalAction({
         }
       }
 
-      // 6. Update message parts with final content (reasoning + text)
-      const parts: Array<{ type: string; text: string }> = [];
+      // 6. Extract tool calls and results from steps
+      const toolParts: any[] = [];
+      if (finalResult.steps && Array.isArray(finalResult.steps)) {
+        console.log(
+          `🔧 Processing ${finalResult.steps.length} steps for tool calls`
+        );
+
+        for (const step of finalResult.steps) {
+          if (step.toolCalls && Array.isArray(step.toolCalls)) {
+            console.log(`🔧 Found ${step.toolCalls.length} tool calls in step`);
+
+            for (const toolCall of step.toolCalls) {
+              const toolName = toolCall.toolName || "";
+              const toolCallId = toolCall.toolCallId || "";
+              const toolArgs = toolCall.args || {};
+
+              // Find matching tool result
+              const toolResult = step.toolResults?.find(
+                (r: any) => r.toolCallId === toolCallId
+              );
+
+              console.log("🔧 Tool call:", {
+                toolName,
+                toolCallId,
+                hasResult: !!toolResult,
+              });
+
+              // Check if this is a dynamic tool (MCP or A2A)
+              // Dynamic tools typically have underscore in their name (e.g., better-auth_search)
+              if (toolName.includes("_")) {
+                const state = toolResult
+                  ? "output-available"
+                  : "input-available";
+
+                const toolPart: any = {
+                  type: "dynamic-tool",
+                  toolCallId,
+                  toolName,
+                  state,
+                  input: toolArgs,
+                };
+
+                if (toolResult) {
+                  if (toolResult.result) {
+                    toolPart.output = toolResult.result;
+                  }
+                  if ((toolResult as any).error) {
+                    toolPart.errorText = String((toolResult as any).error);
+                  }
+                }
+
+                toolParts.push(toolPart);
+                console.log(`✅ Added dynamic tool part: ${toolName}`);
+              }
+            }
+          }
+        }
+      }
+
+      console.log(`🔧 Total tool parts extracted: ${toolParts.length}`);
+
+      // 7. Update message parts with final content (reasoning + tools + text)
+      const parts: any[] = [];
 
       // Add reasoning part first (if exists) so it appears before text
       if (finalReasoning) {
@@ -397,6 +458,12 @@ export const generateAssistantMessage = internalAction({
           `➕ Adding reasoning part (${finalReasoning.length} chars)`
         );
         parts.push({ type: "reasoning", text: finalReasoning });
+      }
+
+      // Add tool parts
+      if (toolParts.length > 0) {
+        console.log(`➕ Adding ${toolParts.length} tool parts`);
+        parts.push(...toolParts);
       }
 
       // Add text part

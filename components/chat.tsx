@@ -376,21 +376,21 @@ export function Chat({
 
   const stop = useCallback<UseChatHelpers<ChatMessage>["stop"]>(async () => {
     console.warn("Stop not yet implemented for Convex streaming");
-    return Promise.resolve();
+    return await Promise.resolve();
   }, []);
 
   const regenerate = useCallback<
     UseChatHelpers<ChatMessage>["regenerate"]
   >(async () => {
     console.warn("Regenerate not yet implemented for Convex streaming");
-    return Promise.resolve();
+    return await Promise.resolve();
   }, []);
 
   const resumeStream = useCallback<
     UseChatHelpers<ChatMessage>["resumeStream"]
   >(async () => {
     console.warn("Resume stream not yet implemented for Convex streaming");
-    return Promise.resolve();
+    return await Promise.resolve();
   }, []);
 
   useEffect(() => {
