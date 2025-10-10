@@ -10,7 +10,101 @@ import {
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
+import type { A2AToolEventPayload } from "./lib/ai/a2a/types";
 import type { DBMessage } from "./lib/utils";
+
+function mergeA2AOutput(previous: any, next: any) {
+  if (!previous) {
+    previous = {};
+  }
+  const merged = { ...previous, ...(next ?? {}) };
+
+  if (Array.isArray(previous?.tasks) || Array.isArray(next?.tasks)) {
+    const tasksById = new Map<string, any>();
+    const allTasks = [
+      ...(Array.isArray(previous?.tasks) ? previous.tasks : []),
+      ...(Array.isArray(next?.tasks) ? next.tasks : []),
+    ];
+    for (const task of allTasks) {
+      if (!task || typeof task !== "object") {
+        continue;
+      }
+      const key =
+        typeof task.taskId === "string"
+          ? task.taskId
+          : `task-${tasksById.size}`;
+      const existingTask = tasksById.get(key) ?? {};
+      tasksById.set(key, { ...existingTask, ...task });
+    }
+    merged.tasks = Array.from(tasksById.values());
+  }
+
+  if (
+    Array.isArray(previous?.statusUpdates) ||
+    Array.isArray(next?.statusUpdates)
+  ) {
+    const combinedUpdates = [
+      ...(Array.isArray(previous?.statusUpdates)
+        ? previous.statusUpdates
+        : []),
+      ...(Array.isArray(next?.statusUpdates) ? next.statusUpdates : []),
+    ];
+    const seen = new Set<string>();
+    const dedupedUpdates: any[] = [];
+    for (const update of combinedUpdates) {
+      if (!update || typeof update !== "object") {
+        continue;
+      }
+      const key = [
+        update.taskId ?? "",
+        update.state ?? "",
+        update.message ?? "",
+        update.timestamp ?? "",
+      ].join("|");
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      dedupedUpdates.push(update);
+    }
+    merged.statusUpdates = dedupedUpdates;
+  }
+
+  if (Array.isArray(previous?.artifacts) || Array.isArray(next?.artifacts)) {
+    const combinedArtifacts = [
+      ...(Array.isArray(previous?.artifacts) ? previous.artifacts : []),
+      ...(Array.isArray(next?.artifacts) ? next.artifacts : []),
+    ];
+    const seenArtifacts = new Set<string>();
+    const dedupedArtifacts: any[] = [];
+    for (const artifact of combinedArtifacts) {
+      if (!artifact || typeof artifact !== "object") {
+        continue;
+      }
+      const key =
+        artifact.id ??
+        [artifact.url ?? "", artifact.name ?? "", artifact.type ?? ""].join(
+          "|"
+        );
+      if (seenArtifacts.has(key)) {
+        continue;
+      }
+      seenArtifacts.add(key);
+      dedupedArtifacts.push(artifact);
+    }
+    merged.artifacts = dedupedArtifacts;
+  }
+
+  if (Array.isArray(next?.messages)) {
+    merged.messages = next.messages;
+  }
+
+  if (next?.responseText !== undefined) {
+    merged.responseText = next.responseText;
+  }
+
+  return merged;
+}
 
 /**
  * Internal action that handles streaming LLM responses to Convex
@@ -46,6 +140,11 @@ export const generateAssistantMessage = internalAction({
     let lastTextFlushTime = Date.now();
     let lastReasoningFlushTime = Date.now();
     const timeThreshold = 200; // ms
+
+    const streamingToolParts = new Map<string, any>();
+    let streamingUpdatesFinalized = false;
+    let pendingStreamingPublish: Promise<void> = Promise.resolve();
+    let removeA2AListener: (() => void) | undefined;
 
     try {
       // 1. Fetch conversation history from Convex
@@ -104,7 +203,7 @@ export const generateAssistantMessage = internalAction({
       );
 
       // 3. Load all tools and filter by selected tools
-      const { tools: allTools } = await getAllTools(
+      const { tools: allTools, a2aManager } = await getAllTools(
         a2aServersFromDb,
         mcpServersFromDb
       );
@@ -118,6 +217,67 @@ export const generateAssistantMessage = internalAction({
         },
         {}
       );
+
+      const publishStreamingToolParts = async () => {
+        if (streamingUpdatesFinalized) {
+          return;
+        }
+        if (streamingToolParts.size === 0) {
+          return;
+        }
+
+        const partsToPublish = Array.from(streamingToolParts.values()).map(
+          (part) => ({
+            ...part,
+          })
+        );
+
+        await ctx.runMutation(api.mutations.updateMessageParts, {
+          messageId: args.assistantMessageId,
+          parts: partsToPublish,
+        });
+      };
+
+      const enqueueStreamingPublish = () => {
+        pendingStreamingPublish = pendingStreamingPublish
+          .catch((error) => {
+            console.error("[AI] Previous streaming A2A publish failed", error);
+          })
+          .then(async () => {
+            await publishStreamingToolParts();
+          });
+      };
+
+      if (a2aManager) {
+        removeA2AListener = a2aManager.onToolEvent(
+          (payload: A2AToolEventPayload) => {
+            if (streamingUpdatesFinalized) {
+              return;
+            }
+
+            const agentKey = payload.agentKey ?? "unknown";
+            const mapKey = payload.agentToolId ?? agentKey;
+            const existing = streamingToolParts.get(mapKey) ?? {
+              type: `tool-a2a_${agentKey}`,
+              toolCallId:
+                payload.primaryTaskId ??
+                payload.contextId ??
+                `${mapKey}-${payload.timestamp ?? Date.now()}`,
+              toolName: payload.agentToolId ?? `a2a_${agentKey}`,
+              state: "output-available" as const,
+            };
+
+            const mergedOutput = mergeA2AOutput(existing.output, payload);
+            streamingToolParts.set(mapKey, {
+              ...existing,
+              agentKey,
+              output: mergedOutput,
+            });
+
+            enqueueStreamingPublish();
+          }
+        );
+      }
 
       // 3. Prepare system prompt with user memories
       const memoryContext = args.userMemories || [];
@@ -289,109 +449,6 @@ export const generateAssistantMessage = internalAction({
           console.warn("⚠️ Failed to stringify tool error:", jsonError);
           return String(error);
         }
-      };
-
-      const mergeA2AOutput = (previous: any, next: any) => {
-        if (!previous) {
-          previous = {};
-        }
-        const merged = { ...previous, ...(next ?? {}) };
-
-        if (
-          Array.isArray(previous?.tasks) ||
-          Array.isArray(next?.tasks)
-        ) {
-          const tasksById = new Map<string, any>();
-          const allTasks = [
-            ...(Array.isArray(previous?.tasks) ? previous.tasks : []),
-            ...(Array.isArray(next?.tasks) ? next.tasks : []),
-          ];
-          for (const task of allTasks) {
-            if (!task || typeof task !== "object") {
-              continue;
-            }
-            const key =
-              typeof task.taskId === "string"
-                ? task.taskId
-                : `task-${tasksById.size}`;
-            const existingTask = tasksById.get(key) ?? {};
-            tasksById.set(key, { ...existingTask, ...task });
-          }
-          merged.tasks = Array.from(tasksById.values());
-        }
-
-        if (
-          Array.isArray(previous?.statusUpdates) ||
-          Array.isArray(next?.statusUpdates)
-        ) {
-          const combinedUpdates = [
-            ...(Array.isArray(previous?.statusUpdates)
-              ? previous.statusUpdates
-              : []),
-            ...(Array.isArray(next?.statusUpdates)
-              ? next.statusUpdates
-              : []),
-          ];
-          const seen = new Set<string>();
-          const dedupedUpdates: any[] = [];
-          for (const update of combinedUpdates) {
-            if (!update || typeof update !== "object") {
-              continue;
-            }
-            const key = [
-              update.taskId ?? "",
-              update.state ?? "",
-              update.message ?? "",
-              update.timestamp ?? "",
-            ].join("|");
-            if (seen.has(key)) {
-              continue;
-            }
-            seen.add(key);
-            dedupedUpdates.push(update);
-          }
-          merged.statusUpdates = dedupedUpdates;
-        }
-
-        if (
-          Array.isArray(previous?.artifacts) ||
-          Array.isArray(next?.artifacts)
-        ) {
-          const combinedArtifacts = [
-            ...(Array.isArray(previous?.artifacts)
-              ? previous.artifacts
-              : []),
-            ...(Array.isArray(next?.artifacts) ? next.artifacts : []),
-          ];
-          const seenArtifacts = new Set<string>();
-          const dedupedArtifacts: any[] = [];
-          for (const artifact of combinedArtifacts) {
-            if (!artifact || typeof artifact !== "object") {
-              continue;
-            }
-            const key =
-              artifact.id ??
-              [artifact.url ?? "", artifact.name ?? "", artifact.type ?? ""].join(
-                "|"
-              );
-            if (seenArtifacts.has(key)) {
-              continue;
-            }
-            seenArtifacts.add(key);
-            dedupedArtifacts.push(artifact);
-          }
-          merged.artifacts = dedupedArtifacts;
-        }
-
-        if (Array.isArray(next?.messages)) {
-          merged.messages = next.messages;
-        }
-
-        if (next?.responseText !== undefined) {
-          merged.responseText = next.responseText;
-        }
-
-        return merged;
       };
 
       const upsertToolPart = (
@@ -576,6 +633,10 @@ export const generateAssistantMessage = internalAction({
         }
       }
 
+      streamingUpdatesFinalized = true;
+      await pendingStreamingPublish.catch(() => undefined);
+      streamingToolParts.clear();
+
       const toolParts = Array.from(toolPartsMap.values());
 
       console.log("[AI] Tool parts extracted:", {
@@ -669,6 +730,15 @@ export const generateAssistantMessage = internalAction({
         messageId: args.assistantMessageId,
         isComplete: true,
       });
+    } finally {
+      if (!streamingUpdatesFinalized) {
+        streamingUpdatesFinalized = true;
+      }
+      await pendingStreamingPublish.catch((error) => {
+        console.error("[AI] Pending streaming A2A publish failed", error);
+      });
+      streamingToolParts.clear();
+      removeA2AListener?.();
     }
   },
 });
