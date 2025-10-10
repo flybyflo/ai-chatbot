@@ -215,7 +215,7 @@ export default function MessageA2ATimeline({
       const message = update?.message?.trim();
       const label = message || formatStateLabel(update?.state);
       if (!label) {
-        return;
+        continue;
       }
       const metadata = [
         update?.contextId
