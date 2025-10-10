@@ -70,7 +70,7 @@ export function useSharedSelectedTools(
 
   const selection = useQuery(
     (api.queries as any).getUserSelectedTools,
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   );
 
   const persistSelection = useMutation(
@@ -115,7 +115,6 @@ export function useSharedSelectedTools(
       }
       if (defaultTools.length > 0) {
         persistSelection({
-          userId,
           selectedTools: defaultTools,
         }).catch((error) => {
           console.error(
@@ -142,7 +141,6 @@ export function useSharedSelectedTools(
       }
 
       persistSelection({
-        userId,
         selectedTools: tools,
       })
         .then((result) => {

@@ -467,7 +467,7 @@ export const getDefaultLoadout = query({
 // ============================================================================
 
 export const getUserSelectedTools = query({
-  args: { userId: v.string() },
+  args: {},
   returns: v.union(
     v.null(),
     v.object({
@@ -475,10 +475,15 @@ export const getUserSelectedTools = query({
       updatedAt: v.number(),
     })
   ),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
     const record = await ctx.db
       .query("userSelectedTools")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .unique();
 
     if (!record) {

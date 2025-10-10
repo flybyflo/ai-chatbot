@@ -718,7 +718,6 @@ export const deleteUserLoadout = mutation({
 
 export const setUserSelectedTools = mutation({
   args: {
-    userId: v.string(),
     selectedTools: v.array(v.string()),
   },
   returns: v.object({
@@ -726,11 +725,17 @@ export const setUserSelectedTools = mutation({
     updatedAt: v.number(),
   }),
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const userId = identity.subject;
     const now = Date.now();
 
     const existing = await ctx.db
       .query("userSelectedTools")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
     if (existing) {
@@ -740,7 +745,7 @@ export const setUserSelectedTools = mutation({
       });
     } else {
       await ctx.db.insert("userSelectedTools", {
-        userId: args.userId,
+        userId,
         selectedTools: args.selectedTools,
         createdAt: now,
         updatedAt: now,
