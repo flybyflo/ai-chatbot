@@ -77,27 +77,13 @@ export class A2AClientWrapper {
       throw new Error("A2A client not initialized");
     }
 
-    console.log("🌐 A2A stream initiated", {
-      agent: this.config.name,
-      cardUrl: this.config.cardUrl,
-      messageId: (params.message as any)?.messageId,
-      hasContextId: !!(params.message as any)?.contextId,
-    });
-
-    let eventCount = 0;
     try {
       for await (const event of this.client.sendMessageStream(params)) {
-        eventCount++;
         yield event as A2AStreamEvent;
       }
-      console.log("🏁 A2A stream completed", {
-        agent: this.config.name,
-        eventsReceived: eventCount,
-      });
     } catch (error) {
       console.error("💥 A2A stream error", {
         agent: this.config.name,
-        eventsReceived: eventCount,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;

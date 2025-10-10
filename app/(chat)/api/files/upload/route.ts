@@ -122,29 +122,12 @@ export async function POST(request: Request) {
     // Get filename for logging
     const filename = (formData.get("file") as File).name;
 
-    // Log file details for debugging
-    console.log("🔍 File upload debug info:", {
-      filename,
-      mimeType: file.type,
-      size: file.size,
-      fileExtension: filename
-        .toLowerCase()
-        .substring(filename.lastIndexOf(".")),
-    });
-
     const validatedFile = FileSchema.safeParse({ file });
 
     if (!validatedFile.success) {
       const errorMessage = validatedFile.error.errors
         .map((error) => error.message)
         .join(", ");
-
-      console.log("❌ File validation failed:", {
-        filename,
-        mimeType: file.type,
-        errors: validatedFile.error.errors,
-        errorMessage,
-      });
 
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
@@ -154,19 +137,11 @@ export async function POST(request: Request) {
       file.type === "text/plain" ||
       file.type === "application/octet-stream"
     ) {
-      console.log(`📝 Processing ${file.type} file, checking extension...`);
-
       const fileExtension = filename
         .toLowerCase()
         .substring(filename.lastIndexOf("."));
-      console.log("🔍 Extension check:", {
-        fileExtension,
-        allowedExtensions: Array.from(TEXT_FILE_EXTENSIONS),
-        isAllowed: TEXT_FILE_EXTENSIONS.has(fileExtension),
-      });
 
       if (!TEXT_FILE_EXTENSIONS.has(fileExtension)) {
-        console.log(`❌ Extension not allowed for ${file.type} file`);
         return NextResponse.json(
           {
             error: `File type not supported. For code/text files, supported extensions are: ${Array.from(
@@ -176,7 +151,6 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      console.log(`✅ Extension check passed for ${file.type} file`);
     }
     const fileBuffer = await file.arrayBuffer();
 
@@ -215,20 +189,10 @@ export async function POST(request: Request) {
       ) {
         // Convert to text/plain for AI processing
         finalContentType = "text/plain";
-        console.log(
-          `🔄 Converting ${file.type} to text/plain for AI compatibility`
-        );
       }
 
       const data = await uploadToAzureBlob(filename, fileBuffer, {
         contentType: finalContentType,
-      });
-
-      console.log("✅ File uploaded successfully:", {
-        filename,
-        mimeType: file.type,
-        finalContentType,
-        uploadedUrl: data.url,
       });
 
       // Return the final content type that will be used for AI processing

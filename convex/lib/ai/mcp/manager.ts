@@ -113,7 +113,6 @@ export class MCPManager extends EventEmitter {
 
   static parseServerConfig(configString: string): MCPServerConfig[] {
     if (!configString?.trim()) {
-      console.log("⚠️ No MCP_SERVERS configured");
       return [];
     }
 
@@ -152,7 +151,6 @@ export class MCPManager extends EventEmitter {
     await this.cleanup();
 
     if (configs.length === 0) {
-      console.log("⚠️ No MCP servers to initialize");
       return;
     }
 
