@@ -389,13 +389,105 @@ export const generateAssistantMessage = internalAction({
       }
 
       // 6. Extract tool calls and results from steps
-      const toolParts: any[] = [];
-      if (finalResult.steps && Array.isArray(finalResult.steps)) {
-        console.log(
-          `🔧 Processing ${finalResult.steps.length} steps for tool calls`
+      const flattenSteps = (items: any[]): any[] =>
+        items.flatMap((item) =>
+          Array.isArray(item) ? flattenSteps(item) : [item]
         );
 
-        for (const step of finalResult.steps) {
+      const stepsToArray = async (value: any): Promise<any[]> => {
+        if (!value) {
+          return [];
+        }
+
+        if (Array.isArray(value)) {
+          return flattenSteps(value);
+        }
+
+        if (
+          typeof value === "object" &&
+          typeof (value as PromiseLike<any>).then === "function"
+        ) {
+          return stepsToArray(await value);
+        }
+
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          typeof (value as any).toArray === "function"
+        ) {
+          return stepsToArray(await (value as any).toArray());
+        }
+
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          typeof (value as any)[Symbol.iterator] === "function"
+        ) {
+          return stepsToArray(Array.from(value as Iterable<any>));
+        }
+
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          typeof (value as any)[Symbol.asyncIterator] === "function"
+        ) {
+          const collected: any[] = [];
+          for await (const entry of value as AsyncIterable<any>) {
+            collected.push(...(await stepsToArray(entry)));
+          }
+          return collected;
+        }
+
+        return [];
+      };
+
+      const rawSteps = (finalResult as any)?.steps;
+      console.log("[AI] Processing steps for tool calls:", {
+        hasSteps: !!rawSteps,
+        isArray: Array.isArray(rawSteps),
+        hasThen:
+          rawSteps &&
+          typeof rawSteps === "object" &&
+          typeof (rawSteps as PromiseLike<any>).then === "function",
+        hasToArray:
+          rawSteps &&
+          typeof rawSteps === "object" &&
+          rawSteps !== null &&
+          typeof (rawSteps as any).toArray === "function",
+        hasIterator:
+          rawSteps &&
+          typeof rawSteps === "object" &&
+          rawSteps !== null &&
+          typeof (rawSteps as any)[Symbol.iterator] === "function",
+        hasAsyncIterator:
+          rawSteps &&
+          typeof rawSteps === "object" &&
+          rawSteps !== null &&
+          typeof (rawSteps as any)[Symbol.asyncIterator] === "function",
+      });
+
+      let resolvedSteps = await stepsToArray(rawSteps);
+
+      if (resolvedSteps.length === 0) {
+        const responseSteps = (finalResult as any)?.response?.steps;
+        if (responseSteps) {
+          console.log("[AI] Trying response.steps fallback");
+          resolvedSteps = await stepsToArray(responseSteps);
+        }
+      }
+
+      console.log(
+        "[AI] After processing steps, toolPartsMap size:",
+        resolvedSteps.length
+      );
+
+      const toolParts: any[] = [];
+      if (resolvedSteps.length > 0) {
+        console.log(
+          `🔧 Processing ${resolvedSteps.length} steps for tool calls`
+        );
+
+        for (const step of resolvedSteps) {
           if (step.toolCalls && Array.isArray(step.toolCalls)) {
             console.log(`🔧 Found ${step.toolCalls.length} tool calls in step`);
 
