@@ -112,21 +112,31 @@ function dedupeA2AToolParts(parts: unknown[]) {
     if (existingIndex !== undefined) {
       const existing = deduped[existingIndex];
       if (existing && typeof existing === "object") {
-        const merged: Record<string, unknown> = {
-          ...(existing as Record<string, unknown>),
-          ...normalizedPart,
-        };
+        const existingRecord = existing as Record<string, unknown>;
+        const merged: Record<string, unknown> = { ...existingRecord };
 
-        const existingOutput = (existing as Record<string, unknown>).output;
-        if (
-          existingOutput &&
-          typeof existingOutput === "object" &&
-          output &&
-          typeof output === "object"
-        ) {
-          merged.output = { ...existingOutput, ...output };
-        } else if (output !== undefined) {
-          merged.output = output;
+        for (const [field, value] of Object.entries(normalizedPart)) {
+          if (value === undefined) {
+            continue;
+          }
+
+          if (field === "output" || field === "input" || field === "data") {
+            const existingValue = existingRecord[field];
+            if (
+              existingValue &&
+              typeof existingValue === "object" &&
+              value &&
+              typeof value === "object"
+            ) {
+              merged[field] = {
+                ...(existingValue as Record<string, unknown>),
+                ...(value as Record<string, unknown>),
+              };
+              continue;
+            }
+          }
+
+          merged[field] = value;
         }
 
         deduped[existingIndex] = merged;
