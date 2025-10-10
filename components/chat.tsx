@@ -197,9 +197,9 @@ export function Chat({
   );
 
   const handleActiveLoadoutChange = useCallback(
-    (id: string | null) => {
-      setActiveLoadoutId(id);
-      updatePreferences({ activeLoadoutId: id }).catch((error) => {
+    (nextId: string | null) => {
+      setActiveLoadoutId(nextId);
+      updatePreferences({ activeLoadoutId: nextId }).catch((error) => {
         console.error("[CHAT] Failed to persist active loadout", error);
       });
     },

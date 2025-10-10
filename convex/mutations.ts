@@ -2,6 +2,51 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
 
+const a2aArtifactSummaryValidator = v.object({
+  artifactId: v.string(),
+  name: v.optional(v.string()),
+  description: v.optional(v.string()),
+});
+
+const a2aTaskSummaryValidator = v.object({
+  taskId: v.string(),
+  state: v.optional(v.string()),
+  statusMessage: v.optional(v.string()),
+  contextId: v.string(),
+  lastUpdated: v.optional(v.string()),
+  artifacts: v.optional(v.array(a2aArtifactSummaryValidator)),
+});
+
+const a2aTaskStatusUpdateValidator = v.object({
+  taskId: v.string(),
+  contextId: v.string(),
+  state: v.string(),
+  message: v.optional(v.string()),
+  timestamp: v.optional(v.string()),
+});
+
+const a2aMessageSummaryValidator = v.object({
+  messageId: v.optional(v.string()),
+  taskId: v.optional(v.string()),
+  role: v.optional(v.union(v.literal("agent"), v.literal("user"))),
+  text: v.optional(v.string()),
+});
+
+const a2aEventPayloadValidator = v.object({
+  agentKey: v.string(),
+  agentId: v.optional(v.string()),
+  agentToolId: v.optional(v.string()),
+  agentName: v.optional(v.string()),
+  responseText: v.optional(v.string()),
+  contextId: v.optional(v.string()),
+  primaryTaskId: v.optional(v.string()),
+  tasks: v.optional(v.array(a2aTaskSummaryValidator)),
+  statusUpdates: v.optional(v.array(a2aTaskStatusUpdateValidator)),
+  artifacts: v.optional(v.array(a2aArtifactSummaryValidator)),
+  messages: v.optional(v.array(a2aMessageSummaryValidator)),
+  timestamp: v.string(),
+});
+
 // ============================================================================
 // Chat Mutations
 // ============================================================================
@@ -821,5 +866,187 @@ export const setUserSelectedTools = mutation({
       activeLoadoutId: doc.activeLoadoutId,
       updatedAt: doc.updatedAt,
     };
+  },
+});
+
+// ============================================================================
+// A2A Persistence Mutations
+// ============================================================================
+
+export const upsertA2ARegistry = mutation({
+  args: {
+    userId: v.string(),
+    registry: v.object({
+      agents: v.record(v.string(), v.any()),
+    }),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("a2aRegistries")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        registry: args.registry,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("a2aRegistries", {
+        userId: args.userId,
+        registry: args.registry,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return null;
+  },
+});
+
+function dedupeMessages(messages: any[]) {
+  const seen = new Set<string>();
+  const result: any[] = [];
+
+  messages.forEach((message, index) => {
+    if (!message || typeof message !== "object") {
+      return;
+    }
+
+    const key =
+      message.messageId ||
+      `${message.taskId ?? ""}:${message.role ?? ""}:${
+        message.text ?? ""
+      }:${index}`;
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    result.push(message);
+  });
+
+  return result;
+}
+
+export const recordA2AEvent = mutation({
+  args: {
+    userId: v.string(),
+    chatId: v.id("chats"),
+    payload: a2aEventPayloadValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { payload } = args;
+    const sessionKey =
+      payload.contextId ||
+      payload.agentToolId ||
+      payload.agentId ||
+      payload.agentKey;
+
+    if (!sessionKey) {
+      return null;
+    }
+
+    const eventKey = `${payload.agentToolId ?? payload.agentKey ?? "unknown"}:${
+      payload.timestamp
+    }:${payload.primaryTaskId ?? ""}`;
+
+    const existingEvent = await ctx.db
+      .query("a2aEvents")
+      .withIndex("by_userId_eventKey", (q) =>
+        q.eq("userId", args.userId).eq("eventKey", eventKey)
+      )
+      .unique();
+
+    const timestampMs = (() => {
+      const parsed = Date.parse(payload.timestamp);
+      return Number.isFinite(parsed) ? parsed : Date.now();
+    })();
+
+    if (!existingEvent) {
+      await ctx.db.insert("a2aEvents", {
+        userId: args.userId,
+        chatId: args.chatId,
+        sessionKey,
+        agentKey: payload.agentKey,
+        agentId: payload.agentId,
+        agentToolId: payload.agentToolId,
+        agentName: payload.agentName,
+        payload,
+        eventKey,
+        timestamp: timestampMs,
+        timestampIso: payload.timestamp,
+      });
+    }
+
+    const existingSession = await ctx.db
+      .query("a2aSessions")
+      .withIndex("by_userId_sessionKey", (q) =>
+        q.eq("userId", args.userId).eq("sessionKey", sessionKey)
+      )
+      .unique();
+
+    const existingSnapshot: any = existingSession?.snapshot ?? {};
+    const mergedTasks: Record<string, any> = { ...existingSnapshot.tasks };
+
+    if (Array.isArray(payload.tasks)) {
+      for (const task of payload.tasks) {
+        if (!task || typeof task !== "object" || !task.taskId) {
+          continue;
+        }
+        const previous = mergedTasks[task.taskId] ?? {};
+        mergedTasks[task.taskId] = { ...previous, ...task };
+      }
+    }
+
+    const combinedMessages = [
+      ...(Array.isArray(existingSnapshot.messages)
+        ? existingSnapshot.messages
+        : []),
+      ...(Array.isArray(payload.messages) ? payload.messages : []),
+    ];
+
+    const dedupedMessages = dedupeMessages(combinedMessages);
+
+    const snapshot = {
+      agentKey: payload.agentKey ?? existingSnapshot.agentKey ?? "unknown",
+      agentId: payload.agentId ?? existingSnapshot.agentId,
+      agentToolId: payload.agentToolId ?? existingSnapshot.agentToolId,
+      agentName: payload.agentName ?? existingSnapshot.agentName,
+      contextId: payload.contextId ?? existingSnapshot.contextId,
+      primaryTaskId: payload.primaryTaskId ?? existingSnapshot.primaryTaskId,
+      lastUpdated: payload.timestamp ?? existingSnapshot.lastUpdated,
+      tasks: mergedTasks,
+      messages: dedupedMessages,
+      lastResponseText:
+        payload.responseText ?? existingSnapshot.lastResponseText ?? undefined,
+    };
+
+    if (existingSession) {
+      await ctx.db.patch(existingSession._id, {
+        agentKey: snapshot.agentKey,
+        agentId: snapshot.agentId,
+        agentToolId: snapshot.agentToolId,
+        agentName: snapshot.agentName,
+        snapshot,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("a2aSessions", {
+        userId: args.userId,
+        chatId: args.chatId,
+        sessionKey,
+        agentKey: snapshot.agentKey,
+        agentId: snapshot.agentId,
+        agentToolId: snapshot.agentToolId,
+        agentName: snapshot.agentName,
+        snapshot,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return null;
   },
 });

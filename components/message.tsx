@@ -30,12 +30,14 @@ import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 
+const WORD_DELIMITER_REGEX = /[-_\s]+/;
+
 const _formatTaskState = (state?: string) => {
   if (!state) {
     return;
   }
   return state
-    .split(/[-_\s]+/)
+    .split(WORD_DELIMITER_REGEX)
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");

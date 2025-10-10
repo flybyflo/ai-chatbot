@@ -14,15 +14,13 @@ import type { A2AToolEventPayload } from "./lib/ai/a2a/types";
 import type { DBMessage } from "./lib/utils";
 
 function mergeA2AOutput(previous: any, next: any) {
-  if (!previous) {
-    previous = {};
-  }
-  const merged = { ...previous, ...(next ?? {}) };
+  const base = previous ?? {};
+  const merged = { ...base, ...(next ?? {}) };
 
-  if (Array.isArray(previous?.tasks) || Array.isArray(next?.tasks)) {
+  if (Array.isArray(base?.tasks) || Array.isArray(next?.tasks)) {
     const tasksById = new Map<string, any>();
     const allTasks = [
-      ...(Array.isArray(previous?.tasks) ? previous.tasks : []),
+      ...(Array.isArray(base?.tasks) ? base.tasks : []),
       ...(Array.isArray(next?.tasks) ? next.tasks : []),
     ];
     for (const task of allTasks) {
@@ -40,11 +38,11 @@ function mergeA2AOutput(previous: any, next: any) {
   }
 
   if (
-    Array.isArray(previous?.statusUpdates) ||
+    Array.isArray(base?.statusUpdates) ||
     Array.isArray(next?.statusUpdates)
   ) {
     const combinedUpdates = [
-      ...(Array.isArray(previous?.statusUpdates) ? previous.statusUpdates : []),
+      ...(Array.isArray(base?.statusUpdates) ? base.statusUpdates : []),
       ...(Array.isArray(next?.statusUpdates) ? next.statusUpdates : []),
     ];
     const seen = new Set<string>();
@@ -68,9 +66,9 @@ function mergeA2AOutput(previous: any, next: any) {
     merged.statusUpdates = dedupedUpdates;
   }
 
-  if (Array.isArray(previous?.artifacts) || Array.isArray(next?.artifacts)) {
+  if (Array.isArray(base?.artifacts) || Array.isArray(next?.artifacts)) {
     const combinedArtifacts = [
-      ...(Array.isArray(previous?.artifacts) ? previous.artifacts : []),
+      ...(Array.isArray(base?.artifacts) ? base.artifacts : []),
       ...(Array.isArray(next?.artifacts) ? next.artifacts : []),
     ];
     const seenArtifacts = new Set<string>();
@@ -143,6 +141,7 @@ export const generateAssistantMessage = internalAction({
     let streamingUpdatesFinalized = false;
     let pendingStreamingPublish: Promise<void> = Promise.resolve();
     let removeA2AListener: (() => void) | undefined;
+    const a2aPersistencePromises: Promise<unknown>[] = [];
 
     try {
       // 1. Fetch conversation history from Convex
@@ -201,10 +200,18 @@ export const generateAssistantMessage = internalAction({
       );
 
       // 3. Load all tools and filter by selected tools
-      const { tools: allTools, a2aManager } = await getAllTools(
-        a2aServersFromDb,
-        mcpServersFromDb
-      );
+      const {
+        tools: allTools,
+        a2aManager,
+        a2aRegistry,
+      } = await getAllTools(a2aServersFromDb, mcpServersFromDb);
+
+      if (a2aRegistry) {
+        await ctx.runMutation(api.mutations.upsertA2ARegistry, {
+          userId: args.userId,
+          registry: a2aRegistry,
+        });
+      }
 
       const tools = Object.entries(allTools).reduce<Record<string, any>>(
         (acc, [toolName, toolImpl]) => {
@@ -271,6 +278,18 @@ export const generateAssistantMessage = internalAction({
               agentKey,
               output: mergedOutput,
             });
+
+            a2aPersistencePromises.push(
+              ctx
+                .runMutation(api.mutations.recordA2AEvent, {
+                  userId: args.userId,
+                  chatId: args.chatId,
+                  payload,
+                })
+                .catch((error) => {
+                  console.error("[AI] Failed to persist A2A event", error);
+                })
+            );
 
             enqueueStreamingPublish();
           }
@@ -638,8 +657,14 @@ export const generateAssistantMessage = internalAction({
       }
 
       streamingUpdatesFinalized = true;
-      await pendingStreamingPublish.catch(() => {});
+      await pendingStreamingPublish.catch((error) => {
+        console.error(
+          "[AI] Failed to publish pending streaming tool parts",
+          error
+        );
+      });
       streamingToolParts.clear();
+      await Promise.allSettled(a2aPersistencePromises);
 
       const toolParts = Array.from(toolPartsMap.values());
 

@@ -1,8 +1,10 @@
 "use client";
 
 import type { DataUIPart } from "ai";
+import { useQuery } from "convex/react";
 import type React from "react";
 import { createContext, useContext, useMemo, useState } from "react";
+import { api } from "@/convex/_generated/api";
 import type {
   A2AAgentRegistry,
   A2AEventLogEntry,
@@ -44,7 +46,7 @@ export function DataStreamProvider({
     return mcpData?.data as MCPToolRegistry | undefined;
   }, [dataStream]);
 
-  const a2aRegistry = useMemo(() => {
+  const streamA2ARegistry = useMemo(() => {
     const a2aData = dataStream.find((part) => {
       const type = part.type as string;
       return type === "data-a2aRegistry" || type === "data-a2a-registry";
@@ -52,17 +54,17 @@ export function DataStreamProvider({
     return a2aData?.data as A2AAgentRegistry | undefined;
   }, [dataStream]);
 
-  const a2aEvents = useMemo(() => {
+  const streamA2AEvents = useMemo(() => {
     return dataStream.filter((part) => {
       const type = part.type as string;
       return type === "data-a2aEvents" || type === "data-a2a-events";
     });
   }, [dataStream]);
 
-  const a2aSessions = useMemo(() => {
+  const streamA2ASessions = useMemo(() => {
     const sessions: Record<string, A2ASessionSnapshot> = {};
 
-    for (const part of a2aEvents) {
+    for (const part of streamA2AEvents) {
       const payload = part.data as A2AToolEventPayload | undefined;
       if (!payload) {
         continue;
@@ -116,11 +118,11 @@ export function DataStreamProvider({
     }
 
     return sessions;
-  }, [a2aEvents]);
+  }, [streamA2AEvents]);
 
-  const a2aEventLog = useMemo(() => {
+  const streamA2AEventLog = useMemo(() => {
     const entries: A2AEventLogEntry[] = [];
-    for (const part of a2aEvents) {
+    for (const part of streamA2AEvents) {
       const payload = part.data as A2AToolEventPayload | undefined;
       if (!payload) {
         continue;
@@ -132,18 +134,107 @@ export function DataStreamProvider({
       const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
       return bTime - aTime;
     });
-  }, [a2aEvents]);
+  }, [streamA2AEvents]);
+
+  const persistedA2A = useQuery(api.queries.getA2AData, {});
+
+  const persistedRegistry =
+    persistedA2A?.registry && typeof persistedA2A.registry === "object"
+      ? (persistedA2A.registry as A2AAgentRegistry)
+      : undefined;
+
+  const persistedSessions = useMemo(() => {
+    if (!persistedA2A?.sessions) {
+      return;
+    }
+
+    const result: Record<string, A2ASessionSnapshot> = {};
+    for (const entry of persistedA2A.sessions) {
+      if (
+        entry &&
+        typeof entry === "object" &&
+        typeof entry.sessionKey === "string" &&
+        entry.snapshot
+      ) {
+        result[entry.sessionKey] = entry.snapshot as A2ASessionSnapshot;
+      }
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined;
+  }, [persistedA2A]);
+
+  const persistedEventLog = useMemo(() => {
+    if (!persistedA2A?.events) {
+      return;
+    }
+    return (persistedA2A.events as A2AEventLogEntry[]) ?? [];
+  }, [persistedA2A]);
+
+  const resolvedA2ARegistry =
+    streamA2ARegistry ?? persistedRegistry ?? undefined;
+
+  const resolvedA2ASessions = useMemo(() => {
+    const combined: Record<string, A2ASessionSnapshot> = {};
+    if (persistedSessions) {
+      Object.assign(combined, persistedSessions);
+    }
+    if (streamA2ASessions) {
+      Object.assign(combined, streamA2ASessions);
+    }
+    return Object.keys(combined).length > 0 ? combined : undefined;
+  }, [persistedSessions, streamA2ASessions]);
+
+  const resolvedA2AEventLog = useMemo(() => {
+    const combined: A2AEventLogEntry[] = [];
+    const seen = new Set<string>();
+
+    const append = (entries?: A2AEventLogEntry[]) => {
+      if (!entries) {
+        return;
+      }
+      for (const entry of entries) {
+        if (!entry) {
+          continue;
+        }
+        const key = `${entry.agentToolId ?? entry.agentKey ?? "unknown"}:${
+          entry.timestamp ?? ""
+        }:${entry.primaryTaskId ?? ""}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        combined.push(entry);
+      }
+    };
+
+    append(persistedEventLog);
+    append(streamA2AEventLog);
+
+    combined.sort((a, b) => {
+      const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    return combined.length > 0 ? combined : undefined;
+  }, [persistedEventLog, streamA2AEventLog]);
 
   const value = useMemo(
     () => ({
       dataStream,
       setDataStream,
       mcpRegistry,
-      a2aRegistry,
-      a2aSessions,
-      a2aEventLog,
+      a2aRegistry: resolvedA2ARegistry,
+      a2aSessions: resolvedA2ASessions,
+      a2aEventLog: resolvedA2AEventLog,
     }),
-    [dataStream, mcpRegistry, a2aRegistry, a2aSessions, a2aEventLog]
+    [
+      dataStream,
+      mcpRegistry,
+      resolvedA2ARegistry,
+      resolvedA2ASessions,
+      resolvedA2AEventLog,
+    ]
   );
 
   return (

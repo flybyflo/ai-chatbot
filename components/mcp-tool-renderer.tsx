@@ -9,9 +9,9 @@ type MCPToolRendererProps = {
 
 export function MCPToolRenderer({
   toolName,
-  serverName,
+  serverName: _serverName,
   output,
-  isInProgress = false,
+  isInProgress: _isInProgress = false,
 }: MCPToolRendererProps) {
   // Handle different MCP tool types with custom UI
   const renderToolOutput = () => {

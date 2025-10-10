@@ -184,4 +184,44 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),
+
+  a2aRegistries: defineTable({
+    userId: v.string(),
+    registry: v.any(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_updatedAt", ["userId", "updatedAt"]),
+
+  a2aSessions: defineTable({
+    userId: v.string(),
+    chatId: v.id("chats"),
+    sessionKey: v.string(),
+    agentKey: v.string(),
+    agentId: v.optional(v.string()),
+    agentToolId: v.optional(v.string()),
+    agentName: v.optional(v.string()),
+    snapshot: v.any(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_sessionKey", ["userId", "sessionKey"])
+    .index("by_chatId", ["chatId"]),
+
+  a2aEvents: defineTable({
+    userId: v.string(),
+    chatId: v.id("chats"),
+    sessionKey: v.string(),
+    agentKey: v.string(),
+    agentId: v.optional(v.string()),
+    agentToolId: v.optional(v.string()),
+    agentName: v.optional(v.string()),
+    payload: v.any(),
+    eventKey: v.string(),
+    timestamp: v.number(),
+    timestampIso: v.string(),
+  })
+    .index("by_userId_timestamp", ["userId", "timestamp"])
+    .index("by_userId_eventKey", ["userId", "eventKey"])
+    .index("by_sessionKey_timestamp", ["sessionKey", "timestamp"]),
 });
