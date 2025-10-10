@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { useSession } from "@/lib/auth-client";
 import { TOOL_TYPES, type ToolType } from "@/lib/enums";
@@ -66,6 +66,17 @@ function categorizeTools(
   }
 
   return categories;
+}
+
+function selectionMetaEqual(a: SelectionMeta, b: SelectionMeta): boolean {
+  return (
+    arraysEqual(a.selectedMcpTools, b.selectedMcpTools) &&
+    arraysEqual(a.selectedA2AServers, b.selectedA2AServers) &&
+    arraysEqual(a.selectedLocalTools, b.selectedLocalTools) &&
+    a.selectedChatModel === b.selectedChatModel &&
+    a.selectedReasoningEffort === b.selectedReasoningEffort &&
+    a.activeLoadoutId === b.activeLoadoutId
+  );
 }
 
 type SelectionMeta = {
@@ -156,22 +167,47 @@ export function useSharedSelectedTools(
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [syncedDefault, setSyncedDefault] = useState(false);
 
+  // Use refs to avoid recreating updatePreferences on every state change
+  const selectedToolsRef = useRef(selectedTools);
+  const selectionMetaRef = useRef(selectionMeta);
+  const persistPreferencesRef = useRef(persistPreferences);
+  const updatedAtRef = useRef(updatedAt);
+
+  useEffect(() => {
+    selectedToolsRef.current = selectedTools;
+  }, [selectedTools]);
+
+  useEffect(() => {
+    selectionMetaRef.current = selectionMeta;
+  }, [selectionMeta]);
+
+  useEffect(() => {
+    persistPreferencesRef.current = persistPreferences;
+  }, [persistPreferences]);
+
+  useEffect(() => {
+    updatedAtRef.current = updatedAt;
+  }, [updatedAt]);
+
   const isLoadingSelection = Boolean(userId) && selection === undefined;
 
   const updatePreferences = useCallback<UpdatePreferencesFn>(
     async (update) => {
+      const currentSelectedTools = selectedToolsRef.current;
+      const currentSelectionMeta = selectionMetaRef.current;
+
       const nextTools =
         update.selectedTools !== undefined
           ? parseSelectedTools(update.selectedTools)
-          : selectedTools;
+          : currentSelectedTools;
 
       const baseCategories =
         update.selectedTools !== undefined
           ? categorizeTools(nextTools, resolveToolType)
           : {
-              mcp: selectionMeta.selectedMcpTools,
-              a2a: selectionMeta.selectedA2AServers,
-              local: selectionMeta.selectedLocalTools,
+              mcp: currentSelectionMeta.selectedMcpTools,
+              a2a: currentSelectionMeta.selectedA2AServers,
+              local: currentSelectionMeta.selectedLocalTools,
             };
 
       const nextMeta: SelectionMeta = {
@@ -190,15 +226,15 @@ export function useSharedSelectedTools(
         selectedChatModel:
           update.selectedChatModel !== undefined
             ? update.selectedChatModel ?? undefined
-            : selectionMeta.selectedChatModel,
+            : currentSelectionMeta.selectedChatModel,
         selectedReasoningEffort:
           update.selectedReasoningEffort !== undefined
             ? update.selectedReasoningEffort
-            : selectionMeta.selectedReasoningEffort,
+            : currentSelectionMeta.selectedReasoningEffort,
         activeLoadoutId:
           update.activeLoadoutId !== undefined
             ? update.activeLoadoutId ?? null
-            : selectionMeta.activeLoadoutId,
+            : currentSelectionMeta.activeLoadoutId,
       };
 
       const shouldPersist = Boolean(
@@ -237,7 +273,7 @@ export function useSharedSelectedTools(
       }
 
       try {
-        const result = await persistPreferences(payload);
+        const result = await persistPreferencesRef.current(payload);
         setSelectedToolsState(parseSelectedTools(result.selectedTools ?? []));
         setSelectionMeta({
           selectedMcpTools: parseSelectedTools(
@@ -262,23 +298,26 @@ export function useSharedSelectedTools(
         console.error("[MCP] Failed to persist user preferences", error);
       }
     },
-    [
-      persistPreferences,
-      resolveToolType,
-      selectedTools,
-      selectionMeta,
-      userId,
-    ]
+    [resolveToolType, userId]
   );
 
   useEffect(() => {
+    const currentSelectionMeta = selectionMetaRef.current;
+    const currentUpdatedAt = updatedAtRef.current;
+
     if (!userId) {
       if (!arraysEqual(selectedTools, defaultTools)) {
         setSelectedToolsState(defaultTools);
       }
-      setSelectionMeta(defaultMeta);
-      setUpdatedAt(null);
-      setSyncedDefault(false);
+      if (!selectionMetaEqual(currentSelectionMeta, defaultMeta)) {
+        setSelectionMeta(defaultMeta);
+      }
+      if (currentUpdatedAt !== null) {
+        setUpdatedAt(null);
+      }
+      if (syncedDefault) {
+        setSyncedDefault(false);
+      }
       return;
     }
 
@@ -293,7 +332,7 @@ export function useSharedSelectedTools(
       }
 
       const categories = categorizeTools(normalized, resolveToolType);
-      setSelectionMeta({
+      const nextMeta: SelectionMeta = {
         selectedMcpTools:
           selection.selectedMcpTools &&
           selection.selectedMcpTools.length > 0
@@ -316,9 +355,19 @@ export function useSharedSelectedTools(
           selection.activeLoadoutId === undefined
             ? null
             : selection.activeLoadoutId ?? null,
-      });
-      setUpdatedAt(selection.updatedAt);
-      setSyncedDefault(true);
+      };
+
+      if (!selectionMetaEqual(currentSelectionMeta, nextMeta)) {
+        setSelectionMeta(nextMeta);
+      }
+
+      if (currentUpdatedAt !== selection.updatedAt) {
+        setUpdatedAt(selection.updatedAt);
+      }
+
+      if (!syncedDefault) {
+        setSyncedDefault(true);
+      }
       return;
     }
 
@@ -327,7 +376,9 @@ export function useSharedSelectedTools(
       if (!arraysEqual(selectedTools, defaultTools)) {
         setSelectedToolsState(defaultTools);
       }
-      setSelectionMeta(defaultMeta);
+      if (!selectionMetaEqual(currentSelectionMeta, defaultMeta)) {
+        setSelectionMeta(defaultMeta);
+      }
       if (
         defaultTools.length > 0 ||
         defaultMeta.selectedMcpTools.length > 0 ||
@@ -362,9 +413,10 @@ export function useSharedSelectedTools(
 
   const setSelectedTools: SetSelectedToolsFn = useCallback(
     (tools) => {
+      const currentSelectedTools = selectedToolsRef.current;
       const normalized = parseSelectedTools(tools);
-      if (arraysEqual(selectedTools, normalized)) {
-        return selectedTools;
+      if (arraysEqual(currentSelectedTools, normalized)) {
+        return currentSelectedTools;
       }
 
       const categories = categorizeTools(normalized, resolveToolType);
@@ -376,18 +428,18 @@ export function useSharedSelectedTools(
       });
       return normalized;
     },
-    [resolveToolType, selectedTools, updatePreferences]
+    [resolveToolType, updatePreferences]
   );
 
   const toggleTool: ToggleToolFn = useCallback(
     (toolId) => {
-      const base = selectedTools;
+      const base = selectedToolsRef.current;
       const next = base.includes(toolId)
         ? base.filter((id) => id !== toolId)
         : [toolId, ...base];
       return setSelectedTools(next);
     },
-    [selectedTools, setSelectedTools]
+    [setSelectedTools]
   );
 
   const hasHydrated = !userId || !isLoadingSelection;

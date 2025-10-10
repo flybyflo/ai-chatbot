@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
-const paramsSchema = z.object({ id: z.string().uuid() });
+const paramsSchema = z.object({ id: z.string() });
 
 export async function GET(
   _request: Request,

@@ -401,5 +401,14 @@ export const MultimodalInput = memo(PureMultimodalInput, (prev, next) => {
   if (prev.onActiveLoadoutChange !== next.onActiveLoadoutChange) {
     return false;
   }
+  if (prev.onModelChange !== next.onModelChange) {
+    return false;
+  }
+  if (prev.onReasoningEffortChange !== next.onReasoningEffortChange) {
+    return false;
+  }
+  if (prev.onToolsChange !== next.onToolsChange) {
+    return false;
+  }
   return true;
 });
