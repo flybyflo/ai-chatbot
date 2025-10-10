@@ -25,8 +25,8 @@ import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { useAllTools } from "@/hooks/use-tools";
 import { useSession } from "@/lib/auth-client";
-import { useSharedSelectedTools } from "@/lib/selected-tools";
 import { TOOL_TYPES, type ToolType } from "@/lib/enums";
+import { useSharedSelectedTools } from "@/lib/selected-tools";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { fetcher, generateUUID, getTextFromMessage } from "@/lib/utils";
@@ -63,32 +63,44 @@ export function Chat({
   const { setDataStream } = useDataStream();
   const { setCurrentMessages } = useChatContext();
 
-  // Extract A2A events from initial messages and populate data stream
+  // Extract data parts from initial messages and populate data stream
   useEffect(() => {
-    const a2aEvents: any[] = [];
+    const initialDataParts: any[] = [];
 
     for (const message of initialMessages) {
-      if (message.role === "assistant" && message.parts) {
-        for (const part of message.parts) {
-          const partType = (part as any).type;
-          // Check if this is an A2A tool part
-          if (
-            typeof partType === "string" &&
-            partType.startsWith("tool-a2a_")
-          ) {
-            const output = (part as any).output;
-            if (output && typeof output === "object") {
-              a2aEvents.push({
-                type: "data-a2aEvents",
-                data: output,
-              });
-            }
+      if (!message.parts) {
+        continue;
+      }
+
+      for (const part of message.parts) {
+        const partType = (part as any)?.type;
+        if (typeof partType !== "string") {
+          continue;
+        }
+
+        if (partType.startsWith("tool-a2a_")) {
+          const output = (part as any)?.output;
+          if (output && typeof output === "object") {
+            initialDataParts.push({
+              type: "data-a2aEvents",
+              data: output,
+            });
           }
+          continue;
+        }
+
+        if (partType.startsWith("data-")) {
+          const dataPayload =
+            (part as any)?.data ?? (part as any)?.output ?? part;
+          initialDataParts.push({
+            type: partType,
+            data: dataPayload,
+          });
         }
       }
     }
 
-    setDataStream(a2aEvents);
+    setDataStream(initialDataParts);
   }, [initialMessages, setDataStream]);
 
   const [input, setInput] = useState<string>("");
@@ -228,13 +240,47 @@ export function Chat({
         }))
       });
 
+      const nextDataStreamParts: any[] = [];
+
       const uiMessages: ChatMessage[] = messagesFromConvex.map((msg) => {
-        // For streaming messages, build parts from chunks
-        let parts: any[] = Array.isArray(msg.parts)
+        const rawParts: any[] = Array.isArray(msg.parts)
           ? [...msg.parts]
           : msg.parts
             ? [msg.parts]
             : [];
+        let parts: any[] = [...rawParts];
+
+        for (const part of rawParts) {
+          const partType = (part as any)?.type;
+          if (typeof partType !== "string") {
+            continue;
+          }
+
+          if (partType.startsWith("tool-a2a_")) {
+            const output = (part as any)?.output;
+            if (output && typeof output === "object") {
+              nextDataStreamParts.push({
+                type: "data-a2aEvents",
+                data: output,
+              });
+            }
+            continue;
+          }
+
+          if (partType.startsWith("data-")) {
+            const dataPayload =
+              (part as any)?.data ?? (part as any)?.output ?? part;
+            nextDataStreamParts.push({
+              type: partType,
+              data: dataPayload,
+            });
+          }
+        }
+
+        const toolPartsForStream = rawParts.filter((part) => {
+          const type = (part as any)?.type;
+          return typeof type === "string" && type.startsWith("tool-a2a_");
+        });
 
         console.log("[CHAT] Processing message:", {
           id: msg._id,
@@ -262,6 +308,10 @@ export function Chat({
               type: "reasoning",
               text: "Reasoning...",
             });
+          }
+
+          if (toolPartsForStream.length > 0) {
+            streamingParts.push(...toolPartsForStream);
           }
 
           // Add text part if available
@@ -292,7 +342,7 @@ export function Chat({
 
         console.log("[CHAT] Final parts for message:", {
           id: msg._id,
-          parts: parts,
+          parts,
           toolParts: parts.filter(p => p?.type?.startsWith?.('tool-')),
         });
 
@@ -318,8 +368,9 @@ export function Chat({
       });
 
       setLocalMessages(uiMessages);
+      setDataStream(nextDataStreamParts);
     }
-  }, [messagesFromConvex]);
+  }, [messagesFromConvex, setDataStream]);
 
   const messages = localMessages;
   const status: ChatStatus = messagesFromConvex?.some((m) => !m.isComplete)
