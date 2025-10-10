@@ -1,6 +1,5 @@
 "use client";
 
-import { Trigger } from "@radix-ui/react-select";
 import {
   Check,
   ChevronDown,
@@ -9,11 +8,12 @@ import {
   Wrench,
 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { TOOL_TYPES, type ToolType } from "@/lib/enums";
 import {
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-} from "./elements/prompt-input";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { TOOL_TYPES, type ToolType } from "@/lib/enums";
 
 type ToolItem = {
   id: string;
@@ -44,18 +44,17 @@ function PureToolsSelector({
   a2aRegistry?: any;
   availableTools?: ToolItem[];
 }>) {
-  // main search (list view)
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // detail view state
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(""); // main list search
   const [activeServer, setActiveServer] = useState<ServerBucket | null>(null);
   const [detailSearch, setDetailSearch] = useState("");
 
-  const mainPanelClass =
-    "z-[1000] w-[360px] rounded-2xl border border-border/30 bg-(--tool-bg) p-0 text-popover-foreground shadow-md backdrop-blur";
+  // Panel: tool-bg + compact paddings + normalized rounding
+  const panelClass =
+    "z-[1000] w-[360px] rounded-xl border border-border/30 bg-(--tool-bg) p-0 text-popover-foreground shadow-md backdrop-blur";
 
   const sectionHeaderClass =
-    "sticky top-0 z-10 mx-1 mt-1 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-(--tool-bg)";
+    "sticky top-0 z-10 mx-0.5 mt-0.5 flex items-center gap-1 rounded-sm px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-(--tool-bg)";
 
   // group tools by server/agent
   const { mcpServers, a2aServers, localBucket } = useMemo(() => {
@@ -126,7 +125,7 @@ function PureToolsSelector({
   const filteredA2A = filterServers(a2aServers);
   const filteredLocal = filterServers([localBucket])[0] ? [localBucket] : [];
 
-  // selection
+  // selection helpers
   const isToolSelected = (id: string) => selectedTools.includes(id);
   const toggleTool = (toolId: string) => {
     if (!onToolsChange) {
@@ -157,16 +156,14 @@ function PureToolsSelector({
   const selectedCountForServer = (s: ServerBucket) =>
     s.tools.reduce((n, t) => n + (isToolSelected(t.id) ? 1 : 0), 0);
 
-  // helpers
+  // navigation
   const navigateInto = (server: ServerBucket) => {
     setDetailSearch("");
     setActiveServer(server);
   };
-  const navigateBack = () => {
-    setActiveServer(null);
-  };
+  const navigateBack = () => setActiveServer(null);
 
-  // detail tools (filtered)
+  // detail filtering
   const filteredDetailTools = useMemo(() => {
     if (!activeServer) {
       return [];
@@ -184,33 +181,36 @@ function PureToolsSelector({
   }, [activeServer, detailSearch]);
 
   return (
-    // biome-ignore lint/suspicious/noEmptyBlockStatements: this is a dummy onValueChange
-    <PromptInputModelSelect onValueChange={() => {}}>
-      {/* Trigger stays unchanged */}
-      <Trigger
-        className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-foreground transition-colors duration-150 hover:border-border/60 data-[state=open]:border-border/80"
-        type="button"
-      >
-        <Wrench size={16} />
-        <span className="font-medium text-xs">Tools</span>
-        <ChevronDown size={14} />
-      </Trigger>
+    <Popover onOpenChange={setOpen} open={open}>
+      {/* Trigger (unchanged visually) */}
+      <PopoverTrigger asChild>
+        <button
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-foreground transition-colors duration-150 hover:border-border/60 data-[state=open]:border-border/80"
+          type="button"
+        >
+          <Wrench size={16} />
+          <span className="font-medium text-xs">Tools</span>
+          <ChevronDown size={14} />
+        </button>
+      </PopoverTrigger>
 
-      {/* Single panel with in-panel navigation */}
-      <PromptInputModelSelectContent className={mainPanelClass}>
-        {/* Constrain height to keep size stable across views */}
-        <div className="flex h-[360px] flex-col">
+      {/* One stable popover centered under trigger (flips to top if needed) */}
+      <PopoverContent
+        align="center"
+        className={panelClass}
+        side="bottom"
+        sideOffset={8}
+      >
+        <div className="flex h-[330px] flex-col">
           {activeServer ? (
-            /* ---------- DETAIL VIEW ---------- */
             <>
-              {/* Header + bulk actions + Back */}
-              <div className="mx-1 mt-1 flex items-center justify-between gap-2 rounded-xl border border-border/20 bg-(--tool-bg) px-2 py-1">
-                <div className="flex min-w-0 items-center gap-1.5">
+              {/* Header + bulk actions + Back (compact + normalized radius) */}
+              <div className="mx-0.5 mt-0.5 flex items-center justify-between gap-1.5 rounded-md border border-border/20 bg-(--tool-bg) px-1.5 py-1">
+                <div className="flex min-w-0 items-center gap-1">
                   <button
                     aria-label="Back"
-                    className="rounded-md p-1 hover:bg-foreground/10"
+                    className="rounded-sm p-1 hover:bg-foreground/10"
                     onClick={navigateBack}
-                    onPointerDown={(e) => e.stopPropagation()}
                     type="button"
                   >
                     <ChevronLeft size={14} />
@@ -225,23 +225,15 @@ function PureToolsSelector({
                 </div>
                 <div className="flex items-center gap-1">
                   <button
-                    className="rounded-md border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      selectAllInServer(activeServer);
-                    }}
-                    onPointerDown={(e) => e.stopPropagation()}
+                    className="rounded-md border border-border/40 px-1.5 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
+                    onClick={() => selectAllInServer(activeServer)}
                     type="button"
                   >
                     Select all
                   </button>
                   <button
-                    className="rounded-md border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearAllInServer(activeServer);
-                    }}
-                    onPointerDown={(e) => e.stopPropagation()}
+                    className="rounded-md border border-border/40 px-1.5 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
+                    onClick={() => clearAllInServer(activeServer)}
                     type="button"
                   >
                     Clear
@@ -250,12 +242,11 @@ function PureToolsSelector({
               </div>
 
               {/* Detail search */}
-              <div className="mx-1 mt-1 rounded-xl border border-border/20 bg-(--tool-bg)">
+              <div className="mx-0.5 mt-0.5 rounded-md border border-border/20 bg-(--tool-bg)">
                 <input
                   autoComplete="off"
-                  className="block w-full rounded-xl bg-transparent px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+                  className="block w-full rounded-md bg-transparent px-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground/70"
                   onChange={(e) => setDetailSearch(e.target.value)}
-                  onPointerDown={(e) => e.stopPropagation()}
                   placeholder="Search tools…"
                   type="text"
                   value={detailSearch}
@@ -263,7 +254,7 @@ function PureToolsSelector({
               </div>
 
               {/* Tools list */}
-              <div className="flex-1 space-y-1.5 overflow-y-auto p-1.5">
+              <div className="flex-1 space-y-1 overflow-y-auto p-1">
                 {filteredDetailTools.length === 0 ? (
                   <EmptyRow message="No tools match" />
                 ) : (
@@ -271,18 +262,14 @@ function PureToolsSelector({
                     const checked = isToolSelected(tool.id);
                     return (
                       <button
-                        className="flex w-full items-start gap-2 rounded-xl border border-transparent p-2 text-left transition-colors hover:bg-foreground/10"
+                        className="flex w-full items-start gap-2 rounded-md border border-transparent p-1.5 text-left transition-colors hover:bg-foreground/10"
                         key={tool.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTool(tool.id);
-                        }}
-                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => toggleTool(tool.id)}
                         type="button"
                       >
                         <span
                           className={[
-                            "mt-0.5 grid size-4 place-items-center rounded border border-border bg-background",
+                            "mt-0.5 grid size-4 place-items-center rounded border border-border",
                             checked
                               ? "bg-foreground/80 text-background"
                               : "bg-background",
@@ -310,15 +297,13 @@ function PureToolsSelector({
               </div>
             </>
           ) : (
-            /* ---------- MAIN LIST VIEW ---------- */
             <>
               {/* Search */}
-              <div className="mx-1 mt-1 rounded-xl border border-border/20 bg-(--tool-bg)">
+              <div className="mx-0.5 mt-0.5 rounded-md border border-border/20 bg-(--tool-bg)">
                 <input
                   autoComplete="off"
-                  className="block w-full rounded-xl bg-transparent px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+                  className="block w-full rounded-md bg-transparent px-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground/70"
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onPointerDown={(e) => e.stopPropagation()}
                   placeholder="Search servers or tools…"
                   type="text"
                   value={searchTerm}
@@ -353,8 +338,7 @@ function PureToolsSelector({
                   ))
                 )}
 
-                {/* Divider */}
-                <div className="my-1 h-px w-full bg-border/30" />
+                <div className="my-0.5 h-px w-full bg-border/30" />
 
                 {/* MCP */}
                 <SectionHeader
@@ -382,8 +366,7 @@ function PureToolsSelector({
                   ))
                 )}
 
-                {/* Divider */}
-                <div className="my-1 h-px w-full bg-border/30" />
+                <div className="my-0.5 h-px w-full bg-border/30" />
 
                 {/* A2A */}
                 <SectionHeader
@@ -412,8 +395,8 @@ function PureToolsSelector({
             </>
           )}
         </div>
-      </PromptInputModelSelectContent>
-    </PromptInputModelSelect>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -436,7 +419,7 @@ function SectionHeader({
 
 function EmptyRow({ message }: Readonly<{ message: string }>) {
   return (
-    <div className="mx-2 my-1 rounded-lg bg-(--tool-bg) px-2 py-2 text-center text-muted-foreground text-xs">
+    <div className="mx-1 my-1 rounded-sm bg-(--tool-bg) px-2 py-1.5 text-center text-muted-foreground text-xs">
       {message}
     </div>
   );
@@ -456,19 +439,14 @@ function ServerListRow({
   onClick: () => void;
 }>) {
   const total = server.tools.length;
-
   return (
     <button
-      className="group mx-1 my-1 flex w-[calc(100%-0.5rem)] items-center justify-between rounded-xl border border-transparent px-2 py-1.5 text-left transition-colors hover:bg-foreground/10"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
+      className="group mx-0.5 my-0.5 flex w-[calc(100%-0.25rem)] items-center justify-between rounded-md border border-transparent px-2 py-1 text-left transition-colors hover:bg-foreground/10"
+      onClick={onClick}
       type="button"
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className={`rounded-md px-1 py-0.5 text-[10px] ${badgeClass}`}>
+        <span className={`rounded px-1 py-0.5 text-[10px] ${badgeClass}`}>
           {badge}
         </span>
         <span className="truncate font-medium text-xs">{server.label}</span>

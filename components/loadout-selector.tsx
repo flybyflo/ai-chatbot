@@ -1,26 +1,25 @@
 "use client";
 
-import { Trigger } from "@radix-ui/react-select";
 import { ChevronDown, Layers3 } from "lucide-react";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
-import { SelectItem } from "@/components/ui/select";
 import {
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-} from "./elements/prompt-input";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export type Loadout = {
   id: string;
   name: string;
   description?: string;
-  tags?: string[]; // e.g., ["research", "prod"]
+  tags?: string[];
   isDefault?: boolean;
-  updatedAt?: string; // ISO
+  updatedAt?: string;
 };
 
 function EmptyRow({ message }: Readonly<{ message: string }>) {
   return (
-    <div className="mx-2 my-1 rounded-lg bg-(--tool-bg) px-2 py-2 text-center text-muted-foreground text-xs">
+    <div className="mx-1 my-1 rounded-sm bg-(--tool-bg) px-2 py-1.5 text-center text-muted-foreground text-xs">
       {message}
     </div>
   );
@@ -29,12 +28,13 @@ function EmptyRow({ message }: Readonly<{ message: string }>) {
 export function PureLoadoutSelector({
   loadouts = [],
   activeLoadoutId,
-  onActivate, // (id: string) => void
+  onActivate, // (id: string | null) => void
 }: Readonly<{
   loadouts?: Loadout[];
   activeLoadoutId?: string | null;
   onActivate?: (id: string | null) => void;
 }>) {
+  const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -53,96 +53,73 @@ export function PureLoadoutSelector({
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setQ(e.target.value);
-      // Maintain focus after state update
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 0);
+      setTimeout(() => inputRef.current?.focus(), 0);
     },
     []
   );
 
-  // Focus the input when the dropdown opens
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (open) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-    }
-  }, []);
-
-  const handleValueChange = useCallback(
-    (loadoutName: string) => {
-      if (loadoutName === "__none__") {
-        onActivate?.(null);
-        return;
-      }
-      const loadout = loadouts.find((l) => l.name === loadoutName);
-      if (loadout) {
-        onActivate?.(loadout.id);
-      }
-    },
-    [loadouts, onActivate]
-  );
-
-  const currentValue = useMemo(
-    () => loadouts.find((l) => l.id === activeLoadoutId)?.name || "__none__",
-    [loadouts, activeLoadoutId]
-  );
-
-  const handleItemClick = useCallback(
-    (loadoutId: string | null) => (e: React.MouseEvent) => {
-      e.stopPropagation();
+  const handleValueSelect = useCallback(
+    (loadoutId: string | null) => {
       onActivate?.(loadoutId);
+      setOpen(false);
     },
     [onActivate]
   );
 
-  // Trigger unchanged; panel uses tool-bg + rounded
   const panelClass =
-    "z-[1000] w-[360px] rounded-2xl border border-border/30 bg-(--tool-bg) p-0 text-popover-foreground shadow-md backdrop-blur";
+    "z-[1000] w-[340px] rounded-xl border border-border/30 bg-(--tool-bg) p-0 text-popover-foreground shadow-md backdrop-blur";
 
   return (
-    <PromptInputModelSelect
-      onOpenChange={handleOpenChange}
-      onValueChange={handleValueChange}
-      value={currentValue}
-    >
-      <Trigger
-        aria-label="Loadouts"
-        className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-foreground transition-colors duration-150 hover:border-border/60 data-[state=open]:border-border/80"
-        type="button"
-      >
-        <Layers3 size={16} />
-        <span className="font-medium text-xs">Loadout</span>
-        <ChevronDown size={14} />
-      </Trigger>
+    <Popover onOpenChange={setOpen} open={open}>
+      {/* Trigger (unchanged visually) */}
+      <PopoverTrigger asChild>
+        <button
+          aria-label="Loadouts"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-foreground transition-colors duration-150 hover:border-border/60 data-[state=open]:border-border/80"
+          type="button"
+        >
+          <Layers3 size={16} />
+          <span className="font-medium text-xs">Loadout</span>
+          <ChevronDown size={14} />
+        </button>
+      </PopoverTrigger>
 
-      <PromptInputModelSelectContent className={panelClass}>
-        {/* Search — rounded container with tool-bg */}
-        <div className="mx-1 mt-1 rounded-xl border border-border/20 bg-(--tool-bg)">
+      <PopoverContent
+        align="center"
+        className={panelClass}
+        side="bottom"
+        sideOffset={8}
+      >
+        {/* Search (compact) */}
+        <div className="mx-0.5 mt-0.5 rounded-md border border-border/20 bg-(--tool-bg)">
           <input
             autoComplete="off"
-            className="block w-full rounded-xl bg-transparent px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+            className="block w-full rounded-md bg-transparent px-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground/70"
             key="loadout-search-input"
             onChange={handleSearchChange}
-            onKeyDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
             placeholder="Search loadouts…"
             ref={inputRef}
             value={q}
           />
         </div>
 
-        {/* List — rounded rows */}
-        <div className="max-h-[360px] space-y-1.5 overflow-y-auto p-1.5">
+        {/* List — compact rows with normalized rounding */}
+        <div className="max-h-[320px] space-y-1 overflow-y-auto p-1">
           {!q && (
-            <SelectItem
-              className="relative mx-1 w-[calc(100%-0.5rem)] cursor-default select-none rounded-xl py-2 pr-2.5 pl-8 text-xs outline-none transition-colors hover:bg-foreground/10 focus:bg-foreground/10 data-[state=checked]:bg-foreground/15"
-              onClick={handleItemClick(null)}
-              value="__none__"
+            <button
+              className={`relative mx-0.5 w-[calc(100%-0.25rem)] cursor-default select-none rounded-md py-1.5 pr-2.5 pl-3 text-left text-xs outline-none transition-colors hover:bg-foreground/10 ${
+                activeLoadoutId ? "" : "bg-foreground/15 font-semibold"
+              }`}
+              onClick={() => handleValueSelect(null)}
+              type="button"
             >
               <span className="text-muted-foreground">None</span>
-            </SelectItem>
+              {activeLoadoutId ? null : (
+                <span className="-translate-y-1/2 absolute top-1/2 right-2">
+                  ✓
+                </span>
+              )}
+            </button>
           )}
 
           {filtered.length === 0 ? (
@@ -150,25 +127,35 @@ export function PureLoadoutSelector({
               <EmptyRow message="No loadouts match" />
             ) : null
           ) : (
-            filtered.map((l) => (
-              <SelectItem
-                className="relative mx-1 w-[calc(100%-0.5rem)] cursor-default select-none rounded-xl py-2 pr-2.5 pl-8 text-xs outline-none transition-colors hover:bg-foreground/10 focus:bg-foreground/10 data-[state=checked]:bg-foreground/15"
-                key={l.id}
-                onClick={handleItemClick(l.id)}
-                value={l.name}
-              >
-                <div className="truncate font-medium">{l.name}</div>
-                {l.description && (
-                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground leading-tight">
-                    {l.description}
-                  </div>
-                )}
-              </SelectItem>
-            ))
+            filtered.map((l) => {
+              const isSelected = activeLoadoutId === l.id;
+              return (
+                <button
+                  className={`relative mx-0.5 w-[calc(100%-0.25rem)] cursor-default select-none rounded-md py-1.5 pr-2.5 pl-3 text-left text-xs outline-none transition-colors hover:bg-foreground/10 ${
+                    isSelected ? "bg-foreground/15 font-semibold" : ""
+                  }`}
+                  key={l.id}
+                  onClick={() => handleValueSelect(l.id)}
+                  type="button"
+                >
+                  <div className="truncate font-medium">{l.name}</div>
+                  {l.description && (
+                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground leading-tight">
+                      {l.description}
+                    </div>
+                  )}
+                  {isSelected && (
+                    <span className="-translate-y-1/2 absolute top-1/2 right-2">
+                      ✓
+                    </span>
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
-      </PromptInputModelSelectContent>
-    </PromptInputModelSelect>
+      </PopoverContent>
+    </Popover>
   );
 }
 
