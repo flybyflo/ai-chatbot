@@ -132,17 +132,25 @@ export function useMCPServers() {
     url: string;
     headers?: Record<string, string>;
   }) => {
-    const response = await fetchWithErrorHandlers("/api/mcp-servers/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetchWithErrorHandlers("/api/mcp-servers/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-    return (await response.json()) as {
-      server: UserMCPServer;
-      tools: Record<string, unknown>;
-      connected: boolean;
-    };
+      return (await response.json()) as {
+        server: UserMCPServer;
+        tools: Record<string, unknown>;
+        connected: boolean;
+      };
+    } catch (error) {
+      // Re-throw with better error information
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Failed to test MCP server");
+    }
   };
 
   return {

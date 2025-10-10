@@ -428,8 +428,9 @@ export const updateUserMCPServer = mutation({
 });
 
 const mcpRegistryValidator = v.object({
-  tools: v.record(v.any()),
+  tools: v.record(v.string(), v.any()),
   metadata: v.record(
+    v.string(),
     v.object({
       serverName: v.string(),
       serverUrl: v.string(),
@@ -439,6 +440,7 @@ const mcpRegistryValidator = v.object({
     })
   ),
   serverStatus: v.record(
+    v.string(),
     v.object({
       name: v.string(),
       url: v.string(),

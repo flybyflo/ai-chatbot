@@ -107,8 +107,9 @@ export default defineSchema({
     userId: v.string(),
     serverId: v.id("userMCPServers"),
     registry: v.object({
-      tools: v.record(v.any()),
+      tools: v.record(v.string(), v.any()),
       metadata: v.record(
+        v.string(),
         v.object({
           serverName: v.string(),
           serverUrl: v.string(),
@@ -118,6 +119,7 @@ export default defineSchema({
         })
       ),
       serverStatus: v.record(
+        v.string(),
         v.object({
           name: v.string(),
           url: v.string(),

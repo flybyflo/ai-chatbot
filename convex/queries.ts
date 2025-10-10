@@ -29,7 +29,7 @@ export const getChatById = query({
       if (byId) {
         return byId;
       }
-    } catch (error) {
+    } catch (_error) {
       // ID lookup failed, will try slug below
     }
 
@@ -175,17 +175,21 @@ export const getMessagesByChatId = query({
         });
 
         // Combine text chunks
-        let combinedContent = null;
+        let combinedContent: string | null = null;
         if (chunks.length > 0) {
           combinedContent = chunks.map((c) => c.content).join("");
-          console.log(`📝 [getMessagesByChatId] Combined text: ${combinedContent.length} chars`);
+          console.log(
+            `📝 [getMessagesByChatId] Combined text: ${combinedContent.length} chars`
+          );
         }
 
         // Combine reasoning chunks
-        let combinedReasoning = null;
+        let combinedReasoning: string | null = null;
         if (reasoningChunks.length > 0) {
           combinedReasoning = reasoningChunks.map((c) => c.content).join("");
-          console.log(`🧠 [getMessagesByChatId] Combined reasoning: ${combinedReasoning.length} chars`);
+          console.log(
+            `🧠 [getMessagesByChatId] Combined reasoning: ${combinedReasoning.length} chars`
+          );
         }
 
         return {

@@ -143,7 +143,9 @@ function PureMultimodalInput({
       metadata: { createdAt: new Date().toISOString() },
     };
 
-    void sendMessage(message);
+    sendMessage(message).catch((error) => {
+      console.error("Failed to send message:", error);
+    });
 
     setAttachments([]);
     setLocalStorageInput("");
@@ -310,8 +312,8 @@ function PureMultimodalInput({
                   typeof updatedAtValue === "object" &&
                   updatedAtValue !== null &&
                   "toISOString" in updatedAtValue &&
-                  typeof (updatedAtValue as { toISOString?: unknown }).toISOString ===
-                    "function"
+                  typeof (updatedAtValue as { toISOString?: unknown })
+                    .toISOString === "function"
                 ) {
                   updatedAt = (
                     updatedAtValue as { toISOString: () => string }

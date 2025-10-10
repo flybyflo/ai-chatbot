@@ -10,7 +10,7 @@ import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 const testMCPServerSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   url: z.string().url(),
   headers: z.record(z.string()).optional(),
 });
@@ -116,14 +116,24 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new ChatSDKError("bad_request:api", "Invalid input").toResponse();
+      const errorDetails = error.errors
+        .map((e) => `${e.path.join(".")}: ${e.message}`)
+        .join(", ");
+      console.error("Validation error:", errorDetails);
+      return new ChatSDKError(
+        "bad_request:api",
+        `Invalid input: ${errorDetails}`
+      ).toResponse();
     }
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
+    console.error("MCP server test error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return new ChatSDKError(
       "offline:api",
-      "Failed to test MCP server"
+      `Failed to test MCP server: ${errorMessage}`
     ).toResponse();
   }
 }

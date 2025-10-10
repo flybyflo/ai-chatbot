@@ -137,12 +137,14 @@ export async function GET(
       }
 
       tools = Object.fromEntries(
-        Object.entries(snapshot.registry.tools).map(([namespacedName, tool]) => [
-          namespacedName.startsWith(prefix)
-            ? namespacedName.slice(prefix.length)
-            : namespacedName,
-          tool,
-        ])
+        Object.entries(snapshot.registry.tools).map(
+          ([namespacedName, tool]) => [
+            namespacedName.startsWith(prefix)
+              ? namespacedName.slice(prefix.length)
+              : namespacedName,
+            tool,
+          ]
+        )
       );
       isCached = true;
 
