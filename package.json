@@ -11,7 +11,8 @@
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test",
     "mcp:server": "cd test-mcp && uv run fastmcp run main.py:mcp --transport http --port 8000",
     "a2a:server": "cd test-a2a && uv run python __main__.py",
-    "a2a:client": "cd test-a2a && uv run python test_client.py"
+    "a2a:client": "cd test-a2a && uv run python test_client.py",
+    "currency-a2a:server": "cd test-currency-a2a && uv run python __main__.py"
   },
   "dependencies": {
     "@a2a-js/sdk": "^0.3.4",
