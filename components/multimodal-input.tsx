@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { useLoadouts } from "@/hooks/use-loadouts";
-import { useAllTools, useSelectedTools } from "@/hooks/use-tools";
+import { useAllTools } from "@/hooks/use-tools";
 import { useLoadoutStore } from "@/lib/stores/loadout-store";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
@@ -130,8 +130,6 @@ function PureMultimodalInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
   const { mcpRegistry, a2aRegistry, tools: availableTools } = useAllTools();
-  useSelectedTools(selectedTools, onToolsChange);
-
   const submitForm = useCallback(() => {
     window.history.replaceState({}, "", `/chat/${chatId}`);
 

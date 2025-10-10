@@ -711,3 +711,45 @@ export const deleteUserLoadout = mutation({
     return true;
   },
 });
+
+// ============================================================================
+// User Selected Tools Mutations
+// ============================================================================
+
+export const setUserSelectedTools = mutation({
+  args: {
+    userId: v.string(),
+    selectedTools: v.array(v.string()),
+  },
+  returns: v.object({
+    selectedTools: v.array(v.string()),
+    updatedAt: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("userSelectedTools")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        selectedTools: args.selectedTools,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("userSelectedTools", {
+        userId: args.userId,
+        selectedTools: args.selectedTools,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return {
+      selectedTools: args.selectedTools,
+      updatedAt: now,
+    };
+  },
+});

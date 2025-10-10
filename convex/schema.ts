@@ -169,4 +169,11 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_isDefault", ["userId", "isDefault"])
     .index("by_updatedAt", ["updatedAt"]),
+
+  userSelectedTools: defineTable({
+    userId: v.string(),
+    selectedTools: v.array(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });
