@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { Suspense, use, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { mutate } from "swr";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -597,8 +598,22 @@ function MCPToolToggle({
     const next = isActive
       ? selectedTools.filter((t) => t !== tool.id)
       : [...selectedTools, tool.id];
+    console.log("[MCP_SETTINGS] Toggling tool:", {
+      toolId: tool.id,
+      wasActive: isActive,
+      newSelection: next,
+    });
     setStoreSelected(next);
     localStorage.setItem("selected-tools", JSON.stringify(next));
+
+    // Invalidate SWR cache so other components pick up the change
+    mutate("/api/tools").catch((err) => {
+      console.error("[MCP_SETTINGS] Failed to invalidate tools cache:", err);
+    });
+
+    toast.success(
+      isActive ? `Deactivated ${tool.name}` : `Activated ${tool.name}`
+    );
   };
 
   return (

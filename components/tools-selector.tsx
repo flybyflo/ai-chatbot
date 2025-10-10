@@ -130,11 +130,15 @@ function PureToolsSelector({
     if (!onToolsChange) {
       return;
     }
-    onToolsChange(
-      isToolSelected(toolId)
-        ? selectedTools.filter((id) => id !== toolId)
-        : [...selectedTools, toolId]
-    );
+    const newTools = isToolSelected(toolId)
+      ? selectedTools.filter((id) => id !== toolId)
+      : [...selectedTools, toolId];
+    console.log("[TOOLS_SELECTOR] Toggle tool:", {
+      toolId,
+      wasSelected: isToolSelected(toolId),
+      newTools,
+    });
+    onToolsChange(newTools);
   };
   const selectAllInServer = (server: ServerBucket) => {
     if (!onToolsChange) {
