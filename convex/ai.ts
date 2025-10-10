@@ -149,24 +149,12 @@ export const generateAssistantMessage = internalAction({
       });
 
       // 5. Stream all parts (text AND reasoning) and write chunks to database
-      console.log("🌊 Starting fullStream processing...");
-      let partCount = 0;
-      let textDeltaCount = 0;
-      let reasoningDeltaCount = 0;
-
       for await (const part of result.fullStream) {
-        partCount++;
-        console.log(`📦 Part #${partCount}: type=${part.type}`);
-
         const now = Date.now();
 
         // Handle text deltas
         if (part.type === "text-delta") {
-          textDeltaCount++;
           textBuffer += part.text; // AI SDK v5 uses 'text' not 'textDelta'
-          console.log(
-            `✍️ Text delta #${textDeltaCount}, buffer length: ${textBuffer.length}`
-          );
 
           // Flush text buffer if threshold reached or time elapsed
           if (
@@ -174,7 +162,6 @@ export const generateAssistantMessage = internalAction({
               now - lastTextFlushTime >= timeThreshold) &&
             textBuffer.length > 0
           ) {
-            console.log(`💾 Flushing text buffer (${textBuffer.length} chars)`);
             await ctx.runMutation(api.mutations.createMessageChunk, {
               messageId: args.assistantMessageId,
               content: textBuffer,
@@ -187,11 +174,7 @@ export const generateAssistantMessage = internalAction({
 
         // Handle reasoning deltas (thinking content from models like O1)
         if (part.type === "reasoning-delta") {
-          reasoningDeltaCount++;
           reasoningBuffer += part.text; // AI SDK v5 uses 'text' not 'reasoningDelta'
-          console.log(
-            `🧠 Reasoning delta #${reasoningDeltaCount}, buffer length: ${reasoningBuffer.length}, text: "${part.text.substring(0, 50)}..."`
-          );
 
           // Flush reasoning buffer if threshold reached or time elapsed
           if (
@@ -199,9 +182,6 @@ export const generateAssistantMessage = internalAction({
               now - lastReasoningFlushTime >= timeThreshold) &&
             reasoningBuffer.length > 0
           ) {
-            console.log(
-              `💾 Flushing reasoning buffer (${reasoningBuffer.length} chars)`
-            );
             const reasoningToPersist = reasoningBuffer;
             await ctx.runMutation(api.mutations.createReasoningChunk, {
               messageId: args.assistantMessageId,
@@ -215,19 +195,8 @@ export const generateAssistantMessage = internalAction({
         }
       }
 
-      console.log(
-        `✅ Stream complete: ${partCount} total parts (${textDeltaCount} text, ${reasoningDeltaCount} reasoning)`
-      );
-      console.log("🧾 Stream summary snapshot:", {
-        textChunkSequence,
-        reasoningChunkSequence,
-        textBufferLength: textBuffer.length,
-        reasoningBufferLength: reasoningBuffer.length,
-      });
-
       // Final flush for both text and reasoning
       if (textBuffer.length > 0) {
-        console.log(`💾 Final text flush (${textBuffer.length} chars)`);
         await ctx.runMutation(api.mutations.createMessageChunk, {
           messageId: args.assistantMessageId,
           content: textBuffer,
@@ -236,9 +205,6 @@ export const generateAssistantMessage = internalAction({
       }
 
       if (reasoningBuffer.length > 0) {
-        console.log(
-          `💾 Final reasoning flush (${reasoningBuffer.length} chars)`
-        );
         const reasoningToPersist = reasoningBuffer;
         await ctx.runMutation(api.mutations.createReasoningChunk, {
           messageId: args.assistantMessageId,
@@ -252,45 +218,6 @@ export const generateAssistantMessage = internalAction({
       // Get the final result for usage tracking
       const finalResult = await result;
       const rawReasoning = (finalResult as any)?.reasoning;
-      console.log("🧪 Final result diagnostics:", {
-        // biome-ignore lint/suspicious/noPrototypeBuiltins: must be this way
-        hasReasoningProperty: Object.prototype.hasOwnProperty.call(
-          finalResult,
-          "reasoning"
-        ),
-        reasoningType: rawReasoning === null ? "null" : typeof rawReasoning,
-        reasoningConstructor:
-          rawReasoning &&
-          typeof rawReasoning === "object" &&
-          rawReasoning.constructor
-            ? rawReasoning.constructor.name
-            : null,
-        reasoningIsPromise:
-          rawReasoning &&
-          typeof rawReasoning === "object" &&
-          typeof (rawReasoning as Promise<unknown>).then === "function",
-        reasoningIsArray: Array.isArray(rawReasoning),
-        reasoningLength: Array.isArray(rawReasoning) ? rawReasoning.length : 0,
-        reasoningPreview: Array.isArray(rawReasoning)
-          ? rawReasoning
-              .map((r: any) =>
-                typeof r?.text === "string" ? r.text.substring(0, 80) : null
-              )
-              .filter((r: string | null) => r)
-          : typeof rawReasoning === "string"
-            ? rawReasoning.substring(0, 120)
-            : null,
-        // biome-ignore lint/suspicious/noPrototypeBuiltins: must be this way
-        hasResponse: Object.prototype.hasOwnProperty.call(
-          finalResult,
-          "response"
-        ),
-        responseKeys:
-          typeof (finalResult as any).response === "object" &&
-          (finalResult as any).response !== null
-            ? Object.keys((finalResult as any).response)
-            : null,
-      });
 
       // Extract final text
       let finalText: string | null = null;
@@ -306,13 +233,6 @@ export const generateAssistantMessage = internalAction({
       // Extract final reasoning
       // In AI SDK v5, reasoning is an array of ReasoningOutput objects
       let finalReasoning: string | null = null;
-      console.log("🔍 Checking finalResult.reasoning:", {
-        hasReasoning: !!finalResult.reasoning,
-        isArray: Array.isArray(finalResult.reasoning),
-        length: Array.isArray(finalResult.reasoning)
-          ? finalResult.reasoning.length
-          : 0,
-      });
 
       if (
         rawReasoning &&
@@ -325,21 +245,12 @@ export const generateAssistantMessage = internalAction({
               .map((r: any) => r?.text || "")
               .filter((t: string) => t.length > 0)
               .join("\n\n");
-            console.log(
-              `🧠 Awaited reasoning array extracted: ${finalReasoning.length} chars`
-            );
           } else if (typeof awaitedReasoning === "string") {
             finalReasoning = awaitedReasoning;
-            console.log(
-              `🧠 Awaited reasoning string extracted: ${finalReasoning.length} chars`
-            );
           } else if (awaitedReasoning && typeof awaitedReasoning === "object") {
             const maybeText = (awaitedReasoning as any).text;
             if (typeof maybeText === "string" && maybeText.length > 0) {
               finalReasoning = maybeText;
-              console.log(
-                `🧠 Awaited reasoning object text extracted: ${finalReasoning.length} chars`
-              );
             }
           }
         } catch (awaitError) {
@@ -351,41 +262,15 @@ export const generateAssistantMessage = internalAction({
           .map((r: any) => r.text || "")
           .filter((t: string) => t.length > 0)
           .join("\n\n");
-        console.log(
-          `🧠 Final reasoning extracted: ${finalReasoning.length} chars`
-        );
       } else if (typeof rawReasoning === "string" && rawReasoning.length > 0) {
         finalReasoning = rawReasoning;
-        console.log(
-          `🧠 Final reasoning string extracted: ${finalReasoning.length} chars`
-        );
       } else if (rawReasoning && typeof rawReasoning === "object") {
         const maybeText = (rawReasoning as any).text;
         if (typeof maybeText === "string" && maybeText.length > 0) {
           finalReasoning = maybeText;
-          console.log(
-            `🧠 Final reasoning object text extracted: ${finalReasoning.length} chars`
-          );
-        } else {
-          console.log("🧠 Reasoning object did not include text field:", {
-            keys: Object.keys(rawReasoning),
-          });
         }
-      } else {
-        console.log(
-          "⚠️ No finalResult.reasoning returned by provider. Falling back to streamed chunks.",
-          {
-            reasoningChunkSequence,
-            reasoningBufferLength: reasoningBuffer.length,
-            streamedReasoningLength: streamedReasoning.length,
-          }
-        );
-        if (!finalReasoning && streamedReasoning.length > 0) {
-          finalReasoning = streamedReasoning;
-          console.log(
-            `🧠 Using streamed reasoning fallback (${finalReasoning.length} chars)`
-          );
-        }
+      } else if (!finalReasoning && streamedReasoning.length > 0) {
+        finalReasoning = streamedReasoning;
       }
 
       // 6. Extract tool calls and results from steps
@@ -453,7 +338,6 @@ export const generateAssistantMessage = internalAction({
         }
 
         toolPartsMap.set(toolCallId, existing);
-        console.log(`✅ Recorded dynamic tool part: ${toolName}`);
       };
 
       const collectFromStep = (step: any) => {
@@ -464,8 +348,6 @@ export const generateAssistantMessage = internalAction({
         ) {
           return;
         }
-
-        console.log(`🔧 Found ${step.toolCalls.length} tool calls in step`);
 
         const toolResultsById = new Map<string, any>();
         if (Array.isArray(step.toolResults)) {
@@ -502,21 +384,11 @@ export const generateAssistantMessage = internalAction({
             contentResultsById.get(toolCallId);
           const error = toolErrorsById.get(toolCallId)?.error;
 
-          console.log("🔧 Tool call:", {
-            toolName: toolCall?.toolName,
-            toolCallId,
-            hasResult: !!matchedResult,
-            hasError: !!error,
-          });
-
           upsertToolPart(toolCall, { result: matchedResult, error });
         }
       };
 
       if (finalResult.steps && Array.isArray(finalResult.steps)) {
-        console.log(
-          `🔧 Processing ${finalResult.steps.length} steps for tool calls`
-        );
         for (const step of finalResult.steps) {
           collectFromStep(step);
         }
@@ -547,10 +419,6 @@ export const generateAssistantMessage = internalAction({
             }
           }
 
-          console.log(
-            `🔧 Fallback processing ${dynamicToolCalls.length} dynamic tool calls`
-          );
-
           for (const toolCall of dynamicToolCalls) {
             const toolCallId = toolCall?.toolCallId;
             const resolvedResult = toolCallId
@@ -563,32 +431,24 @@ export const generateAssistantMessage = internalAction({
       }
 
       const toolParts = Array.from(toolPartsMap.values());
-      console.log(`🔧 Total tool parts extracted: ${toolParts.length}`);
 
       // 7. Update message parts with final content (reasoning + tools + text)
       const parts: any[] = [];
 
       // Add reasoning part first (if exists) so it appears before text
       if (finalReasoning) {
-        console.log(
-          `➕ Adding reasoning part (${finalReasoning.length} chars)`
-        );
         parts.push({ type: "reasoning", text: finalReasoning });
       }
 
       // Add tool parts
       if (toolParts.length > 0) {
-        console.log(`➕ Adding ${toolParts.length} tool parts`);
         parts.push(...toolParts);
       }
 
       // Add text part
       if (finalText) {
-        console.log(`➕ Adding text part (${finalText.length} chars)`);
         parts.push({ type: "text", text: finalText });
       }
-
-      console.log(`📝 Updating message parts: ${parts.length} parts total`);
 
       // Update message with all parts
       if (parts.length > 0) {

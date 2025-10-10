@@ -144,13 +144,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
         manager.emitToolEvent(payload);
       };
 
-      console.log("🔄 Starting A2A stream consumption", {
-        agent: metadata.displayName,
-        messageId,
-        hasExistingSession: !!existingSession,
-        existingContextId: existingSession?.contextId,
-      });
-
       try {
         let eventCount = 0;
         let shouldContinue = true;
@@ -167,20 +160,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
           }
 
           const kind = (event as any).kind;
-          console.log("📨 Received A2A event", {
-            agent: metadata.displayName,
-            eventCount,
-            kind,
-            eventPreview:
-              kind === "message"
-                ? (event as any).role
-                : kind === "task"
-                  ? (event as any).status?.state
-                  : kind === "status-update"
-                    ? (event as any).status?.state
-                    : kind,
-            fullEvent: event, // Log full event for debugging
-          });
 
           if (kind === "message") {
             const message = event as any;
@@ -208,14 +187,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                 (t) => t.state && terminalStates.has(t.state)
               )
             ) {
-              console.log(
-                "🏁 Received agent message after terminal task, ending stream",
-                {
-                  agent: metadata.displayName,
-                  messageId: message.messageId,
-                  eventsProcessed: eventCount,
-                }
-              );
               shouldContinue = false;
               break;
             }
@@ -245,12 +216,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
             // Check if task has reached a terminal state
             if (task.status?.state && terminalStates.has(task.status.state)) {
-              console.log("🏁 Task reached terminal state, ending stream", {
-                agent: metadata.displayName,
-                taskId: task.id,
-                state: task.status.state,
-                eventsProcessed: eventCount,
-              });
               shouldContinue = false;
               break;
             }
@@ -291,12 +256,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
             // Check for the 'final' property which signals stream completion
             if (statusEvent.final === true) {
-              console.log("🏁 Received final event, ending stream", {
-                agent: metadata.displayName,
-                taskId: statusEvent.taskId,
-                state: statusEvent.status?.state,
-                eventsProcessed: eventCount,
-              });
               shouldContinue = false;
               break;
             }
@@ -306,15 +265,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
               statusEvent.status?.state &&
               terminalStates.has(statusEvent.status.state)
             ) {
-              console.log(
-                "🏁 Status update shows terminal state, ending stream",
-                {
-                  agent: metadata.displayName,
-                  taskId: statusEvent.taskId,
-                  state: statusEvent.status.state,
-                  eventsProcessed: eventCount,
-                }
-              );
               shouldContinue = false;
               break;
             }
@@ -372,16 +322,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             );
           }
         }
-
-        console.log("✅ A2A stream consumption completed", {
-          agent: metadata.displayName,
-          totalEvents: eventCount,
-          messagesReceived: messages.length,
-          tasksTracked: taskMap.size,
-          statusUpdates: statusUpdates.length,
-          artifactUpdates: artifactUpdates.length,
-          reason: shouldContinue ? "stream ended" : "terminal state reached",
-        });
       } catch (error) {
         console.error("❌ A2A stream consumption error", {
           agent: metadata.displayName,
@@ -440,39 +380,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
         }
       }
 
-      console.log("🛰️ A2A session update", {
-        agent: metadata.displayName,
-        contextId: payload.contextId,
-        primaryTaskId: payload.primaryTaskId,
-        taskCount: payload.tasks.length,
-        messageCount: payload.messages.length,
-        responsePreview: responseText?.slice(0, 120),
-      });
-
       manager.emitToolEvent(payload);
-
-      if (payload.tasks.length > 0) {
-        console.log(
-          "🧭 Tasks",
-          payload.tasks.map((task) => ({
-            taskId: task.taskId,
-            state: task.state,
-            artifactCount: task.artifacts?.length ?? 0,
-          }))
-        );
-      }
-
-      if (payload.statusUpdates.length > 0) {
-        console.log("📈 Status updates", payload.statusUpdates);
-      }
-
-      if (payload.artifacts.length > 0) {
-        console.log("📦 Artifacts", payload.artifacts);
-      }
-
-      if (payload.messages.length > 0) {
-        console.log("💬 Agent messages", payload.messages);
-      }
 
       return payload;
     },

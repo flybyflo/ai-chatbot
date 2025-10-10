@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useQuery } from "convex/react";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ChatMessage } from "@/lib/types";
@@ -20,26 +20,8 @@ export function useConvexChat({ chatId }: { chatId: string }) {
   const startMessagePair = useAction(api.ai.startChatMessagePair);
 
   // Convert Convex messages to UI format
-  console.log("🔎 [useConvexChat] Converting messages:", {
-    hasMessages: !!messagesFromConvex,
-    messageCount: messagesFromConvex?.length || 0,
-  });
-
   const messages: ChatMessage[] =
     messagesFromConvex?.map((msg, msgIndex) => {
-      console.log(`🔍 [useConvexChat] Message ${msgIndex}:`, {
-        id: msg._id,
-        role: msg.role,
-        isComplete: msg.isComplete,
-        hasReasoningChunks: !!msg.reasoningChunks,
-        reasoningChunksLength: msg.reasoningChunks?.length || 0,
-        combinedReasoningLength: msg.combinedReasoning?.length || 0,
-        hasTextChunks: !!msg.chunks,
-        textChunksLength: msg.chunks?.length || 0,
-        combinedContentLength: msg.combinedContent?.length || 0,
-        partsLength: msg.parts?.length || 0,
-      });
-
       // For streaming messages, use combined chunks as temporary content
       let parts: any[] = Array.isArray(msg.parts)
         ? [...msg.parts]
@@ -57,9 +39,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
           msg.reasoningChunks.length > 0 &&
           msg.combinedReasoning
         ) {
-          console.log(
-            `🧠 [useConvexChat] Adding reasoning part: ${msg.combinedReasoning.length} chars`
-          );
           streamingParts.push({
             type: "reasoning",
             text: msg.combinedReasoning,
@@ -73,9 +52,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
 
         // Add text part if available
         if (msg.chunks && msg.chunks.length > 0 && msg.combinedContent) {
-          console.log(
-            `📝 [useConvexChat] Adding text part: ${msg.combinedContent.length} chars`
-          );
           streamingParts.push({
             type: "text",
             text: msg.combinedContent,
@@ -83,12 +59,7 @@ export function useConvexChat({ chatId }: { chatId: string }) {
         }
 
         if (streamingParts.length > 0) {
-          console.log(
-            `✅ [useConvexChat] Built ${streamingParts.length} streaming parts`
-          );
           parts = streamingParts;
-        } else {
-          console.log("⚠️ [useConvexChat] No streaming parts built");
         }
       } else if (
         msg.role === "assistant" &&
@@ -96,9 +67,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
         (msg.reasoningChunks?.length ?? 0) > 0 &&
         !parts.some((part) => part?.type === "reasoning")
       ) {
-        console.log(
-          `🧠 [useConvexChat] Injecting combined reasoning fallback (${msg.combinedReasoning.length} chars)`
-        );
         parts = [
           {
             type: "reasoning",
@@ -109,10 +77,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
       }
 
       const finalParts = parts || [];
-      console.log(`📦 [useConvexChat] Final parts for message ${msgIndex}:`, {
-        partsCount: finalParts.length,
-        partTypes: finalParts.map((p: any) => p.type),
-      });
 
       return {
         id: msg._id,
@@ -155,17 +119,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
     [chatId, startMessagePair]
   );
 
-  // Log streaming status
-  useEffect(() => {
-    if (isStreaming) {
-      const streamingMessages = messagesFromConvex?.filter(
-        (m) => !m.isComplete
-      );
-      console.log(
-        `📡 Streaming ${streamingMessages?.length || 0} message(s)...`
-      );
-    }
-  }, [isStreaming, messagesFromConvex]);
 
   return {
     messages,

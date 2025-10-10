@@ -99,13 +99,6 @@ const PurePreviewMessage = ({
           )}
 
           {(() => {
-            console.log(`🎨 [Message] Rendering message ${message.id}:`, {
-              role: message.role,
-              partsCount: message.parts?.length || 0,
-              partTypes: message.parts?.map((p) => p.type) || [],
-              isLoading,
-            });
-
             const flowItems: Array<
               | { kind: "reasoning"; content: string; originalIndex: number }
               | { kind: "text"; index: number }
@@ -120,9 +113,6 @@ const PurePreviewMessage = ({
 
             const flushReasoning = () => {
               if (currentReasoning) {
-                console.log(
-                  `🧠 [Message] Flushing reasoning: ${currentReasoning.length} chars, index ${firstReasoningIndex}`
-                );
                 flowItems.push({
                   kind: "reasoning",
                   content: currentReasoning,
@@ -138,16 +128,8 @@ const PurePreviewMessage = ({
                 typeof (part as { text?: string }).text === "string"
                   ? (part as { text?: string }).text
                   : undefined;
-              console.log(`📦 [Message] Processing part ${index}:`, {
-                type: part.type,
-                hasText: !!partText,
-                textLength: partText?.length || 0,
-              });
 
               if (part.type === "reasoning" && partText?.trim()) {
-                console.log(
-                  `🧠 [Message] Found reasoning part at index ${index}`
-                );
                 if (currentReasoning === "") {
                   firstReasoningIndex = index;
                   currentReasoning = partText;
@@ -189,16 +171,6 @@ const PurePreviewMessage = ({
             // Trailing reasoning, if any
             flushReasoning();
 
-            console.log("📊 [Message] Flow items built:", {
-              totalFlowItems: flowItems.length,
-              flowItemTypes: flowItems.map((item) => item.kind),
-              reasoningItems: flowItems.filter(
-                (item) => item.kind === "reasoning"
-              ).length,
-              textItems: flowItems.filter((item) => item.kind === "text")
-                .length,
-            });
-
             const hasRenderedBeforeFlow = attachmentsFromMessage.length > 0;
 
             return flowItems.map((item, flowIndex) => {
@@ -206,14 +178,6 @@ const PurePreviewMessage = ({
 
               if (item.kind === "reasoning") {
                 const key = `message-${message.id}-reasoning-${item.originalIndex}`;
-                console.log(
-                  "🎯 [Message] Rendering MessageReasoning component:",
-                  {
-                    key,
-                    contentLength: item.content.length,
-                    isLoading: isLoading && flowIndex === flowItems.length - 1,
-                  }
-                );
                 return (
                   <MessageReasoning
                     className={needsTopMargin ? "mt-3" : undefined}
