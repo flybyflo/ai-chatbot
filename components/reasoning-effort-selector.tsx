@@ -12,10 +12,10 @@ import {
 function PureReasoningEffortSelector({
   selectedReasoningEffort,
   onReasoningEffortChange,
-}: {
+}: Readonly<{
   selectedReasoningEffort: "low" | "medium" | "high";
   onReasoningEffortChange?: (effort: "low" | "medium" | "high") => void;
-}) {
+}>) {
   const [optimisticEffort, setOptimisticEffort] = useState(
     selectedReasoningEffort
   );
@@ -30,8 +30,9 @@ function PureReasoningEffortSelector({
     { value: "high", label: "High" },
   ] as const;
 
+  // Trigger unchanged; panel uses tool-bg + rounded
   const panelClass =
-    "z-[1000] w-[240px] rounded-lg border border-border/30 bg-popover p-0 text-popover-foreground shadow-md backdrop-blur " +
+    "z-[1000] w-[240px] rounded-2xl border border-border/30 bg-(--tool-bg) p-0 text-popover-foreground shadow-md backdrop-blur " +
     "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
 
   return (
@@ -59,10 +60,10 @@ function PureReasoningEffortSelector({
       </Trigger>
 
       <PromptInputModelSelectContent className={panelClass}>
-        <div className="divide-y divide-border/20">
+        <div className="max-h-[320px] space-y-1.5 overflow-y-auto p-1.5">
           {effortOptions.map((effort) => (
             <SelectItem
-              className="relative w-full cursor-default select-none py-2 pr-2.5 pl-8 text-xs outline-none transition-colors hover:bg-foreground/10 focus:bg-foreground/10 data-[state=checked]:bg-foreground/15"
+              className="relative mx-1 w-[calc(100%-0.5rem)] cursor-default select-none rounded-xl py-2 pr-2.5 pl-8 text-xs outline-none transition-colors hover:bg-foreground/10 focus:bg-foreground/10 data-[state=checked]:bg-foreground/15"
               key={effort.value}
               value={effort.label}
             >

@@ -55,8 +55,27 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
       text: z.string().min(1, "text is required"),
     }),
     execute: async ({ text }) => {
+      console.log("🚀 [A2A] Starting tool execution", {
+        agent: metadata.displayName,
+        agentKey: key,
+        toolId: metadata.toolId,
+        inputText: text.substring(0, 100) + (text.length > 100 ? "..." : ""),
+        timestamp: new Date().toISOString(),
+      });
+
       const messageId = generateUUID();
       const existingSession = manager.getSession(key);
+
+      console.log("📋 [A2A] Session state", {
+        agent: metadata.displayName,
+        hasExistingSession: !!existingSession,
+        contextId: existingSession?.contextId,
+        primaryTaskId: existingSession?.primaryTaskId,
+        taskCount: existingSession?.tasks
+          ? Object.keys(existingSession.tasks).length
+          : 0,
+      });
+
       const streamParams: any = {
         message: {
           messageId,
@@ -82,6 +101,14 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
       if (existingSession?.primaryTaskId) {
         streamParams.message.referenceTaskIds = [existingSession.primaryTaskId];
       }
+
+      console.log("📤 [A2A] Sending message", {
+        agent: metadata.displayName,
+        messageId,
+        hasContext: !!streamParams.message.contextId,
+        hasReferenceTask: !!streamParams.message.referenceTaskIds,
+        streamParams,
+      });
 
       const agentResponses: string[] = [];
       const messages: A2AToolMessageSummary[] = [];
@@ -148,10 +175,15 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
         let eventCount = 0;
         let shouldContinue = true;
 
+        console.log("🌊 [A2A] Starting stream consumption", {
+          agent: metadata.displayName,
+          messageId,
+        });
+
         for await (const event of client.sendMessageStream(streamParams)) {
           eventCount++;
           if (!event || typeof event !== "object") {
-            console.warn("⚠️ Skipping invalid A2A event", {
+            console.warn("⚠️ [A2A] Skipping invalid event", {
               agent: metadata.displayName,
               eventCount,
               event,
@@ -161,9 +193,31 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
           const kind = (event as any).kind;
 
+          console.log("📥 [A2A] Event received", {
+            agent: metadata.displayName,
+            eventCount,
+            kind,
+            hasContextId: !!(event as any).contextId,
+            hasTaskId: !!(event as any).taskId || !!(event as any).id,
+          });
+
           if (kind === "message") {
             const message = event as any;
             const textContent = extractTextFromParts(message.parts);
+
+            console.log("💬 [A2A] Message received", {
+              agent: metadata.displayName,
+              eventCount,
+              messageId: message.messageId,
+              role: message.role,
+              taskId: message.taskId,
+              contextId: message.contextId,
+              textPreview:
+                textContent?.substring(0, 100) +
+                (textContent && textContent.length > 100 ? "..." : ""),
+              timestamp: message.timestamp,
+            });
+
             if (message.role === "agent" && textContent) {
               agentResponses.push(textContent);
             }
@@ -175,6 +229,10 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             });
             if (!contextId && message.contextId) {
               contextId = message.contextId;
+              console.log("🔗 [A2A] Context ID established", {
+                agent: metadata.displayName,
+                contextId,
+              });
             }
 
             emitProgressUpdate(message.timestamp);
@@ -187,6 +245,10 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                 (t) => t.state && terminalStates.has(t.state)
               )
             ) {
+              console.log("✅ [A2A] Stream complete (agent message + terminal task)", {
+                agent: metadata.displayName,
+                eventCount,
+              });
               shouldContinue = false;
               break;
             }
@@ -197,10 +259,12 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             const task = event as any;
             contextId = task.contextId ?? contextId;
             latestTaskId = task.id;
+
+            const statusMessage = extractTextFromParts(task.status?.message?.parts);
             const taskSummary: A2ATaskSummary = {
               taskId: task.id,
               state: task.status?.state,
-              statusMessage: extractTextFromParts(task.status?.message?.parts),
+              statusMessage,
               contextId: task.contextId,
               lastUpdated: new Date().toISOString(),
               artifacts: Array.isArray(task.artifacts)
@@ -211,11 +275,30 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                   }))
                 : undefined,
             };
+
+            console.log("📝 [A2A] Task event", {
+              agent: metadata.displayName,
+              eventCount,
+              taskId: task.id,
+              state: task.status?.state,
+              contextId: task.contextId,
+              statusMessage,
+              artifactCount: taskSummary.artifacts?.length ?? 0,
+              isTerminal: task.status?.state && terminalStates.has(task.status.state),
+              timestamp: task.status?.timestamp,
+            });
+
             taskMap.set(task.id, taskSummary);
             emitProgressUpdate(task.status?.timestamp);
 
             // Check if task has reached a terminal state
             if (task.status?.state && terminalStates.has(task.status.state)) {
+              console.log("🏁 [A2A] Stream complete (terminal task state)", {
+                agent: metadata.displayName,
+                eventCount,
+                taskId: task.id,
+                state: task.status.state,
+              });
               shouldContinue = false;
               break;
             }
@@ -226,13 +309,29 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             const statusEvent = event as any;
             contextId = statusEvent.contextId ?? contextId;
             latestTaskId = statusEvent.taskId ?? latestTaskId;
+            const message = extractTextFromParts(statusEvent.status?.message?.parts);
             const summary: A2ATaskStatusUpdateSummary = {
               taskId: statusEvent.taskId,
               contextId: statusEvent.contextId,
               state: statusEvent.status?.state ?? "unknown",
-              message: extractTextFromParts(statusEvent.status?.message?.parts),
+              message,
               timestamp: statusEvent.status?.timestamp,
             };
+
+            console.log("🔄 [A2A] Status update", {
+              agent: metadata.displayName,
+              eventCount,
+              taskId: statusEvent.taskId,
+              state: summary.state,
+              contextId: statusEvent.contextId,
+              message,
+              isFinal: statusEvent.final === true,
+              isTerminal:
+                statusEvent.status?.state &&
+                terminalStates.has(statusEvent.status.state),
+              timestamp: summary.timestamp,
+            });
+
             statusUpdates.push(summary);
             const existing = taskMap.get(statusEvent.taskId);
             if (existing) {
@@ -256,6 +355,12 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
             // Check for the 'final' property which signals stream completion
             if (statusEvent.final === true) {
+              console.log("🏁 [A2A] Stream complete (final flag)", {
+                agent: metadata.displayName,
+                eventCount,
+                taskId: statusEvent.taskId,
+                state: statusEvent.status?.state,
+              });
               shouldContinue = false;
               break;
             }
@@ -265,6 +370,12 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
               statusEvent.status?.state &&
               terminalStates.has(statusEvent.status.state)
             ) {
+              console.log("🏁 [A2A] Stream complete (terminal status)", {
+                agent: metadata.displayName,
+                eventCount,
+                taskId: statusEvent.taskId,
+                state: statusEvent.status.state,
+              });
               shouldContinue = false;
               break;
             }
@@ -282,6 +393,18 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
               name: artifactEvent.artifact?.name,
               description: artifactEvent.artifact?.description,
             };
+
+            console.log("📎 [A2A] Artifact update", {
+              agent: metadata.displayName,
+              eventCount,
+              taskId: artifactEvent.taskId,
+              artifactId: artifactSummary.artifactId,
+              name: artifactSummary.name,
+              description: artifactSummary.description,
+              contextId: artifactEvent.contextId,
+              timestamp: artifactEvent.artifact?.timestamp ?? artifactEvent.timestamp,
+            });
+
             artifactUpdates.push(artifactSummary);
             const existing = taskMap.get(artifactEvent.taskId);
             if (existing) {
@@ -320,8 +443,24 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             emitProgressUpdate(
               artifactEvent.artifact?.timestamp ?? artifactEvent.timestamp
             );
+            continue;
           }
+
+          // Unknown event kind
+          console.warn("⚠️ [A2A] Unknown event kind", {
+            agent: metadata.displayName,
+            eventCount,
+            kind,
+            event,
+          });
         }
+
+        console.log("🏁 [A2A] Stream ended", {
+          agent: metadata.displayName,
+          totalEvents: eventCount,
+          taskCount: taskMap.size,
+          messageCount: messages.length,
+        });
       } catch (error) {
         console.error("❌ A2A stream consumption error", {
           agent: metadata.displayName,
@@ -338,6 +477,22 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
       const tasks = Array.from(taskMap.values());
 
+      console.log("🎯 [A2A] Tool execution complete", {
+        agent: metadata.displayName,
+        responseLength: responseText.length,
+        taskCount: tasks.length,
+        messageCount: messages.length,
+        statusUpdateCount: statusUpdates.length,
+        artifactUpdateCount: artifactUpdates.length,
+        contextId,
+        primaryTaskId: latestTaskId,
+        tasks: tasks.map((t) => ({
+          taskId: t.taskId,
+          state: t.state,
+          artifactCount: t.artifacts?.length ?? 0,
+        })),
+      });
+
       const sessionUpdate: Partial<A2ASessionState> = {
         contextId,
         primaryTaskId:
@@ -350,6 +505,13 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
         messages,
         lastResponseText: responseText,
       };
+
+      console.log("💾 [A2A] Updating session", {
+        agent: metadata.displayName,
+        contextId: sessionUpdate.contextId,
+        primaryTaskId: sessionUpdate.primaryTaskId,
+        taskCount: Object.keys(sessionUpdate.tasks ?? {}).length,
+      });
 
       manager.updateSession(key, sessionUpdate);
 
@@ -379,6 +541,12 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
           message.role = "agent";
         }
       }
+
+      console.log("📡 [A2A] Emitting final tool event", {
+        agent: metadata.displayName,
+        messageCount: payload.messages.length,
+        timestamp: payload.timestamp,
+      });
 
       manager.emitToolEvent(payload);
 

@@ -1,14 +1,13 @@
 "use client";
 
-import {
-  Arrow,
-  Content,
-  Trigger as HoverTrigger,
-  Portal,
-  Root,
-} from "@radix-ui/react-hover-card";
 import { Trigger } from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronRight, Wrench } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Wrench,
+} from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { TOOL_TYPES, type ToolType } from "@/lib/enums";
 import {
@@ -24,6 +23,7 @@ type ToolItem = {
   serverName?: string;
   agentName?: string;
 };
+
 type ServerBucket = {
   id: string;
   label: string;
@@ -37,20 +37,25 @@ function PureToolsSelector({
   mcpRegistry: _mcpRegistry,
   a2aRegistry: _a2aRegistry,
   availableTools = [],
-}: {
+}: Readonly<{
   selectedTools?: string[];
   onToolsChange?: (tools: string[]) => void;
   mcpRegistry?: any;
   a2aRegistry?: any;
   availableTools?: ToolItem[];
-}) {
+}>) {
+  // main search (list view)
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- minimal main dropdown styles (modern + compact) ---
+  // detail view state
+  const [activeServer, setActiveServer] = useState<ServerBucket | null>(null);
+  const [detailSearch, setDetailSearch] = useState("");
+
   const mainPanelClass =
-    "z-[1000] w-[360px] rounded-lg border border-border/30 bg-popover p-0 text-popover-foreground shadow-md backdrop-blur";
+    "z-[1000] w-[360px] rounded-2xl border border-border/30 bg-(--tool-bg) p-0 text-popover-foreground shadow-md backdrop-blur";
+
   const sectionHeaderClass =
-    "sticky top-0 z-10 flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-popover/95";
+    "sticky top-0 z-10 mx-1 mt-1 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-(--tool-bg)";
 
   // group tools by server/agent
   const { mcpServers, a2aServers, localBucket } = useMemo(() => {
@@ -68,10 +73,7 @@ function PureToolsSelector({
         if (!map.has(id)) {
           map.set(id, { id, label: id, kind, tools: [] });
         }
-        const bucket = map.get(id);
-        if (bucket) {
-          bucket.tools.push(t);
-        }
+        map.get(id)?.tools.push(t);
       }
       return Array.from(map.values()).sort((a, b) =>
         a.label.localeCompare(b.label)
@@ -84,7 +86,7 @@ function PureToolsSelector({
     const localToolsBucket: ServerBucket = {
       id: "local",
       label: "Local Tools",
-      kind: "mcp", // reuse "mcp" kind for styling purposes
+      kind: "mcp",
       tools: localTools,
     };
 
@@ -133,11 +135,6 @@ function PureToolsSelector({
     const newTools = isToolSelected(toolId)
       ? selectedTools.filter((id) => id !== toolId)
       : [...selectedTools, toolId];
-    console.log("[TOOLS_SELECTOR] Toggle tool:", {
-      toolId,
-      wasSelected: isToolSelected(toolId),
-      newTools,
-    });
     onToolsChange(newTools);
   };
   const selectAllInServer = (server: ServerBucket) => {
@@ -160,12 +157,36 @@ function PureToolsSelector({
   const selectedCountForServer = (s: ServerBucket) =>
     s.tools.reduce((n, t) => n + (isToolSelected(t.id) ? 1 : 0), 0);
 
+  // helpers
+  const navigateInto = (server: ServerBucket) => {
+    setDetailSearch("");
+    setActiveServer(server);
+  };
+  const navigateBack = () => {
+    setActiveServer(null);
+  };
+
+  // detail tools (filtered)
+  const filteredDetailTools = useMemo(() => {
+    if (!activeServer) {
+      return [];
+    }
+    if (!detailSearch) {
+      return activeServer.tools;
+    }
+    const q = detailSearch.toLowerCase();
+    return activeServer.tools.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.id.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q)
+    );
+  }, [activeServer, detailSearch]);
+
   return (
-    <PromptInputModelSelect
-      onValueChange={() => {
-        // No-op for tools selector
-      }}
-    >
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: this is a dummy onValueChange
+    <PromptInputModelSelect onValueChange={() => {}}>
+      {/* Trigger stays unchanged */}
       <Trigger
         className="flex h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-foreground transition-colors duration-150 hover:border-border/60 data-[state=open]:border-border/80"
         type="button"
@@ -175,98 +196,220 @@ function PureToolsSelector({
         <ChevronDown size={14} />
       </Trigger>
 
-      {/* MAIN DROPDOWN — minimal spacing */}
+      {/* Single panel with in-panel navigation */}
       <PromptInputModelSelectContent className={mainPanelClass}>
-        {/* Search — edge-to-edge, no outer padding */}
-        <div className="border-border/20 border-b">
-          <input
-            autoComplete="off"
-            className="block w-full bg-transparent px-2.5 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onMouseDown={(e) => e.stopPropagation()}
-            placeholder="Search servers or tools…"
-            type="text"
-            value={searchTerm}
-          />
-        </div>
+        {/* Constrain height to keep size stable across views */}
+        <div className="flex h-[360px] flex-col">
+          {activeServer ? (
+            /* ---------- DETAIL VIEW ---------- */
+            <>
+              {/* Header + bulk actions + Back */}
+              <div className="mx-1 mt-1 flex items-center justify-between gap-2 rounded-xl border border-border/20 bg-(--tool-bg) px-2 py-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <button
+                    aria-label="Back"
+                    className="rounded-md p-1 hover:bg-foreground/10"
+                    onClick={navigateBack}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    type="button"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="truncate font-semibold text-xs">
+                    {activeServer.label}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {selectedCountForServer(activeServer)}/
+                    {activeServer.tools.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    className="rounded-md border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectAllInServer(activeServer);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    type="button"
+                  >
+                    Select all
+                  </button>
+                  <button
+                    className="rounded-md border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearAllInServer(activeServer);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
 
-        <div className="max-h-[360px] overflow-y-auto">
-          {/* Local Tools */}
-          <SectionHeader className={sectionHeaderClass} label="Local Tools" />
-          {filteredLocal.length === 0 ? (
-            <EmptyRow
-              message={
-                searchTerm ? "No local tools match" : "No local tools found"
-              }
-            />
+              {/* Detail search */}
+              <div className="mx-1 mt-1 rounded-xl border border-border/20 bg-(--tool-bg)">
+                <input
+                  autoComplete="off"
+                  className="block w-full rounded-xl bg-transparent px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+                  onChange={(e) => setDetailSearch(e.target.value)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  placeholder="Search tools…"
+                  type="text"
+                  value={detailSearch}
+                />
+              </div>
+
+              {/* Tools list */}
+              <div className="flex-1 space-y-1.5 overflow-y-auto p-1.5">
+                {filteredDetailTools.length === 0 ? (
+                  <EmptyRow message="No tools match" />
+                ) : (
+                  filteredDetailTools.map((tool) => {
+                    const checked = isToolSelected(tool.id);
+                    return (
+                      <button
+                        className="flex w-full items-start gap-2 rounded-xl border border-transparent p-2 text-left transition-colors hover:bg-foreground/10"
+                        key={tool.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTool(tool.id);
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        type="button"
+                      >
+                        <span
+                          className={[
+                            "mt-0.5 grid size-4 place-items-center rounded border border-border bg-background",
+                            checked
+                              ? "bg-foreground/80 text-background"
+                              : "bg-background",
+                          ].join(" ")}
+                        >
+                          {checked && <Check size={12} />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate font-medium text-xs">
+                              {tool.name}
+                            </span>
+                            <span className="truncate text-[10px] text-muted-foreground">
+                              {tool.id}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                            {tool.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </>
           ) : (
-            filteredLocal.map((bucket) => (
-              <ServerRow
-                badge="LOCAL"
-                badgeClass="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                isToolSelected={isToolSelected}
-                key="local"
-                onClearAll={() => clearAllInServer(bucket)}
-                onSelectAll={() => selectAllInServer(bucket)}
-                onToggleTool={toggleTool}
-                selectedCount={selectedCountForServer(bucket)}
-                server={bucket}
-              />
-            ))
-          )}
+            /* ---------- MAIN LIST VIEW ---------- */
+            <>
+              {/* Search */}
+              <div className="mx-1 mt-1 rounded-xl border border-border/20 bg-(--tool-bg)">
+                <input
+                  autoComplete="off"
+                  className="block w-full rounded-xl bg-transparent px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  placeholder="Search servers or tools…"
+                  type="text"
+                  value={searchTerm}
+                />
+              </div>
 
-          {/* Divider */}
-          <div className="my-1 h-px w-full bg-border/30" />
+              {/* Lists */}
+              <div className="flex-1 overflow-y-auto">
+                {/* Local Tools */}
+                <SectionHeader
+                  className={sectionHeaderClass}
+                  label="Local Tools"
+                />
+                {filteredLocal.length === 0 ? (
+                  <EmptyRow
+                    message={
+                      searchTerm
+                        ? "No local tools match"
+                        : "No local tools found"
+                    }
+                  />
+                ) : (
+                  filteredLocal.map((bucket) => (
+                    <ServerListRow
+                      badge="LOCAL"
+                      badgeClass="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                      key="local"
+                      onClick={() => navigateInto(bucket)}
+                      selectedCount={selectedCountForServer(bucket)}
+                      server={bucket}
+                    />
+                  ))
+                )}
 
-          {/* MCP */}
-          <SectionHeader className={sectionHeaderClass} label="MCP Servers" />
-          {filteredMCP.length === 0 ? (
-            <EmptyRow
-              message={
-                searchTerm ? "No MCP servers match" : "No MCP servers found"
-              }
-            />
-          ) : (
-            filteredMCP.map((server) => (
-              <ServerRow
-                badge="MCP"
-                badgeClass="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-                isToolSelected={isToolSelected}
-                key={`mcp:${server.id}`}
-                onClearAll={() => clearAllInServer(server)}
-                onSelectAll={() => selectAllInServer(server)}
-                onToggleTool={toggleTool}
-                selectedCount={selectedCountForServer(server)}
-                server={server}
-              />
-            ))
-          )}
+                {/* Divider */}
+                <div className="my-1 h-px w-full bg-border/30" />
 
-          {/* Divider */}
-          <div className="my-1 h-px w-full bg-border/30" />
+                {/* MCP */}
+                <SectionHeader
+                  className={sectionHeaderClass}
+                  label="MCP Servers"
+                />
+                {filteredMCP.length === 0 ? (
+                  <EmptyRow
+                    message={
+                      searchTerm
+                        ? "No MCP servers match"
+                        : "No MCP servers found"
+                    }
+                  />
+                ) : (
+                  filteredMCP.map((server) => (
+                    <ServerListRow
+                      badge="MCP"
+                      badgeClass="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                      key={`mcp:${server.id}`}
+                      onClick={() => navigateInto(server)}
+                      selectedCount={selectedCountForServer(server)}
+                      server={server}
+                    />
+                  ))
+                )}
 
-          {/* A2A */}
-          <SectionHeader className={sectionHeaderClass} label="A2A Agents" />
-          {filteredA2A.length === 0 ? (
-            <EmptyRow
-              message={
-                searchTerm ? "No A2A agents match" : "No A2A agents found"
-              }
-            />
-          ) : (
-            filteredA2A.map((server) => (
-              <ServerRow
-                badge="A2A"
-                badgeClass="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200"
-                isToolSelected={isToolSelected}
-                key={`a2a:${server.id}`}
-                onClearAll={() => clearAllInServer(server)}
-                onSelectAll={() => selectAllInServer(server)}
-                onToggleTool={toggleTool}
-                selectedCount={selectedCountForServer(server)}
-                server={server}
-              />
-            ))
+                {/* Divider */}
+                <div className="my-1 h-px w-full bg-border/30" />
+
+                {/* A2A */}
+                <SectionHeader
+                  className={sectionHeaderClass}
+                  label="A2A Agents"
+                />
+                {filteredA2A.length === 0 ? (
+                  <EmptyRow
+                    message={
+                      searchTerm ? "No A2A agents match" : "No A2A agents found"
+                    }
+                  />
+                ) : (
+                  filteredA2A.map((server) => (
+                    <ServerListRow
+                      badge="A2A"
+                      badgeClass="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200"
+                      key={`a2a:${server.id}`}
+                      onClick={() => navigateInto(server)}
+                      selectedCount={selectedCountForServer(server)}
+                      server={server}
+                    />
+                  ))
+                )}
+              </div>
+            </>
           )}
         </div>
       </PromptInputModelSelectContent>
@@ -279,10 +422,10 @@ function PureToolsSelector({
 function SectionHeader({
   label,
   className,
-}: {
+}: Readonly<{
   label: string;
   className?: string;
-}) {
+}>) {
   return (
     <div className={className}>
       <Wrench size={12} />
@@ -291,151 +434,55 @@ function SectionHeader({
   );
 }
 
-function EmptyRow({ message }: { message: string }) {
+function EmptyRow({ message }: Readonly<{ message: string }>) {
   return (
-    <div className="px-2 py-2 text-center text-muted-foreground text-xs">
+    <div className="mx-2 my-1 rounded-lg bg-(--tool-bg) px-2 py-2 text-center text-muted-foreground text-xs">
       {message}
     </div>
   );
 }
 
-function ServerRow({
+function ServerListRow({
   server,
   badge,
   badgeClass,
-  onSelectAll,
-  onClearAll,
-  onToggleTool,
-  isToolSelected,
   selectedCount,
-}: {
+  onClick,
+}: Readonly<{
   server: ServerBucket;
   badge: string;
   badgeClass: string;
-  onSelectAll: () => void;
-  onClearAll: () => void;
-  onToggleTool: (id: string) => void;
-  isToolSelected: (id: string) => boolean;
   selectedCount: number;
-}) {
+  onClick: () => void;
+}>) {
   const total = server.tools.length;
 
   return (
-    <Root closeDelay={200} openDelay={80}>
-      <HoverTrigger asChild>
-        <button
-          className="group flex w-full items-center justify-between px-2 py-1.5 text-left transition-colors hover:bg-foreground/10"
-          type="button"
-        >
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className={`rounded px-1 py-0.5 text-[10px] ${badgeClass}`}>
-              {badge}
-            </span>
-            <span className="truncate font-medium text-xs">{server.label}</span>
-          </div>
-          <div className="ml-2 flex items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground">
-              {selectedCount}/{total}
-            </span>
-            <ChevronRight
-              className="opacity-60 group-hover:opacity-100"
-              size={12}
-            />
-          </div>
-        </button>
-      </HoverTrigger>
-
-      <Portal>
-        {/* HOVER PANEL with its own edge-to-edge search */}
-        <Content
-          align="start"
-          className="data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 z-[1000] w-[360px] rounded-lg border border-border/40 bg-popover p-0 text-popover-foreground shadow-xl backdrop-blur-md data-[state=closed]:animate-out data-[state=open]:animate-in"
-          side="right"
-          sideOffset={8}
-        >
-          {/* Header + bulk actions */}
-          <div className="flex items-center justify-between px-2 py-1">
-            <div className="flex items-center gap-2">
-              <span
-                className={`rounded px-1.5 py-0.5 text-[10px] ${badgeClass}`}
-              >
-                {badge}
-              </span>
-              <span className="font-semibold text-xs">{server.label}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                className="rounded border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectAll();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                type="button"
-              >
-                Select all
-              </button>
-              <button
-                className="rounded border border-border/40 px-2 py-0.5 text-[10px] transition-colors hover:bg-foreground/10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClearAll();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                type="button"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-
-          {/* Tools */}
-          <div className="max-h-[280px] space-y-1 overflow-y-auto p-1.5">
-            {server.tools.map((tool) => {
-              const checked = isToolSelected(tool.id);
-              return (
-                <button
-                  className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-foreground/10"
-                  key={tool.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleTool(tool.id);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  type="button"
-                >
-                  <span
-                    className={[
-                      "mt-0.5 grid size-4 place-items-center rounded border border-border",
-                      checked
-                        ? "bg-foreground/80 text-background"
-                        : "bg-background",
-                    ].join(" ")}
-                  >
-                    {checked && <Check size={12} />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium text-xs">
-                        {tool.name}
-                      </span>
-                      <span className="truncate text-[10px] text-muted-foreground">
-                        {tool.id}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
-                      {tool.description}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <Arrow className="fill-popover" />
-        </Content>
-      </Portal>
-    </Root>
+    <button
+      className="group mx-1 my-1 flex w-[calc(100%-0.5rem)] items-center justify-between rounded-xl border border-transparent px-2 py-1.5 text-left transition-colors hover:bg-foreground/10"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      type="button"
+    >
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className={`rounded-md px-1 py-0.5 text-[10px] ${badgeClass}`}>
+          {badge}
+        </span>
+        <span className="truncate font-medium text-xs">{server.label}</span>
+      </div>
+      <div className="ml-2 flex items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground">
+          {selectedCount}/{total}
+        </span>
+        <ChevronRight
+          className="opacity-60 group-hover:opacity-100"
+          size={12}
+        />
+      </div>
+    </button>
   );
 }
 
