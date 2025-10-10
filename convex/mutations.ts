@@ -989,7 +989,9 @@ export const recordA2AEvent = mutation({
       .unique();
 
     const existingSnapshot: any = existingSession?.snapshot ?? {};
-    const mergedTasks: Record<string, any> = { ...existingSnapshot.tasks };
+    const mergedTasks: Record<string, any> = {
+      ...(existingSnapshot.tasks ?? {}),
+    };
 
     if (Array.isArray(payload.tasks)) {
       for (const task of payload.tasks) {
