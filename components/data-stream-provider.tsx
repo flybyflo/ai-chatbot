@@ -186,7 +186,7 @@ export function DataStreamProvider({
 
   const resolvedA2AEventLog = useMemo(() => {
     const combined: A2AEventLogEntry[] = [];
-    const seen = new Set<string>();
+    const seenSource = new Set<string>();
 
     const append = (entries?: A2AEventLogEntry[]) => {
       if (!entries) {
@@ -196,13 +196,13 @@ export function DataStreamProvider({
         if (!entry) {
           continue;
         }
-        const key = `${entry.agentToolId ?? entry.agentKey ?? "unknown"}:${
+        const sourceKey = `${entry.agentToolId ?? entry.agentKey ?? "unknown"}:${
           entry.timestamp ?? ""
         }:${entry.primaryTaskId ?? ""}`;
-        if (seen.has(key)) {
+        if (seenSource.has(sourceKey)) {
           continue;
         }
-        seen.add(key);
+        seenSource.add(sourceKey);
         combined.push(entry);
       }
     };
@@ -216,7 +216,34 @@ export function DataStreamProvider({
       return bTime - aTime;
     });
 
-    return combined.length > 0 ? combined : undefined;
+    if (combined.length === 0) {
+      return;
+    }
+
+    const deduped: A2AEventLogEntry[] = [];
+    const seenUnique = new Set<string>();
+
+    for (const entry of combined) {
+      const lastMessage = entry.messages?.at(-1);
+      const uniqueKey = [
+        entry.agentToolId ?? entry.agentKey ?? "unknown",
+        entry.primaryTaskId ?? "",
+        entry.contextId ?? "",
+        lastMessage?.messageId ?? "",
+        entry.responseText?.trim() ?? "",
+      ]
+        .join(":")
+        .toLowerCase();
+
+      if (seenUnique.has(uniqueKey)) {
+        continue;
+      }
+
+      seenUnique.add(uniqueKey);
+      deduped.push(entry);
+    }
+
+    return deduped.length > 0 ? deduped : undefined;
   }, [persistedEventLog, streamA2AEventLog]);
 
   const value = useMemo(

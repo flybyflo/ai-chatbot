@@ -327,7 +327,7 @@ export default function MessageA2ATimeline({
   return (
     <section aria-live="polite" className="relative w-full p-0">
       <ChainOfThought
-        className="rounded-none border-0 bg-transparent p-0 shadow-none"
+        className="w-full rounded-none border-0 bg-transparent p-0 shadow-none"
         defaultOpen
       >
         <ChainOfThoughtHeader>
@@ -335,7 +335,7 @@ export default function MessageA2ATimeline({
             ? `${event.agentName} · Chain of Thought`
             : "Chain of Thought"}
         </ChainOfThoughtHeader>
-        <ChainOfThoughtContent>
+        <ChainOfThoughtContent className="w-full">
           {visibleSteps.map((step, index) => {
             const isLastVisible = index === visibleSteps.length - 1;
             let status: "complete" | "active" | "pending" =

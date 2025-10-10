@@ -65,7 +65,10 @@ export const ChainOfThought = memo(
     return (
       <ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
         <div
-          className={cn("not-prose max-w-prose space-y-4 text-xs", className)}
+          className={cn(
+            "not-prose w-full max-w-none space-y-4 text-xs",
+            className
+          )}
           {...props}
         >
           {children}
@@ -93,7 +96,7 @@ export const ChainOfThoughtHeader = memo(
           {...props}
         >
           <BrainIcon className="size-4" />
-          <span className="flex-1 text-left">
+          <span className="flex-1 truncate text-left">
             {children ?? "Chain of Thought"}
           </span>
           <ChevronDownIcon
@@ -134,7 +137,7 @@ export const ChainOfThoughtStep = memo(
     return (
       <div
         className={cn(
-          "flex gap-2 text-xs",
+          "flex w-full gap-2 text-xs",
           statusStyles[status],
           "fade-in-0 slide-in-from-top-2 animate-in",
           className
@@ -145,8 +148,10 @@ export const ChainOfThoughtStep = memo(
           <Icon className="size-4" />
           <div className="-mx-px absolute top-7 bottom-0 left-1/2 w-px bg-border" />
         </div>
-        <div className="flex-1 space-y-2">
-          <div>{label}</div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="truncate" title={label}>
+            {label}
+          </div>
           {description && (
             <div className="text-muted-foreground text-xs">{description}</div>
           )}
@@ -191,7 +196,7 @@ export const ChainOfThoughtContent = memo(
       <Collapsible open={isOpen}>
         <CollapsibleContent
           className={cn(
-            "mt-2 space-y-3",
+            "mt-2 w-full space-y-3",
             "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
             className
           )}
