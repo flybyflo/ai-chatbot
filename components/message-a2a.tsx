@@ -1,16 +1,29 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
   CircleAlert,
   CircleDashed,
+  ImageIcon,
+  type LucideIcon,
   MessageCircle,
+  SearchIcon,
 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtSearchResult,
+  ChainOfThoughtSearchResults,
+  ChainOfThoughtStep,
+} from "@/components/ai-elements/chain-of-thought";
 import type { A2ATaskSummary, A2AToolEventPayload } from "@/lib/ai/a2a/types";
 
 const START_CHAR_REGEX = /^./;
+
+const URL_REGEX = /https?:\/\/[^\s)]+/gi;
 
 function formatStateLabel(value: string | undefined, fallback = "update") {
   return (value || fallback)
@@ -22,35 +35,106 @@ function normalizeText(value: string | undefined | null) {
   return value?.trim().toLowerCase() ?? "";
 }
 
-function isTerminalState(value: string | undefined) {
+function formatTimestamp(value: string | undefined) {
   if (!value) {
-    return false;
+    return;
   }
-  const normalized = value.toLowerCase();
-  return (
-    normalized === "completed" ||
-    normalized === "failed" ||
-    normalized === "canceled" ||
-    normalized === "cancelled" ||
-    normalized === "input_required" ||
-    normalized === "unknown"
-  );
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return;
+  }
+  return date.toLocaleTimeString();
 }
 
-type TimelineStep = {
-  key: string;
-  title: string;
-  meta?: string;
-  description?: string;
-  tone?: "info" | "success" | "warning" | "pending";
-};
+function extractUrls(value: string | undefined | null) {
+  if (!value) {
+    return [] as string[];
+  }
+  const matches = value.match(URL_REGEX) ?? [];
+  const cleaned = matches
+    .map((match) => match.replace(/[.,)]+$/g, ""))
+    .filter(Boolean);
+  return Array.from(new Set(cleaned));
+}
 
-/**
- * A clean, modern, headerless timeline for A2A events.
- * - No cards; just a vertical timeline.
- * - Steps animate in as they're added.
- * - Uses Tailwind + Framer Motion.
- */
+function getLogoUrl(hostname: string) {
+  const token = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+  const url = new URL(`https://img.logo.dev/${hostname}`);
+  if (token) {
+    url.searchParams.set("token", token);
+  }
+  return url.toString();
+}
+
+function getStatusIcon(label: string, state?: string) {
+  const normalizedState = normalizeText(state);
+  if (
+    normalizedState.includes("error") ||
+    normalizedState.includes("fail") ||
+    normalizedState.includes("cancel")
+  ) {
+    return CircleAlert;
+  }
+  if (
+    normalizedState.includes("complete") ||
+    normalizedState.includes("success") ||
+    normalizedState.includes("done")
+  ) {
+    return CheckCircle2;
+  }
+
+  const normalizedLabel = normalizeText(label);
+  if (
+    normalizedLabel.includes("search") ||
+    normalizedLabel.includes("fetch") ||
+    normalizedLabel.includes("scrap")
+  ) {
+    return SearchIcon;
+  }
+  if (normalizedLabel.includes("image")) {
+    return ImageIcon;
+  }
+
+  return MessageCircle;
+}
+
+function getTaskProgress(state: string | undefined) {
+  if (!state) {
+    return "pending" as const;
+  }
+  const normalized = normalizeText(state);
+  if (
+    normalized.includes("complete") ||
+    normalized.includes("success") ||
+    normalized.includes("done") ||
+    normalized.includes("fail") ||
+    normalized.includes("error") ||
+    normalized.includes("cancel")
+  ) {
+    return "complete" as const;
+  }
+  return "pending" as const;
+}
+
+function getTaskIcon(state: string | undefined) {
+  const progress = getTaskProgress(state);
+  if (progress === "pending") {
+    return CircleDashed;
+  }
+  if (state && normalizeText(state).includes("error")) {
+    return CircleAlert;
+  }
+  return CheckCircle2;
+}
+
+type Step = {
+  key: string;
+  label: string;
+  description?: string;
+  icon?: LucideIcon;
+  urls?: string[];
+  progress?: "complete" | "pending";
+};
 export default function MessageA2ATimeline({
   event,
   tasks,
@@ -86,75 +170,107 @@ export default function MessageA2ATimeline({
   const latestStatus = statusUpdates.at(-1);
   const latestStatusMessage = latestStatus?.message?.trim();
   const normalizedSummary = normalizeText(summaryText);
+  const normalizedMessages = useMemo(
+    () =>
+      (event.messages ?? [])
+        .map((message) => normalizeText(message?.text))
+        .filter(Boolean),
+    [event.messages]
+  );
   const shouldShowResponse =
     summaryText && normalizedSummary !== normalizeText(latestStatusMessage);
 
+  const summaryInMessages = normalizedMessages.includes(normalizedSummary);
+
   // Flattened, animated step data
   const steps = useMemo(() => {
-    const interimStatuses: TimelineStep[] = [];
-    const terminalStatuses: TimelineStep[] = [];
-    const result: TimelineStep[] = [];
+    const result: Step[] = [];
+    const seenLabels = new Set<string>();
 
-    result.push({
+    const pushStep = (step: Step) => {
+      if (!step.label) {
+        return;
+      }
+      const normalizedLabel = normalizeText(step.label);
+      const normalizedDescription = normalizeText(step.description);
+      const dedupeKey = `${normalizedLabel}|${normalizedDescription}`.trim();
+      if (dedupeKey && seenLabels.has(dedupeKey)) {
+        return;
+      }
+      if (dedupeKey) {
+        seenLabels.add(dedupeKey);
+      }
+      result.push(step);
+    };
+
+    pushStep({
       key: "call",
-      title: `Subagent ${event.agentName ?? "agent"} asked for help`,
-      meta: event.timestamp
-        ? new Date(event.timestamp).toLocaleTimeString()
-        : undefined,
-      tone: "info",
+      label: `Subagent ${event.agentName ?? "agent"} asked for help`,
+      description: formatTimestamp(event.timestamp),
+      icon: SearchIcon,
+      progress: "complete",
     });
 
     for (const [index, update] of statusUpdates.entries()) {
-      const stateLabel = formatStateLabel(update?.state);
-      const step: TimelineStep = {
-        key: `status-${index}-${update?.taskId ?? "none"}`,
-        title: stateLabel,
-        meta: update?.contextId
+      const message = update?.message?.trim();
+      const label = message || formatStateLabel(update?.state);
+      if (!label) {
+        return;
+      }
+      const metadata = [
+        update?.contextId
           ? `Context ${update.contextId.slice(0, 8)}…`
           : undefined,
-        description: update?.message || "Awaiting details",
-        tone: update?.state?.toLowerCase().includes("error")
-          ? "warning"
-          : update?.state?.toLowerCase().includes("complete")
-            ? "success"
-            : "pending",
-      };
+        update?.state ? formatStateLabel(update.state) : undefined,
+        formatTimestamp(update?.timestamp),
+      ]
+        .filter(Boolean)
+        .join(" • ")
+        .trim();
 
-      if (isTerminalState(update?.state)) {
-        terminalStatuses.push(step);
-      } else {
-        interimStatuses.push(step);
-      }
-    }
-
-    result.push(...interimStatuses);
-
-    for (const task of dedupedTasks) {
-      const stateLabel = formatStateLabel(task.state, "unknown");
-      const showTaskMessage =
-        !!task.statusMessage &&
-        normalizeText(task.statusMessage) !== normalizedSummary;
-      result.push({
-        key: `task-${task.taskId}`,
-        title: `Task ${task.taskId.slice(0, 8)}…`,
-        meta: stateLabel,
-        description: showTaskMessage ? task.statusMessage : undefined,
-        tone: task.state?.toLowerCase().includes("complete")
-          ? "success"
-          : task.state?.toLowerCase().includes("error")
-            ? "warning"
-            : "pending",
+      pushStep({
+        key: `status-${index}-${update?.taskId ?? "none"}`,
+        label,
+        description: metadata || undefined,
+        icon: getStatusIcon(label, update?.state),
+        urls: extractUrls(message),
+        progress: getTaskProgress(update?.state),
       });
     }
 
-    result.push(...terminalStatuses);
+    for (const task of dedupedTasks) {
+      const descriptionParts = [
+        task.state
+          ? `State: ${formatStateLabel(task.state, "unknown")}`
+          : undefined,
+        task.statusMessage &&
+        normalizeText(task.statusMessage) !== normalizedSummary
+          ? task.statusMessage
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
-    if (shouldShowResponse) {
-      result.push({
+      pushStep({
+        key: `task-${task.taskId}`,
+        label: `Task ${task.taskId.slice(0, 8)}…`,
+        description: descriptionParts || undefined,
+        icon: getTaskIcon(task.state),
+        urls: extractUrls(task.statusMessage),
+        progress: getTaskProgress(task.state),
+      });
+    }
+
+    if (shouldShowResponse && !summaryInMessages) {
+      pushStep({
         key: "response",
-        title: "Agent Response",
-        description: summaryText,
-        tone: "info",
+        label: summaryText,
+        description: event.agentName
+          ? `Answer from ${event.agentName}`
+          : "Agent response",
+        icon: CheckCircle2,
+        urls: extractUrls(summaryText),
+        progress: "complete",
       });
     }
 
@@ -166,6 +282,7 @@ export default function MessageA2ATimeline({
     normalizedSummary,
     shouldShowResponse,
     statusUpdates,
+    summaryInMessages,
     summaryText,
   ]);
 
@@ -217,109 +334,73 @@ export default function MessageA2ATimeline({
   }, [visibleCount, steps.length, enableAnimation]);
 
   return (
-    <section aria-live="polite" className="relative w-full p-2 sm:p-4">
-      {/* Timeline rail */}
-      <div className="relative pl-3 sm:pl-4">
-        <motion.span
-          animate={{ scaleY: 1 }}
-          aria-hidden
-          className="pointer-events-none absolute top-3 h-[calc(100%-0.75rem)] w-px origin-top bg-border/70"
-          initial={{ scaleY: 0 }}
-          style={{ left: "-2.5px" }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        />
+    <section
+      aria-live="polite"
+      className="relative w-full px-2 pb-3 sm:px-4 sm:pb-4"
+    >
+      <ChainOfThought
+        className="rounded-xl border bg-card/70 p-4 shadow-sm"
+        defaultOpen
+      >
+        <ChainOfThoughtHeader>
+          {event.agentName
+            ? `${event.agentName} · Chain of Thought`
+            : "Chain of Thought"}
+        </ChainOfThoughtHeader>
+        <ChainOfThoughtContent>
+          {visibleSteps.map((step, index) => {
+            const isLastVisible = index === visibleSteps.length - 1;
+            let status: "complete" | "active" | "pending" =
+              step.progress ?? "complete";
 
-        {/* Steps */}
-        <ol className="space-y-6">
-          <AnimatePresence initial={false}>
-            {visibleSteps.map((step, index) => {
-              const isLast = index === visibleSteps.length - 1;
-              const delay = index * 0.08;
+            if (isLastVisible) {
+              status =
+                visibleCount === steps.length && status === "complete"
+                  ? "complete"
+                  : "active";
+            }
 
-              return (
-                <motion.li
-                  animate={{ opacity: 1, y: 0 }}
-                  className="relative"
-                  exit={{ opacity: 0, y: -6 }}
-                  initial={{ opacity: 0, y: 10 }}
-                  key={step.key}
-                  layout
-                  transition={{ duration: 0.35, ease: "easeOut", delay }}
-                >
-                  {/* Content */}
-                  <div className="relative ml-2">
-                    {/* Dot / icon */}
-                    <div className="-left-9 sm:-left-10 -translate-y-1/2 absolute top-1/2 flex items-center justify-center">
-                      <Dot
-                        isActive={isLast && visibleCount === steps.length}
-                        tone={step.tone}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-medium text-foreground/90 text-sm sm:text-[0.95rem]">
-                        {step.title}
-                      </h4>
-                      {step.meta && (
-                        <span className="text-[11px] text-muted-foreground/80 uppercase tracking-wide">
-                          {step.meta}
-                        </span>
-                      )}
-                    </div>
-
-                    {step.description && (
-                      <motion.p
-                        animate={{ opacity: 1 }}
-                        className="mt-1 whitespace-pre-wrap text-muted-foreground text-sm"
-                        initial={{ opacity: 0 }}
-                        transition={{
-                          duration: 0.35,
-                          ease: "easeOut",
-                          delay: delay + 0.05,
-                        }}
-                      >
-                        {step.description}
-                      </motion.p>
-                    )}
-                  </div>
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-        </ol>
-      </div>
+            return (
+              <ChainOfThoughtStep
+                description={step.description}
+                icon={step.icon ?? MessageCircle}
+                key={step.key}
+                label={step.label}
+                status={status}
+              >
+                {step.urls && step.urls.length > 0 && (
+                  <ChainOfThoughtSearchResults>
+                    {step.urls.map((url) => {
+                      try {
+                        const parsed = new URL(url);
+                        const hostname = parsed.hostname;
+                        return (
+                          <ChainOfThoughtSearchResult key={url}>
+                            <Image
+                              alt=""
+                              className="size-4"
+                              height={16}
+                              src={getLogoUrl(hostname)}
+                              width={16}
+                            />
+                            {hostname}
+                          </ChainOfThoughtSearchResult>
+                        );
+                      } catch (_error) {
+                        return (
+                          <ChainOfThoughtSearchResult key={url}>
+                            {url}
+                          </ChainOfThoughtSearchResult>
+                        );
+                      }
+                    })}
+                  </ChainOfThoughtSearchResults>
+                )}
+              </ChainOfThoughtStep>
+            );
+          })}
+        </ChainOfThoughtContent>
+      </ChainOfThought>
     </section>
-  );
-}
-
-function Dot({
-  tone = "info",
-  isActive = false,
-}: {
-  tone?: "info" | "success" | "warning" | "pending";
-  isActive?: boolean;
-}) {
-  const Icon =
-    tone === "success"
-      ? CheckCircle2
-      : tone === "warning"
-        ? CircleAlert
-        : tone === "pending"
-          ? CircleDashed
-          : MessageCircle;
-
-  return (
-    <div className="relative">
-      {/* outer ring */}
-      <span className="absolute inset-0 rounded-full bg-foreground/5 blur-[1.5px]" />
-
-      {/* pulse on the latest item */}
-      {isActive && (
-        <span className="absolute inset-0 animate-ping rounded-full bg-foreground/20" />
-      )}
-
-      <span className="relative flex h-7 w-7 items-center justify-center rounded-full border border-border/70 bg-background shadow-sm">
-        <Icon className="h-3.5 w-3.5 text-foreground/80" />
-      </span>
-    </div>
   );
 }
