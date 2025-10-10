@@ -427,6 +427,62 @@ export const updateUserMCPServer = mutation({
   },
 });
 
+const mcpRegistryValidator = v.object({
+  tools: v.record(v.any()),
+  metadata: v.record(
+    v.object({
+      serverName: v.string(),
+      serverUrl: v.string(),
+      toolName: v.string(),
+      description: v.optional(v.string()),
+      isHealthy: v.boolean(),
+    })
+  ),
+  serverStatus: v.record(
+    v.object({
+      name: v.string(),
+      url: v.string(),
+      isConnected: v.boolean(),
+      lastError: v.optional(v.string()),
+      toolCount: v.number(),
+    })
+  ),
+});
+
+export const upsertUserMCPRegistrySnapshot = mutation({
+  args: {
+    userId: v.string(),
+    serverId: v.id("userMCPServers"),
+    registry: mcpRegistryValidator,
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("userMCPRegistrySnapshots")
+      .withIndex("by_userId_serverId", (q) =>
+        q.eq("userId", args.userId).eq("serverId", args.serverId)
+      )
+      .unique();
+
+    const now = Date.now();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        registry: args.registry,
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("userMCPRegistrySnapshots", {
+      userId: args.userId,
+      serverId: args.serverId,
+      registry: args.registry,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 export const deleteUserMCPServer = mutation({
   args: {
     id: v.id("userMCPServers"),

@@ -52,6 +52,8 @@ export const serverToolsResponseSchema = z.object({
   serverId: z.string().uuid(),
   serverName: z.string(),
   tools: z.record(z.any()),
+  isCached: z.boolean().optional(),
+  status: z.string().optional(),
 });
 
 export type ToolsResponse = z.infer<typeof toolsResponseSchema>;

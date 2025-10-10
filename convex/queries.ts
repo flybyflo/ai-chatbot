@@ -360,6 +360,32 @@ export const getActiveUserMCPServers = query({
   },
 });
 
+export const getUserMCPRegistrySnapshots = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("userMCPRegistrySnapshots")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const getUserMCPRegistrySnapshotByServer = query({
+  args: {
+    userId: v.string(),
+    serverId: v.id("userMCPServers"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("userMCPRegistrySnapshots")
+      .withIndex("by_userId_serverId", (q) =>
+        q.eq("userId", args.userId).eq("serverId", args.serverId)
+      )
+      .unique();
+  },
+});
+
 // ============================================================================
 // User A2A Server Queries
 // ============================================================================

@@ -103,6 +103,37 @@ export default defineSchema({
     .index("by_userId_isActive", ["userId", "isActive"])
     .index("by_updatedAt", ["updatedAt"]),
 
+  userMCPRegistrySnapshots: defineTable({
+    userId: v.string(),
+    serverId: v.id("userMCPServers"),
+    registry: v.object({
+      tools: v.record(v.any()),
+      metadata: v.record(
+        v.object({
+          serverName: v.string(),
+          serverUrl: v.string(),
+          toolName: v.string(),
+          description: v.optional(v.string()),
+          isHealthy: v.boolean(),
+        })
+      ),
+      serverStatus: v.record(
+        v.object({
+          name: v.string(),
+          url: v.string(),
+          isConnected: v.boolean(),
+          lastError: v.optional(v.string()),
+          toolCount: v.number(),
+        })
+      ),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_serverId", ["userId", "serverId"])
+    .index("by_serverId", ["serverId"]),
+
   // User A2A Servers
   userA2AServers: defineTable({
     userId: v.string(),
