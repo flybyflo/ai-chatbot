@@ -30,12 +30,14 @@ import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 
+const TASK_STATE_SPLIT_REGEX = /[-_\s]+/;
+
 const _formatTaskState = (state?: string) => {
   if (!state) {
     return;
   }
   return state
-    .split(/[-_\s]+/)
+    .split(TASK_STATE_SPLIT_REGEX)
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
@@ -119,14 +121,51 @@ const PurePreviewMessage = ({
 
           {(() => {
             const flowItems: Array<
-              | { kind: "reasoning"; content: string; originalIndex: number }
-              | { kind: "text"; index: number }
-              | { kind: "tool-getWeather"; part: any }
-              | { kind: "tool-codeCompare"; part: any }
-              | { kind: "tool-plantuml"; part: any }
-              | { kind: "tool-a2a"; agentKey: string; part: any }
-              | { kind: "dynamic-tool"; part: any }
+              | {
+                  kind: "reasoning";
+                  content: string;
+                  originalIndex: number;
+                  sequence: number;
+                }
+              | {
+                  kind: "text";
+                  originalIndex: number;
+                  sequence: number;
+                }
+              | {
+                  kind: "tool-getWeather";
+                  part: any;
+                  originalIndex: number;
+                  sequence: number;
+                }
+              | {
+                  kind: "tool-codeCompare";
+                  part: any;
+                  originalIndex: number;
+                  sequence: number;
+                }
+              | {
+                  kind: "tool-plantuml";
+                  part: any;
+                  originalIndex: number;
+                  sequence: number;
+                }
+              | {
+                  kind: "tool-a2a";
+                  agentKey: string;
+                  part: any;
+                  originalIndex: number;
+                  sequence: number;
+                }
+              | {
+                  kind: "dynamic-tool";
+                  part: any;
+                  originalIndex: number;
+                  sequence: number;
+                }
             > = [];
+
+            let sequenceCounter = 0;
 
             let currentReasoning = "";
             let firstReasoningIndex = -1;
@@ -137,6 +176,7 @@ const PurePreviewMessage = ({
                   kind: "reasoning",
                   content: currentReasoning,
                   originalIndex: firstReasoningIndex,
+                  sequence: sequenceCounter++,
                 });
                 currentReasoning = "";
                 firstReasoningIndex = -1;
@@ -176,25 +216,44 @@ const PurePreviewMessage = ({
               flushReasoning();
 
               if (part.type === "text" && partText?.trim()) {
-                flowItems.push({ kind: "text", index });
+                flowItems.push({
+                  kind: "text",
+                  originalIndex: index,
+                  sequence: sequenceCounter++,
+                });
                 return;
               }
 
               if (part.type === "tool-getWeather") {
                 console.log("[MESSAGE] Found tool-getWeather part");
-                flowItems.push({ kind: "tool-getWeather", part });
+                flowItems.push({
+                  kind: "tool-getWeather",
+                  part,
+                  originalIndex: index,
+                  sequence: sequenceCounter++,
+                });
                 return;
               }
 
               if (part.type === "tool-codeCompare") {
                 console.log("[MESSAGE] Found tool-codeCompare part");
-                flowItems.push({ kind: "tool-codeCompare", part });
+                flowItems.push({
+                  kind: "tool-codeCompare",
+                  part,
+                  originalIndex: index,
+                  sequence: sequenceCounter++,
+                });
                 return;
               }
 
               if (part.type === "tool-plantuml") {
                 console.log("[MESSAGE] Found tool-plantuml part");
-                flowItems.push({ kind: "tool-plantuml", part });
+                flowItems.push({
+                  kind: "tool-plantuml",
+                  part,
+                  originalIndex: index,
+                  sequence: sequenceCounter++,
+                });
                 return;
               }
 
@@ -208,13 +267,24 @@ const PurePreviewMessage = ({
                   agentKey,
                   part,
                 });
-                flowItems.push({ kind: "tool-a2a", agentKey, part });
+                flowItems.push({
+                  kind: "tool-a2a",
+                  agentKey,
+                  part,
+                  originalIndex: index,
+                  sequence: sequenceCounter++,
+                });
                 return;
               }
 
               if (part.type === "dynamic-tool") {
                 console.log("[MESSAGE] Found dynamic-tool part:", part);
-                flowItems.push({ kind: "dynamic-tool", part });
+                flowItems.push({
+                  kind: "dynamic-tool",
+                  part,
+                  originalIndex: index,
+                  sequence: sequenceCounter++,
+                });
                 return;
               }
 
@@ -232,7 +302,14 @@ const PurePreviewMessage = ({
 
             const hasRenderedBeforeFlow = attachmentsFromMessage.length > 0;
 
-            return flowItems.map((item, flowIndex) => {
+            const sortedFlowItems = [...flowItems].sort((a, b) => {
+              if (a.originalIndex === b.originalIndex) {
+                return a.sequence - b.sequence;
+              }
+              return a.originalIndex - b.originalIndex;
+            });
+
+            return sortedFlowItems.map((item, flowIndex) => {
               const needsTopMargin = hasRenderedBeforeFlow || flowIndex > 0;
 
               if (item.kind === "reasoning") {
@@ -240,7 +317,9 @@ const PurePreviewMessage = ({
                 return (
                   <MessageReasoning
                     className={needsTopMargin ? "mt-3" : undefined}
-                    isLoading={isLoading && flowIndex === flowItems.length - 1}
+                    isLoading={
+                      isLoading && flowIndex === sortedFlowItems.length - 1
+                    }
                     key={key}
                     reasoning={item.content}
                   />
@@ -248,8 +327,8 @@ const PurePreviewMessage = ({
               }
 
               if (item.kind === "text") {
-                const part = message.parts?.[item.index];
-                const key = `message-${message.id}-part-${item.index}`;
+                const part = message.parts?.[item.originalIndex];
+                const key = `message-${message.id}-part-${item.originalIndex}`;
                 if (!part) {
                   return null;
                 }
