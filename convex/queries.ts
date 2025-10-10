@@ -461,3 +461,38 @@ export const getDefaultLoadout = query({
     return loadouts;
   },
 });
+
+// ============================================================================
+// User Selected Tools Queries
+// ============================================================================
+
+export const getUserSelectedTools = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      selectedTools: v.array(v.string()),
+      updatedAt: v.number(),
+    })
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const record = await ctx.db
+      .query("userSelectedTools")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+
+    if (!record) {
+      return null;
+    }
+
+    return {
+      selectedTools: record.selectedTools ?? [],
+      updatedAt: record.updatedAt ?? record._creationTime,
+    };
+  },
+});

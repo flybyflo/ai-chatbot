@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import useSWR from "swr";
 import { LOCAL_TOOL_IDS } from "@/lib/enums";
 import {
@@ -8,10 +8,6 @@ import {
   type ToolListItem,
   toolsResponseSchema,
 } from "@/lib/schemas/tools";
-import {
-  commitSelectedTools,
-  getSelectedToolsSnapshot,
-} from "@/lib/selected-tools";
 import { fetcher } from "@/lib/utils";
 
 type ToolsResponse = ReturnType<typeof toolsResponseSchema.parse>;
@@ -111,20 +107,3 @@ export function useMCPServerTools(serverId: string | undefined) {
   };
 }
 
-export function useSelectedTools(
-  selectedTools: string[] | undefined,
-  onValidSelection?: (tools: string[]) => void
-) {
-  useEffect(() => {
-    if (!selectedTools) {
-      return;
-    }
-
-    const normalized = commitSelectedTools(selectedTools);
-    onValidSelection?.(normalized);
-  }, [selectedTools, onValidSelection]);
-
-  return {
-    getCachedSelected: () => getSelectedToolsSnapshot(),
-  };
-}
