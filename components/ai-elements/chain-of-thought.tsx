@@ -65,7 +65,7 @@ export const ChainOfThought = memo(
     return (
       <ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
         <div
-          className={cn("not-prose max-w-prose space-y-4", className)}
+          className={cn("not-prose max-w-prose space-y-4 text-xs", className)}
           {...props}
         >
           {children}
@@ -87,7 +87,7 @@ export const ChainOfThoughtHeader = memo(
       <Collapsible onOpenChange={setIsOpen} open={isOpen}>
         <CollapsibleTrigger
           className={cn(
-            "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+            "flex w-full items-center gap-2 text-muted-foreground text-xs transition-colors hover:text-foreground",
             className
           )}
           {...props}
@@ -134,7 +134,7 @@ export const ChainOfThoughtStep = memo(
     return (
       <div
         className={cn(
-          "flex gap-2 text-sm",
+          "flex gap-2 text-xs",
           statusStyles[status],
           "fade-in-0 slide-in-from-top-2 animate-in",
           className
