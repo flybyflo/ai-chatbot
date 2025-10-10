@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
 import { useAllTools } from "@/hooks/use-tools";
-import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
+import { useSharedSelectedTools } from "@/lib/selected-tools";
 
 type MCPServerSettingsPageProps = {
   params: Promise<{
@@ -573,38 +573,17 @@ function MCPToolToggle({
   tool: { id: string; name: string; description?: string };
   serverName?: string;
 }) {
-  const selectedTools = useMCPServerStore((s) => s.selectedTools);
-  const setStoreSelected = useMCPServerStore((s) => s.setSelectedTools);
-
-  useEffect(() => {
-    if (selectedTools.length === 0) {
-      const stored = localStorage.getItem("selected-tools");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setStoreSelected(parsed);
-          }
-        } catch {
-          localStorage.removeItem("selected-tools");
-        }
-      }
-    }
-  }, [selectedTools.length, setStoreSelected]);
+  const { selectedTools, toggleTool } = useSharedSelectedTools();
 
   const isActive = selectedTools.includes(tool.id);
 
-  const toggle = () => {
-    const next = isActive
-      ? selectedTools.filter((t) => t !== tool.id)
-      : [...selectedTools, tool.id];
+  const handleToggle = () => {
+    const next = toggleTool(tool.id);
     console.log("[MCP_SETTINGS] Toggling tool:", {
       toolId: tool.id,
       wasActive: isActive,
       newSelection: next,
     });
-    setStoreSelected(next);
-    localStorage.setItem("selected-tools", JSON.stringify(next));
 
     // Invalidate SWR cache so other components pick up the change
     mutate("/api/tools").catch((err) => {
@@ -638,7 +617,7 @@ function MCPToolToggle({
       </div>
       <Button
         className={isActive ? "border-destructive text-destructive" : undefined}
-        onClick={toggle}
+        onClick={handleToggle}
         size="sm"
         variant="outline"
       >

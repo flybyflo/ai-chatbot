@@ -24,8 +24,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { useSession } from "@/lib/auth-client";
-import { selectedToolsSchema } from "@/lib/schemas/tools";
-import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
+import { useSharedSelectedTools } from "@/lib/selected-tools";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { fetcher, generateUUID, getTextFromMessage } from "@/lib/utils";
@@ -98,101 +97,24 @@ export function Chat({
   const [currentReasoningEffort, setCurrentReasoningEffort] = useState<
     "low" | "medium" | "high"
   >("high");
-  const [selectedTools, setSelectedTools] = useState<string[]>(["getWeather"]);
-  const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
+  const { selectedTools, setSelectedTools: updateSelectedTools } =
+    useSharedSelectedTools({ defaultTools: ["getWeather"] });
   const selectedToolsRef = useRef(selectedTools);
-  const lastSyncedStoreValue = useRef<string>("");
-  const setStoreSelected = useMCPServerStore((s) => s.setSelectedTools);
-  const selectedToolsFromStore = useMCPServerStore((s) => s.selectedTools);
 
   useEffect(() => {
     const stored = localStorage.getItem("reasoning-effort");
     if (stored === "low" || stored === "medium" || stored === "high") {
       setCurrentReasoningEffort(stored);
     }
-
-    // Prefer React Query cache for selected tools across app
-    // Prefer persisted Zustand store first
-    const fromStore = useMCPServerStore.getState().selectedTools;
-    console.log("[CHAT] Loading tools from storage on mount:", {
-      fromZustand: fromStore,
-      fromLocalStorage: localStorage.getItem("selected-tools"),
-    });
-    if (fromStore && fromStore.length > 0) {
-      console.log("[CHAT] Using tools from Zustand store:", fromStore);
-      setSelectedTools(fromStore);
-      setHasLoadedFromStorage(true);
-      return;
-    }
-    const storedTools = localStorage.getItem("selected-tools");
-    if (storedTools) {
-      try {
-        const parsedTools = JSON.parse(storedTools);
-        if (Array.isArray(parsedTools) && parsedTools.length > 0) {
-          const validated = selectedToolsSchema.parse(parsedTools);
-          console.log("[CHAT] Using tools from localStorage:", validated);
-          setSelectedTools(validated);
-        }
-      } catch {
-        console.warn("[CHAT] Failed to parse tools from localStorage");
-        localStorage.removeItem("selected-tools");
-      }
-    }
-    console.log("[CHAT] Finished loading tools, setting hasLoadedFromStorage=true");
-    setHasLoadedFromStorage(true);
   }, []);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
 
-  // Subscribe to Zustand store changes (one-way: store -> local state)
-  useEffect(() => {
-    if (!hasLoadedFromStorage) {
-      return;
-    }
-
-    const storeToolsString = JSON.stringify([...selectedToolsFromStore].sort());
-
-    // Only sync if store changed and it's different from what we last synced
-    if (storeToolsString !== lastSyncedStoreValue.current) {
-      console.log("[CHAT] Zustand store updated externally, syncing to local state:", {
-        fromStore: selectedToolsFromStore,
-        lastSynced: lastSyncedStoreValue.current,
-      });
-      lastSyncedStoreValue.current = storeToolsString;
-      setSelectedTools(selectedToolsFromStore);
-    }
-  }, [selectedToolsFromStore, hasLoadedFromStorage]);
-
-  // Persist selectedTools changes to storage (one-way: local state -> store)
   useEffect(() => {
     selectedToolsRef.current = selectedTools;
-    if (!hasLoadedFromStorage) {
-      return;
-    }
-
-    const localString = JSON.stringify([...selectedTools].sort());
-
-    // Only update if this change didn't come from the store
-    if (localString !== lastSyncedStoreValue.current) {
-      console.log("[CHAT] Persisting selected tools:", {
-        selectedTools,
-        toLocalStorage: true,
-        toZustand: true,
-      });
-      localStorage.setItem("selected-tools", JSON.stringify(selectedTools));
-
-      try {
-        const validated = selectedToolsSchema.parse(selectedTools);
-        setStoreSelected(validated);
-        lastSyncedStoreValue.current = localString;
-        console.log("[CHAT] Successfully persisted to Zustand store:", validated);
-      } catch (error) {
-        console.warn("[CHAT] Failed to validate and persist tools:", error);
-      }
-    }
-  }, [selectedTools, hasLoadedFromStorage, setStoreSelected]);
+  }, [selectedTools]);
 
   // Get current user session
   const { data: session } = useSession();
@@ -516,7 +438,7 @@ export function Chat({
                     messages={messages}
                     onModelChange={setCurrentModelId}
                     onReasoningEffortChange={setCurrentReasoningEffort}
-                    onToolsChange={setSelectedTools}
+                    onToolsChange={updateSelectedTools}
                     selectedModelId={currentModelId}
                     selectedReasoningEffort={currentReasoningEffort}
                     selectedTools={selectedTools}
@@ -556,7 +478,7 @@ export function Chat({
                   messages={messages}
                   onModelChange={setCurrentModelId}
                   onReasoningEffortChange={setCurrentReasoningEffort}
-                  onToolsChange={setSelectedTools}
+                  onToolsChange={updateSelectedTools}
                   selectedModelId={currentModelId}
                   selectedReasoningEffort={currentReasoningEffort}
                   selectedTools={selectedTools}

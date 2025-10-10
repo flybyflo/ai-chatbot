@@ -4,12 +4,14 @@ import { useEffect, useMemo } from "react";
 import useSWR from "swr";
 import { LOCAL_TOOL_IDS } from "@/lib/enums";
 import {
-  selectedToolsSchema,
   serverToolsResponseSchema,
   type ToolListItem,
   toolsResponseSchema,
 } from "@/lib/schemas/tools";
-import { useMCPServerStore } from "@/lib/stores/mcp-server-store";
+import {
+  commitSelectedTools,
+  getSelectedToolsSnapshot,
+} from "@/lib/selected-tools";
 import { fetcher } from "@/lib/utils";
 
 type ToolsResponse = ReturnType<typeof toolsResponseSchema.parse>;
@@ -113,30 +115,16 @@ export function useSelectedTools(
   selectedTools: string[] | undefined,
   onValidSelection?: (tools: string[]) => void
 ) {
-  const setSelectedTools = useMCPServerStore((s) => s.setSelectedTools);
-
   useEffect(() => {
     if (!selectedTools) {
       return;
     }
 
-    try {
-      const parsed = selectedToolsSchema.parse(selectedTools);
-      onValidSelection?.(parsed);
-      setSelectedTools(parsed);
-    } catch {
-      onValidSelection?.([]);
-      setSelectedTools([]);
-    }
-  }, [selectedTools, onValidSelection, setSelectedTools]);
+    const normalized = commitSelectedTools(selectedTools);
+    onValidSelection?.(normalized);
+  }, [selectedTools, onValidSelection]);
 
   return {
-    getCachedSelected: () => {
-      const storeSelected = useMCPServerStore.getState().selectedTools;
-      if (storeSelected && storeSelected.length > 0) {
-        return storeSelected;
-      }
-      return [];
-    },
+    getCachedSelected: () => getSelectedToolsSnapshot(),
   };
 }
