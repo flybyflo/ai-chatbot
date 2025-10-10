@@ -389,64 +389,180 @@ export const generateAssistantMessage = internalAction({
       }
 
       // 6. Extract tool calls and results from steps
-      const toolParts: any[] = [];
+      const toolPartsMap = new Map<string, any>();
+
+      const formatError = (error: unknown) => {
+        if (error === undefined || error === null) {
+          return;
+        }
+        if (typeof error === "string") {
+          return error;
+        }
+        try {
+          return JSON.stringify(error, null, 2);
+        } catch (jsonError) {
+          console.warn("⚠️ Failed to stringify tool error:", jsonError);
+          return String(error);
+        }
+      };
+
+      const upsertToolPart = (
+        toolCall: any,
+        context: {
+          result?: any;
+          error?: any;
+        }
+      ) => {
+        if (!toolCall) {
+          return;
+        }
+
+        const toolName: string = toolCall.toolName || "";
+        const toolCallId: string = toolCall.toolCallId || "";
+        if (!toolName || !toolCallId) {
+          return;
+        }
+
+        const isDynamic = toolCall.dynamic === true || toolName.includes("_");
+        if (!isDynamic) {
+          return;
+        }
+
+        const existing = toolPartsMap.get(toolCallId) || {
+          type: "dynamic-tool",
+          toolCallId,
+          toolName,
+          state: "input-available",
+          input: toolCall.input ?? toolCall.args ?? {},
+        };
+
+        existing.input = toolCall.input ?? toolCall.args ?? existing.input;
+
+        const output = context.result?.output ?? context.result?.result;
+        if (output !== undefined) {
+          existing.output = output;
+          existing.state = "output-available";
+        }
+
+        const formattedError = formatError(
+          context.error ?? context.result?.error ?? existing.errorText
+        );
+        if (formattedError !== undefined) {
+          existing.errorText = formattedError;
+          existing.state = "output-available";
+        }
+
+        toolPartsMap.set(toolCallId, existing);
+        console.log(`✅ Recorded dynamic tool part: ${toolName}`);
+      };
+
+      const collectFromStep = (step: any) => {
+        if (
+          !step ||
+          !Array.isArray(step.toolCalls) ||
+          step.toolCalls.length === 0
+        ) {
+          return;
+        }
+
+        console.log(`🔧 Found ${step.toolCalls.length} tool calls in step`);
+
+        const toolResultsById = new Map<string, any>();
+        if (Array.isArray(step.toolResults)) {
+          for (const toolResultEntry of step.toolResults) {
+            if (toolResultEntry?.toolCallId) {
+              toolResultsById.set(toolResultEntry.toolCallId, toolResultEntry);
+            }
+          }
+        }
+
+        const content = Array.isArray(step.content) ? step.content : [];
+        const toolErrorsById = new Map<string, any>();
+        const contentResultsById = new Map<string, any>();
+        for (const part of content) {
+          if (!part || typeof part !== "object") {
+            continue;
+          }
+          if (part.type === "tool-error" && part.toolCallId) {
+            toolErrorsById.set(part.toolCallId, part);
+          }
+          if (part.type === "tool-result" && part.toolCallId) {
+            contentResultsById.set(part.toolCallId, part);
+          }
+        }
+
+        for (const toolCall of step.toolCalls) {
+          const toolCallId = toolCall?.toolCallId;
+          if (!toolCallId) {
+            continue;
+          }
+
+          const matchedResult =
+            toolResultsById.get(toolCallId) ??
+            contentResultsById.get(toolCallId);
+          const error = toolErrorsById.get(toolCallId)?.error;
+
+          console.log("🔧 Tool call:", {
+            toolName: toolCall?.toolName,
+            toolCallId,
+            hasResult: !!matchedResult,
+            hasError: !!error,
+          });
+
+          upsertToolPart(toolCall, { result: matchedResult, error });
+        }
+      };
+
       if (finalResult.steps && Array.isArray(finalResult.steps)) {
         console.log(
           `🔧 Processing ${finalResult.steps.length} steps for tool calls`
         );
-
         for (const step of finalResult.steps) {
-          if (step.toolCalls && Array.isArray(step.toolCalls)) {
-            console.log(`🔧 Found ${step.toolCalls.length} tool calls in step`);
+          collectFromStep(step);
+        }
+      }
 
-            for (const toolCall of step.toolCalls) {
-              const toolName = toolCall.toolName || "";
-              const toolCallId = toolCall.toolCallId || "";
-              const toolArgs = toolCall.args || {};
+      // Fallback to aggregated dynamic tool data if steps did not yield results
+      if (toolPartsMap.size === 0) {
+        const dynamicToolCalls = (finalResult as any)?.dynamicToolCalls;
+        const dynamicToolResults = (finalResult as any)?.dynamicToolResults;
+        const content = (finalResult as any)?.content;
 
-              // Find matching tool result
-              const toolResult = step.toolResults?.find(
-                (r: any) => r.toolCallId === toolCallId
-              );
-
-              console.log("🔧 Tool call:", {
-                toolName,
-                toolCallId,
-                hasResult: !!toolResult,
-              });
-
-              // Check if this is a dynamic tool (MCP or A2A)
-              // Dynamic tools typically have underscore in their name (e.g., better-auth_search)
-              if (toolName.includes("_")) {
-                const state = toolResult
-                  ? "output-available"
-                  : "input-available";
-
-                const toolPart: any = {
-                  type: "dynamic-tool",
-                  toolCallId,
-                  toolName,
-                  state,
-                  input: toolArgs,
-                };
-
-                if (toolResult) {
-                  if (toolResult.result) {
-                    toolPart.output = toolResult.result;
-                  }
-                  if ((toolResult as any).error) {
-                    toolPart.errorText = String((toolResult as any).error);
-                  }
-                }
-
-                toolParts.push(toolPart);
-                console.log(`✅ Added dynamic tool part: ${toolName}`);
+        if (Array.isArray(dynamicToolCalls) && dynamicToolCalls.length > 0) {
+          const resultsById = new Map<string, any>();
+          if (Array.isArray(dynamicToolResults)) {
+            for (const dynamicResult of dynamicToolResults) {
+              if (dynamicResult?.toolCallId) {
+                resultsById.set(dynamicResult.toolCallId, dynamicResult);
               }
             }
+          }
+
+          const errorById = new Map<string, any>();
+          if (Array.isArray(content)) {
+            for (const part of content) {
+              if (part?.type === "tool-error" && part.toolCallId) {
+                errorById.set(part.toolCallId, part.error);
+              }
+            }
+          }
+
+          console.log(
+            `🔧 Fallback processing ${dynamicToolCalls.length} dynamic tool calls`
+          );
+
+          for (const toolCall of dynamicToolCalls) {
+            const toolCallId = toolCall?.toolCallId;
+            const resolvedResult = toolCallId
+              ? resultsById.get(toolCallId)
+              : undefined;
+            const error = toolCallId ? errorById.get(toolCallId) : undefined;
+            upsertToolPart(toolCall, { result: resolvedResult, error });
           }
         }
       }
 
+      const toolParts = Array.from(toolPartsMap.values());
       console.log(`🔧 Total tool parts extracted: ${toolParts.length}`);
 
       // 7. Update message parts with final content (reasoning + tools + text)
