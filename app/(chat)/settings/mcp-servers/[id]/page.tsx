@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
 import { useAllTools } from "@/hooks/use-tools";
+import { TOOL_TYPES } from "@/lib/enums";
 import { useSharedSelectedTools } from "@/lib/selected-tools";
 
 type MCPServerSettingsPageProps = {
@@ -573,7 +574,9 @@ function MCPToolToggle({
   tool: { id: string; name: string; description?: string };
   serverName?: string;
 }) {
-  const { selectedTools, toggleTool } = useSharedSelectedTools();
+  const { selectedTools, toggleTool } = useSharedSelectedTools({
+    resolveToolType: () => TOOL_TYPES.MCP,
+  });
 
   const isActive = selectedTools.includes(tool.id);
 

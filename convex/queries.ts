@@ -472,6 +472,14 @@ export const getUserSelectedTools = query({
     v.null(),
     v.object({
       selectedTools: v.array(v.string()),
+      selectedMcpTools: v.array(v.string()),
+      selectedA2AServers: v.array(v.string()),
+      selectedLocalTools: v.array(v.string()),
+      selectedChatModel: v.optional(v.string()),
+      selectedReasoningEffort: v.optional(
+        v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+      ),
+      activeLoadoutId: v.optional(v.union(v.string(), v.null())),
       updatedAt: v.number(),
     })
   ),
@@ -492,6 +500,15 @@ export const getUserSelectedTools = query({
 
     return {
       selectedTools: record.selectedTools ?? [],
+      selectedMcpTools: record.selectedMcpTools ?? [],
+      selectedA2AServers: record.selectedA2AServers ?? [],
+      selectedLocalTools: record.selectedLocalTools ?? [],
+      selectedChatModel: record.selectedChatModel ?? undefined,
+      selectedReasoningEffort: record.selectedReasoningEffort ?? undefined,
+      activeLoadoutId:
+        record.activeLoadoutId === undefined
+          ? null
+          : (record.activeLoadoutId ?? null),
       updatedAt: record.updatedAt ?? record._creationTime,
     };
   },

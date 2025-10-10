@@ -718,10 +718,26 @@ export const deleteUserLoadout = mutation({
 
 export const setUserSelectedTools = mutation({
   args: {
-    selectedTools: v.array(v.string()),
+    selectedTools: v.optional(v.array(v.string())),
+    selectedMcpTools: v.optional(v.array(v.string())),
+    selectedA2AServers: v.optional(v.array(v.string())),
+    selectedLocalTools: v.optional(v.array(v.string())),
+    selectedChatModel: v.optional(v.string()),
+    selectedReasoningEffort: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+    ),
+    activeLoadoutId: v.optional(v.union(v.string(), v.null())),
   },
   returns: v.object({
     selectedTools: v.array(v.string()),
+    selectedMcpTools: v.array(v.string()),
+    selectedA2AServers: v.array(v.string()),
+    selectedLocalTools: v.array(v.string()),
+    selectedChatModel: v.optional(v.string()),
+    selectedReasoningEffort: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+    ),
+    activeLoadoutId: v.optional(v.union(v.string(), v.null())),
     updatedAt: v.number(),
   }),
   handler: async (ctx, args) => {
@@ -739,22 +755,72 @@ export const setUserSelectedTools = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        selectedTools: args.selectedTools,
-        updatedAt: now,
-      });
-    } else {
-      await ctx.db.insert("userSelectedTools", {
-        userId,
-        selectedTools: args.selectedTools,
-        createdAt: now,
-        updatedAt: now,
-      });
+      const updateData: Record<string, unknown> = { updatedAt: now };
+      if (args.selectedTools !== undefined) {
+        updateData.selectedTools = args.selectedTools;
+      }
+      if (args.selectedMcpTools !== undefined) {
+        updateData.selectedMcpTools = args.selectedMcpTools;
+      }
+      if (args.selectedA2AServers !== undefined) {
+        updateData.selectedA2AServers = args.selectedA2AServers;
+      }
+      if (args.selectedLocalTools !== undefined) {
+        updateData.selectedLocalTools = args.selectedLocalTools;
+      }
+      if (args.selectedChatModel !== undefined) {
+        updateData.selectedChatModel = args.selectedChatModel;
+      }
+      if (args.selectedReasoningEffort !== undefined) {
+        updateData.selectedReasoningEffort = args.selectedReasoningEffort;
+      }
+      if (args.activeLoadoutId !== undefined) {
+        updateData.activeLoadoutId = args.activeLoadoutId;
+      }
+
+      await ctx.db.patch(existing._id, updateData);
+      const record = await ctx.db.get(existing._id);
+      return {
+        selectedTools: record?.selectedTools ?? [],
+        selectedMcpTools: record?.selectedMcpTools ?? [],
+        selectedA2AServers: record?.selectedA2AServers ?? [],
+        selectedLocalTools: record?.selectedLocalTools ?? [],
+        selectedChatModel: record?.selectedChatModel ?? undefined,
+        selectedReasoningEffort:
+          record?.selectedReasoningEffort ?? undefined,
+        activeLoadoutId:
+          record?.activeLoadoutId === undefined
+            ? null
+            : (record?.activeLoadoutId ?? null),
+        updatedAt: record?.updatedAt ?? now,
+      };
     }
 
-    return {
-      selectedTools: args.selectedTools,
+    const doc = {
+      userId,
+      selectedTools: args.selectedTools ?? [],
+      selectedMcpTools: args.selectedMcpTools ?? [],
+      selectedA2AServers: args.selectedA2AServers ?? [],
+      selectedLocalTools: args.selectedLocalTools ?? [],
+      selectedChatModel: args.selectedChatModel,
+      selectedReasoningEffort: args.selectedReasoningEffort,
+      activeLoadoutId:
+        args.activeLoadoutId === undefined ? null : args.activeLoadoutId,
+      createdAt: now,
       updatedAt: now,
+    };
+
+    await ctx.db.insert("userSelectedTools", doc);
+
+    return {
+      selectedTools: doc.selectedTools,
+      selectedMcpTools: doc.selectedMcpTools,
+      selectedA2AServers: doc.selectedA2AServers,
+      selectedLocalTools: doc.selectedLocalTools,
+      selectedChatModel: doc.selectedChatModel ?? undefined,
+      selectedReasoningEffort: doc.selectedReasoningEffort ?? undefined,
+      activeLoadoutId: doc.activeLoadoutId,
+      updatedAt: doc.updatedAt,
     };
   },
 });

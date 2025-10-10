@@ -4,7 +4,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { ChatStatus } from "ai";
 import { useAction, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -23,8 +23,10 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { useAllTools } from "@/hooks/use-tools";
 import { useSession } from "@/lib/auth-client";
 import { useSharedSelectedTools } from "@/lib/selected-tools";
+import { TOOL_TYPES, type ToolType } from "@/lib/enums";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { fetcher, generateUUID, getTextFromMessage } from "@/lib/utils";
@@ -92,21 +94,67 @@ export function Chat({
   const [input, setInput] = useState<string>("");
   const [usage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
-  const [currentModelId, setCurrentModelId] = useState(initialChatModel);
+  const { tools: availableTools } = useAllTools();
+  const toolTypeMap = useMemo(() => {
+    const map = new Map<string, ToolType>();
+    for (const tool of availableTools) {
+      map.set(tool.id, tool.type as ToolType);
+    }
+    return map;
+  }, [availableTools]);
+
+  const resolveToolType = useCallback(
+    (toolId: string) => toolTypeMap.get(toolId) ?? TOOL_TYPES.MCP,
+    [toolTypeMap]
+  );
+
+  const {
+    selectedTools,
+    setSelectedTools: updateSelectedTools,
+    updatePreferences,
+    selectedChatModel: persistedChatModel,
+    selectedReasoningEffort: persistedReasoningEffort,
+    activeLoadoutId: persistedActiveLoadoutId,
+  } = useSharedSelectedTools({
+    defaultTools: ["getWeather"],
+    resolveToolType,
+  });
+
+  const [currentModelId, setCurrentModelId] = useState(
+    persistedChatModel ?? initialChatModel
+  );
   const currentModelIdRef = useRef(currentModelId);
   const [currentReasoningEffort, setCurrentReasoningEffort] = useState<
     "low" | "medium" | "high"
-  >("high");
-  const { selectedTools, setSelectedTools: updateSelectedTools } =
-    useSharedSelectedTools({ defaultTools: ["getWeather"] });
+  >(persistedReasoningEffort ?? "high");
+  const [activeLoadoutId, setActiveLoadoutId] = useState<string | null>(
+    persistedActiveLoadoutId ?? null
+  );
   const selectedToolsRef = useRef(selectedTools);
 
   useEffect(() => {
-    const stored = localStorage.getItem("reasoning-effort");
-    if (stored === "low" || stored === "medium" || stored === "high") {
-      setCurrentReasoningEffort(stored);
+    if (
+      persistedChatModel &&
+      persistedChatModel !== currentModelId
+    ) {
+      setCurrentModelId(persistedChatModel);
     }
-  }, []);
+  }, [persistedChatModel, currentModelId]);
+
+  useEffect(() => {
+    if (
+      persistedReasoningEffort &&
+      persistedReasoningEffort !== currentReasoningEffort
+    ) {
+      setCurrentReasoningEffort(persistedReasoningEffort);
+    }
+  }, [persistedReasoningEffort, currentReasoningEffort]);
+
+  useEffect(() => {
+    if (persistedActiveLoadoutId !== activeLoadoutId) {
+      setActiveLoadoutId(persistedActiveLoadoutId ?? null);
+    }
+  }, [persistedActiveLoadoutId, activeLoadoutId]);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
@@ -115,6 +163,41 @@ export function Chat({
   useEffect(() => {
     selectedToolsRef.current = selectedTools;
   }, [selectedTools]);
+
+  const handleModelChange = useCallback(
+    (modelId: string) => {
+      setCurrentModelId(modelId);
+      updatePreferences({ selectedChatModel: modelId }).catch((error) => {
+        console.error("[CHAT] Failed to persist model preference", error);
+      });
+    },
+    [updatePreferences]
+  );
+
+  const handleReasoningEffortChange = useCallback(
+    (effort: "low" | "medium" | "high") => {
+      setCurrentReasoningEffort(effort);
+      updatePreferences({ selectedReasoningEffort: effort }).catch(
+        (error) => {
+          console.error(
+            "[CHAT] Failed to persist reasoning effort preference",
+            error
+          );
+        }
+      );
+    },
+    [updatePreferences]
+  );
+
+  const handleActiveLoadoutChange = useCallback(
+    (id: string | null) => {
+      setActiveLoadoutId(id);
+      updatePreferences({ activeLoadoutId: id }).catch((error) => {
+        console.error("[CHAT] Failed to persist active loadout", error);
+      });
+    },
+    [updatePreferences]
+  );
 
   // Get current user session
   const { data: session } = useSession();
@@ -432,12 +515,14 @@ export function Chat({
               <div className="relative">
                 <div className="relative">
                   <MultimodalInput
+                    activeLoadoutId={activeLoadoutId}
                     attachments={attachments}
                     chatId={id}
                     input={input}
                     messages={messages}
-                    onModelChange={setCurrentModelId}
-                    onReasoningEffortChange={setCurrentReasoningEffort}
+                    onActiveLoadoutChange={handleActiveLoadoutChange}
+                    onModelChange={handleModelChange}
+                    onReasoningEffortChange={handleReasoningEffortChange}
                     onToolsChange={updateSelectedTools}
                     selectedModelId={currentModelId}
                     selectedReasoningEffort={currentReasoningEffort}
@@ -472,12 +557,14 @@ export function Chat({
             <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
               {!isReadonly && (
                 <MultimodalInput
+                  activeLoadoutId={activeLoadoutId}
                   attachments={attachments}
                   chatId={id}
                   input={input}
                   messages={messages}
-                  onModelChange={setCurrentModelId}
-                  onReasoningEffortChange={setCurrentReasoningEffort}
+                  onActiveLoadoutChange={handleActiveLoadoutChange}
+                  onModelChange={handleModelChange}
+                  onReasoningEffortChange={handleReasoningEffortChange}
                   onToolsChange={updateSelectedTools}
                   selectedModelId={currentModelId}
                   selectedReasoningEffort={currentReasoningEffort}

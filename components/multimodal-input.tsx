@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { useLoadouts } from "@/hooks/use-loadouts";
 import { useAllTools } from "@/hooks/use-tools";
-import { useLoadoutStore } from "@/lib/stores/loadout-store";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn, generateUUID } from "@/lib/utils";
@@ -41,6 +40,7 @@ import { ToolsSelector } from "./tools-selector";
 import type { VisibilityType } from "./visibility-selector";
 
 function PureMultimodalInput({
+  activeLoadoutId,
   chatId,
   input,
   setInput,
@@ -60,7 +60,9 @@ function PureMultimodalInput({
   usage,
   selectedTools,
   onToolsChange,
+  onActiveLoadoutChange,
 }: {
+  activeLoadoutId?: string | null;
   chatId: string;
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
@@ -80,11 +82,11 @@ function PureMultimodalInput({
   usage?: AppUsage;
   selectedTools?: string[];
   onToolsChange?: (tools: string[]) => void;
+  onActiveLoadoutChange?: (id: string | null) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const { loadouts } = useLoadouts();
-  const { activeLoadoutId, setActiveLoadout } = useLoadoutStore();
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -298,7 +300,7 @@ function PureMultimodalInput({
             />
 
             <LoadoutSelector
-              activeLoadoutId={activeLoadoutId}
+              activeLoadoutId={activeLoadoutId ?? undefined}
               loadouts={loadouts.map((l) => {
                 const updatedAtValue = l.updatedAt as unknown;
                 let updatedAt: string | undefined;
@@ -328,12 +330,13 @@ function PureMultimodalInput({
                 };
               })}
               onActivate={(id) => {
-                setActiveLoadout(id);
-                if (!id) {
+                const normalizedId = ((id as unknown) as string | null) ?? null;
+                onActiveLoadoutChange?.(normalizedId);
+                if (!normalizedId) {
                   // Deselected - no toast needed, just clear the loadout
                   return;
                 }
-                const loadout = loadouts.find((l) => l.id === id);
+                const loadout = loadouts.find((l) => l.id === normalizedId);
                 if (loadout && onToolsChange) {
                   // Apply selected tools from loadout
                   onToolsChange(loadout.selectedTools || []);
@@ -390,6 +393,12 @@ export const MultimodalInput = memo(PureMultimodalInput, (prev, next) => {
     return false;
   }
   if (!equal(prev.selectedTools, next.selectedTools)) {
+    return false;
+  }
+  if (prev.activeLoadoutId !== next.activeLoadoutId) {
+    return false;
+  }
+  if (prev.onActiveLoadoutChange !== next.onActiveLoadoutChange) {
     return false;
   }
   return true;
