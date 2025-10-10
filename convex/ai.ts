@@ -44,9 +44,7 @@ function mergeA2AOutput(previous: any, next: any) {
     Array.isArray(next?.statusUpdates)
   ) {
     const combinedUpdates = [
-      ...(Array.isArray(previous?.statusUpdates)
-        ? previous.statusUpdates
-        : []),
+      ...(Array.isArray(previous?.statusUpdates) ? previous.statusUpdates : []),
       ...(Array.isArray(next?.statusUpdates) ? next.statusUpdates : []),
     ];
     const seen = new Set<string>();
@@ -477,9 +475,7 @@ export const generateAssistantMessage = internalAction({
         const a2aAgentKey = isA2A
           ? toolName.slice("a2a_".length) || "unknown"
           : undefined;
-        const partType = isA2A
-          ? `tool-a2a_${a2aAgentKey}`
-          : "dynamic-tool";
+        const partType = isA2A ? `tool-a2a_${a2aAgentKey}` : "dynamic-tool";
 
         const existing = toolPartsMap.get(toolCallId) || {
           type: partType,
@@ -568,7 +564,10 @@ export const generateAssistantMessage = internalAction({
 
       // Await steps if it's a Promise
       let resolvedSteps: any = finalResult.steps;
-      if (resolvedSteps && typeof (resolvedSteps as Promise<unknown>).then === "function") {
+      if (
+        resolvedSteps &&
+        typeof (resolvedSteps as Promise<unknown>).then === "function"
+      ) {
         try {
           resolvedSteps = await resolvedSteps;
         } catch (stepsError) {
@@ -588,14 +587,19 @@ export const generateAssistantMessage = internalAction({
         for (const step of resolvedSteps) {
           console.log("[AI] Processing step:", {
             hasToolCalls: !!step?.toolCalls,
-            toolCallsCount: Array.isArray(step?.toolCalls) ? step.toolCalls.length : 0,
+            toolCallsCount: Array.isArray(step?.toolCalls)
+              ? step.toolCalls.length
+              : 0,
             toolCalls: step?.toolCalls,
           });
           collectFromStep(step);
         }
       }
 
-      console.log("[AI] After processing steps, toolPartsMap size:", toolPartsMap.size);
+      console.log(
+        "[AI] After processing steps, toolPartsMap size:",
+        toolPartsMap.size
+      );
 
       // Fallback to aggregated dynamic tool data if steps did not yield results
       if (toolPartsMap.size === 0) {
@@ -634,7 +638,7 @@ export const generateAssistantMessage = internalAction({
       }
 
       streamingUpdatesFinalized = true;
-      await pendingStreamingPublish.catch(() => undefined);
+      await pendingStreamingPublish.catch(() => {});
       streamingToolParts.clear();
 
       const toolParts = Array.from(toolPartsMap.values());
@@ -654,7 +658,10 @@ export const generateAssistantMessage = internalAction({
 
       // Add tool parts
       if (toolParts.length > 0) {
-        console.log("[AI] Adding tool parts to message parts array:", toolParts);
+        console.log(
+          "[AI] Adding tool parts to message parts array:",
+          toolParts
+        );
         parts.push(...toolParts);
       }
 

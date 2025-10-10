@@ -106,4 +106,3 @@ export function useMCPServerTools(serverId: string | undefined) {
     error: error?.message ?? null,
   };
 }
-

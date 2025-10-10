@@ -160,10 +160,10 @@ export function useSharedSelectedTools(
     (api.mutations as any).setUserSelectedTools
   );
 
-  const [selectedTools, setSelectedToolsState] = useState<string[]>(
-    defaultTools
-  );
-  const [selectionMeta, setSelectionMeta] = useState<SelectionMeta>(defaultMeta);
+  const [selectedTools, setSelectedToolsState] =
+    useState<string[]>(defaultTools);
+  const [selectionMeta, setSelectionMeta] =
+    useState<SelectionMeta>(defaultMeta);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [syncedDefault, setSyncedDefault] = useState(false);
 
@@ -225,7 +225,7 @@ export function useSharedSelectedTools(
             : baseCategories.local,
         selectedChatModel:
           update.selectedChatModel !== undefined
-            ? update.selectedChatModel ?? undefined
+            ? (update.selectedChatModel ?? undefined)
             : currentSelectionMeta.selectedChatModel,
         selectedReasoningEffort:
           update.selectedReasoningEffort !== undefined
@@ -233,7 +233,7 @@ export function useSharedSelectedTools(
             : currentSelectionMeta.selectedReasoningEffort,
         activeLoadoutId:
           update.activeLoadoutId !== undefined
-            ? update.activeLoadoutId ?? null
+            ? (update.activeLoadoutId ?? null)
             : currentSelectionMeta.activeLoadoutId,
       };
 
@@ -276,9 +276,7 @@ export function useSharedSelectedTools(
         const result = await persistPreferencesRef.current(payload);
         setSelectedToolsState(parseSelectedTools(result.selectedTools ?? []));
         setSelectionMeta({
-          selectedMcpTools: parseSelectedTools(
-            result.selectedMcpTools ?? []
-          ),
+          selectedMcpTools: parseSelectedTools(result.selectedMcpTools ?? []),
           selectedA2AServers: parseSelectedTools(
             result.selectedA2AServers ?? []
           ),
@@ -286,12 +284,11 @@ export function useSharedSelectedTools(
             result.selectedLocalTools ?? []
           ),
           selectedChatModel: result.selectedChatModel ?? undefined,
-          selectedReasoningEffort:
-            result.selectedReasoningEffort ?? undefined,
+          selectedReasoningEffort: result.selectedReasoningEffort ?? undefined,
           activeLoadoutId:
             result.activeLoadoutId === undefined
               ? nextMeta.activeLoadoutId
-              : result.activeLoadoutId ?? null,
+              : (result.activeLoadoutId ?? null),
         });
         setUpdatedAt(result.updatedAt);
       } catch (error) {
@@ -334,8 +331,7 @@ export function useSharedSelectedTools(
       const categories = categorizeTools(normalized, resolveToolType);
       const nextMeta: SelectionMeta = {
         selectedMcpTools:
-          selection.selectedMcpTools &&
-          selection.selectedMcpTools.length > 0
+          selection.selectedMcpTools && selection.selectedMcpTools.length > 0
             ? parseSelectedTools(selection.selectedMcpTools)
             : categories.mcp,
         selectedA2AServers:
@@ -349,12 +345,11 @@ export function useSharedSelectedTools(
             ? parseSelectedTools(selection.selectedLocalTools)
             : categories.local,
         selectedChatModel: selection.selectedChatModel ?? undefined,
-        selectedReasoningEffort:
-          selection.selectedReasoningEffort ?? undefined,
+        selectedReasoningEffort: selection.selectedReasoningEffort ?? undefined,
         activeLoadoutId:
           selection.activeLoadoutId === undefined
             ? null
-            : selection.activeLoadoutId ?? null,
+            : (selection.activeLoadoutId ?? null),
       };
 
       if (!selectionMetaEqual(currentSelectionMeta, nextMeta)) {

@@ -145,10 +145,7 @@ export function Chat({
   const selectedToolsRef = useRef(selectedTools);
 
   useEffect(() => {
-    if (
-      persistedChatModel &&
-      persistedChatModel !== currentModelId
-    ) {
+    if (persistedChatModel && persistedChatModel !== currentModelId) {
       setCurrentModelId(persistedChatModel);
     }
   }, [persistedChatModel, currentModelId]);
@@ -189,14 +186,12 @@ export function Chat({
   const handleReasoningEffortChange = useCallback(
     (effort: "low" | "medium" | "high") => {
       setCurrentReasoningEffort(effort);
-      updatePreferences({ selectedReasoningEffort: effort }).catch(
-        (error) => {
-          console.error(
-            "[CHAT] Failed to persist reasoning effort preference",
-            error
-          );
-        }
-      );
+      updatePreferences({ selectedReasoningEffort: effort }).catch((error) => {
+        console.error(
+          "[CHAT] Failed to persist reasoning effort preference",
+          error
+        );
+      });
     },
     [updatePreferences]
   );
@@ -231,13 +226,13 @@ export function Chat({
     if (messagesFromConvex) {
       console.log("[CHAT] Converting Convex messages to UI format:", {
         messageCount: messagesFromConvex.length,
-        messages: messagesFromConvex.map(m => ({
+        messages: messagesFromConvex.map((m) => ({
           id: m._id,
           role: m.role,
           isComplete: m.isComplete,
-          partsCount: Array.isArray(m.parts) ? m.parts.length : (m.parts ? 1 : 0),
+          partsCount: Array.isArray(m.parts) ? m.parts.length : m.parts ? 1 : 0,
           parts: m.parts,
-        }))
+        })),
       });
 
       const nextDataStreamParts: any[] = [];
@@ -287,7 +282,7 @@ export function Chat({
           role: msg.role,
           isComplete: msg.isComplete,
           initialParts: parts,
-          hasToolCalls: parts.some(p => p?.type?.startsWith?.('tool-')),
+          hasToolCalls: parts.some((p) => p?.type?.startsWith?.("tool-")),
         });
 
         if (!msg.isComplete) {
@@ -343,7 +338,7 @@ export function Chat({
         console.log("[CHAT] Final parts for message:", {
           id: msg._id,
           parts,
-          toolParts: parts.filter(p => p?.type?.startsWith?.('tool-')),
+          toolParts: parts.filter((p) => p?.type?.startsWith?.("tool-")),
         });
 
         const normalized: ChatMessage & {
@@ -364,7 +359,9 @@ export function Chat({
 
       console.log("[CHAT] Setting local messages:", {
         count: uiMessages.length,
-        messagesWithTools: uiMessages.filter(m => m.parts.some(p => p?.type?.startsWith?.('tool-'))).length,
+        messagesWithTools: uiMessages.filter((m) =>
+          m.parts.some((p) => p?.type?.startsWith?.("tool-"))
+        ).length,
       });
 
       setLocalMessages(uiMessages);
@@ -465,7 +462,6 @@ export function Chat({
       currentReasoningEffort,
       mutate,
       input,
-      status,
     ]
   );
 

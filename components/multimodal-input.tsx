@@ -330,7 +330,7 @@ function PureMultimodalInput({
                 };
               })}
               onActivate={(id) => {
-                const normalizedId = ((id as unknown) as string | null) ?? null;
+                const normalizedId = (id as unknown as string | null) ?? null;
                 onActiveLoadoutChange?.(normalizedId);
                 if (!normalizedId) {
                   // Deselected - no toast needed, just clear the loadout

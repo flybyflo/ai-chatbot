@@ -173,7 +173,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
       try {
         let eventCount = 0;
-        let shouldContinue = true;
+        let _shouldContinue = true;
 
         console.log("🌊 [A2A] Starting stream consumption", {
           agent: metadata.displayName,
@@ -245,11 +245,14 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                 (t) => t.state && terminalStates.has(t.state)
               )
             ) {
-              console.log("✅ [A2A] Stream complete (agent message + terminal task)", {
-                agent: metadata.displayName,
-                eventCount,
-              });
-              shouldContinue = false;
+              console.log(
+                "✅ [A2A] Stream complete (agent message + terminal task)",
+                {
+                  agent: metadata.displayName,
+                  eventCount,
+                }
+              );
+              _shouldContinue = false;
               break;
             }
             continue;
@@ -260,7 +263,9 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             contextId = task.contextId ?? contextId;
             latestTaskId = task.id;
 
-            const statusMessage = extractTextFromParts(task.status?.message?.parts);
+            const statusMessage = extractTextFromParts(
+              task.status?.message?.parts
+            );
             const taskSummary: A2ATaskSummary = {
               taskId: task.id,
               state: task.status?.state,
@@ -284,7 +289,8 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
               contextId: task.contextId,
               statusMessage,
               artifactCount: taskSummary.artifacts?.length ?? 0,
-              isTerminal: task.status?.state && terminalStates.has(task.status.state),
+              isTerminal:
+                task.status?.state && terminalStates.has(task.status.state),
               timestamp: task.status?.timestamp,
             });
 
@@ -299,7 +305,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                 taskId: task.id,
                 state: task.status.state,
               });
-              shouldContinue = false;
+              _shouldContinue = false;
               break;
             }
             continue;
@@ -309,7 +315,9 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             const statusEvent = event as any;
             contextId = statusEvent.contextId ?? contextId;
             latestTaskId = statusEvent.taskId ?? latestTaskId;
-            const message = extractTextFromParts(statusEvent.status?.message?.parts);
+            const message = extractTextFromParts(
+              statusEvent.status?.message?.parts
+            );
             const summary: A2ATaskStatusUpdateSummary = {
               taskId: statusEvent.taskId,
               contextId: statusEvent.contextId,
@@ -361,7 +369,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                 taskId: statusEvent.taskId,
                 state: statusEvent.status?.state,
               });
-              shouldContinue = false;
+              _shouldContinue = false;
               break;
             }
 
@@ -376,7 +384,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                 taskId: statusEvent.taskId,
                 state: statusEvent.status.state,
               });
-              shouldContinue = false;
+              _shouldContinue = false;
               break;
             }
             continue;
@@ -402,7 +410,8 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
               name: artifactSummary.name,
               description: artifactSummary.description,
               contextId: artifactEvent.contextId,
-              timestamp: artifactEvent.artifact?.timestamp ?? artifactEvent.timestamp,
+              timestamp:
+                artifactEvent.artifact?.timestamp ?? artifactEvent.timestamp,
             });
 
             artifactUpdates.push(artifactSummary);

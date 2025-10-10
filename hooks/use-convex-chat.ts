@@ -90,7 +90,7 @@ export function useConvexChat({ chatId }: { chatId: string }) {
         id: msg._id,
         partsCount: finalParts.length,
         parts: finalParts,
-        toolParts: finalParts.filter(p => p?.type?.startsWith?.('tool-')),
+        toolParts: finalParts.filter((p) => p?.type?.startsWith?.("tool-")),
       });
 
       return {
@@ -133,7 +133,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
     },
     [chatId, startMessagePair]
   );
-
 
   return {
     messages,

@@ -145,7 +145,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
       try {
         let eventCount = 0;
-        let shouldContinue = true;
+        let _shouldContinue = true;
 
         for await (const event of client.sendMessageStream(streamParams)) {
           eventCount++;
@@ -186,7 +186,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
                 (t) => t.state && terminalStates.has(t.state)
               )
             ) {
-              shouldContinue = false;
+              _shouldContinue = false;
               break;
             }
             continue;
@@ -215,7 +215,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
             // Check if task has reached a terminal state
             if (task.status?.state && terminalStates.has(task.status.state)) {
-              shouldContinue = false;
+              _shouldContinue = false;
               break;
             }
             continue;
@@ -255,7 +255,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
 
             // Check for the 'final' property which signals stream completion
             if (statusEvent.final === true) {
-              shouldContinue = false;
+              _shouldContinue = false;
               break;
             }
 
@@ -264,7 +264,7 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
               statusEvent.status?.state &&
               terminalStates.has(statusEvent.status.state)
             ) {
-              shouldContinue = false;
+              _shouldContinue = false;
               break;
             }
             continue;

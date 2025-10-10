@@ -19,13 +19,6 @@ import { CodeBlock } from "./elements/code-block";
 import { MessageContent } from "./elements/message";
 import { Response } from "./elements/response";
 import {
-  Task,
-  TaskContent,
-  TaskItem,
-  TaskItemFile,
-  TaskTrigger,
-} from "./ai-elements/task";
-import {
   Tool,
   ToolContent,
   ToolHeader,
@@ -37,9 +30,9 @@ import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 
-const formatTaskState = (state?: string) => {
+const _formatTaskState = (state?: string) => {
   if (!state) {
-    return undefined;
+    return;
   }
   return state
     .split(/[-_\s]+/)
@@ -48,7 +41,7 @@ const formatTaskState = (state?: string) => {
     .join(" ");
 };
 
-const sanitizeOptionalText = (value?: string) => {
+const _sanitizeOptionalText = (value?: string) => {
   if (typeof value !== "string") {
     return "";
   }
@@ -209,7 +202,8 @@ const PurePreviewMessage = ({
                 typeof part.type === "string" &&
                 part.type.startsWith("tool-a2a_")
               ) {
-                const agentKey = part.type.slice("tool-a2a_".length) || "unknown";
+                const agentKey =
+                  part.type.slice("tool-a2a_".length) || "unknown";
                 console.log("[MESSAGE] Found A2A tool part:", {
                   agentKey,
                   part,
@@ -448,227 +442,10 @@ const PurePreviewMessage = ({
                 );
               }
 
+              // A2A events are now rendered via MessageA2A in messages.tsx
+              // This duplicate rendering has been removed
               if (item.kind === "tool-a2a") {
-                const { part, agentKey } = item;
-                const toolCallId =
-                  part.toolCallId ?? `a2a-${agentKey}-${flowIndex}`;
-                const output =
-                  part && typeof part.output === "object" && part.output
-                    ? part.output
-                    : {};
-                const agentName =
-                  typeof output.agentName === "string" &&
-                  output.agentName.trim().length > 0
-                    ? output.agentName
-                    : `Agent ${agentKey}`;
-                const timestampValue = output.timestamp;
-                let formattedTimestamp: string | undefined;
-                if (
-                  typeof timestampValue === "string" ||
-                  typeof timestampValue === "number"
-                ) {
-                  const parsedDate = new Date(timestampValue);
-                  if (!Number.isNaN(parsedDate.getTime())) {
-                    formattedTimestamp = parsedDate.toLocaleString();
-                  }
-                }
-
-                const rawTasks = Array.isArray(output.tasks)
-                  ? output.tasks.filter((task: unknown) =>
-                      task && typeof task === "object"
-                    )
-                  : [];
-                const statusUpdates = Array.isArray(output.statusUpdates)
-                  ? output.statusUpdates.filter((update: unknown) =>
-                      update && typeof update === "object"
-                    )
-                  : [];
-
-                const updatesByTaskId = new Map<string, any[]>();
-                for (const update of statusUpdates) {
-                  const taskId =
-                    typeof update.taskId === "string" && update.taskId.length > 0
-                      ? update.taskId
-                      : "__no_task__";
-                  if (!updatesByTaskId.has(taskId)) {
-                    updatesByTaskId.set(taskId, []);
-                  }
-                  updatesByTaskId.get(taskId)!.push(update);
-                }
-
-                let tasksToRender = rawTasks as Array<{
-                  taskId?: string;
-                  state?: string;
-                  statusMessage?: string;
-                }>;
-
-                if (tasksToRender.length === 0 && updatesByTaskId.size > 0) {
-                  tasksToRender = Array.from(updatesByTaskId.entries()).map(
-                    ([taskId, updates]) => {
-                      const lastUpdate =
-                        updates.length > 0
-                          ? updates[updates.length - 1]
-                          : undefined;
-                      return {
-                        taskId,
-                        state:
-                          typeof lastUpdate?.state === "string"
-                            ? lastUpdate.state
-                            : part.state,
-                        statusMessage:
-                          typeof lastUpdate?.message === "string"
-                            ? lastUpdate.message
-                            : output.responseText,
-                      };
-                    }
-                  );
-                }
-
-                if (tasksToRender.length === 0) {
-                  tasksToRender = [
-                    {
-                      taskId: typeof part.toolCallId === "string"
-                        ? part.toolCallId
-                        : agentKey,
-                      state:
-                        typeof part.state === "string" ? part.state : undefined,
-                      statusMessage:
-                        typeof output.responseText === "string"
-                          ? output.responseText
-                          : undefined,
-                    },
-                  ];
-                }
-
-                return (
-                  <div
-                    className={cn(
-                      "w-full",
-                      needsTopMargin ? "mt-3" : undefined
-                    )}
-                    key={toolCallId}
-                  >
-                    <div className="rounded-[1.3rem] border border-border bg-tool-bg p-3">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="font-medium text-sm">{agentName}</div>
-                        {formattedTimestamp ? (
-                          <div className="text-muted-foreground text-xs">
-                            {formattedTimestamp}
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="mt-3 space-y-3">
-                        {tasksToRender.map((task, taskIndex) => {
-                          const normalizedTaskId =
-                            typeof task.taskId === "string" &&
-                            task.taskId.length > 0
-                              ? task.taskId
-                              : "__no_task__";
-                          const updatesForTask =
-                            updatesByTaskId.get(normalizedTaskId) ?? [];
-                          const normalizedState =
-                            typeof task.state === "string"
-                              ? task.state.toLowerCase()
-                              : "";
-                          const taskStateLabel = formatTaskState(task.state);
-                          const sanitizedFinalMessage = sanitizeOptionalText(
-                            task.statusMessage
-                          ).trim();
-                          const lastUpdate =
-                            updatesForTask.length > 0
-                              ? updatesForTask[updatesForTask.length - 1]
-                              : undefined;
-                          const lastUpdateMessage = sanitizeOptionalText(
-                            lastUpdate?.message
-                          ).trim();
-                          const shouldRenderResult =
-                            sanitizedFinalMessage.length > 0 &&
-                            sanitizedFinalMessage !== lastUpdateMessage;
-
-                          return (
-                            <div
-                              className="rounded-md border border-border/60 bg-background/60 p-3"
-                              key={`${toolCallId}-${normalizedTaskId}-${taskIndex}`}
-                            >
-                              <Task
-                                className="w-full"
-                                defaultOpen={
-                                  ![
-                                    "completed",
-                                    "succeeded",
-                                    "complete",
-                                  ].includes(normalizedState)
-                                }
-                              >
-                                <TaskTrigger
-                                  title={`Task ${taskIndex + 1} • ${
-                                    taskStateLabel ?? "Update"
-                                  }`}
-                                />
-                                <TaskContent>
-                                  {updatesForTask.length === 0 &&
-                                  sanitizedFinalMessage.length === 0 ? (
-                                    <TaskItem>
-                                      <p className="text-muted-foreground text-sm">
-                                        Waiting for updates…
-                                      </p>
-                                    </TaskItem>
-                                  ) : null}
-                                  {updatesForTask.map((update, updateIndex) => {
-                                    const updateStateLabel = formatTaskState(
-                                      typeof update.state === "string"
-                                        ? update.state
-                                        : undefined
-                                    );
-                                    const updateMessage = sanitizeOptionalText(
-                                      update.message
-                                    ).trim();
-
-                                    if (
-                                      !updateStateLabel &&
-                                      updateMessage.length === 0
-                                    ) {
-                                      return null;
-                                    }
-
-                                    return (
-                                      <TaskItem
-                                        key={`${normalizedTaskId}-update-${updateIndex}`}
-                                      >
-                                        <div className="flex flex-col gap-1">
-                                          {updateStateLabel ? (
-                                            <TaskItemFile>
-                                              {updateStateLabel}
-                                            </TaskItemFile>
-                                          ) : null}
-                                          {updateMessage.length > 0 ? (
-                                            <p className="whitespace-pre-wrap text-foreground text-sm">
-                                              {updateMessage}
-                                            </p>
-                                          ) : null}
-                                        </div>
-                                      </TaskItem>
-                                    );
-                                  })}
-                                  {shouldRenderResult ? (
-                                    <TaskItem>
-                                      <div className="flex flex-col gap-1">
-                                        <TaskItemFile>Result</TaskItemFile>
-                                        <p className="whitespace-pre-wrap text-foreground text-sm">
-                                          {sanitizedFinalMessage}
-                                        </p>
-                                      </div>
-                                    </TaskItem>
-                                  ) : null}
-                                </TaskContent>
-                              </Task>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
+                return null;
               }
 
               if (item.kind === "dynamic-tool") {

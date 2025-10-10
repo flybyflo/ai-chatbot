@@ -786,8 +786,7 @@ export const setUserSelectedTools = mutation({
         selectedA2AServers: record?.selectedA2AServers ?? [],
         selectedLocalTools: record?.selectedLocalTools ?? [],
         selectedChatModel: record?.selectedChatModel ?? undefined,
-        selectedReasoningEffort:
-          record?.selectedReasoningEffort ?? undefined,
+        selectedReasoningEffort: record?.selectedReasoningEffort ?? undefined,
         activeLoadoutId:
           record?.activeLoadoutId === undefined
             ? null
