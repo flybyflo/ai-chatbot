@@ -291,6 +291,109 @@ export const generateAssistantMessage = internalAction({
         }
       };
 
+      const mergeA2AOutput = (previous: any, next: any) => {
+        if (!previous) {
+          previous = {};
+        }
+        const merged = { ...previous, ...(next ?? {}) };
+
+        if (
+          Array.isArray(previous?.tasks) ||
+          Array.isArray(next?.tasks)
+        ) {
+          const tasksById = new Map<string, any>();
+          const allTasks = [
+            ...(Array.isArray(previous?.tasks) ? previous.tasks : []),
+            ...(Array.isArray(next?.tasks) ? next.tasks : []),
+          ];
+          for (const task of allTasks) {
+            if (!task || typeof task !== "object") {
+              continue;
+            }
+            const key =
+              typeof task.taskId === "string"
+                ? task.taskId
+                : `task-${tasksById.size}`;
+            const existingTask = tasksById.get(key) ?? {};
+            tasksById.set(key, { ...existingTask, ...task });
+          }
+          merged.tasks = Array.from(tasksById.values());
+        }
+
+        if (
+          Array.isArray(previous?.statusUpdates) ||
+          Array.isArray(next?.statusUpdates)
+        ) {
+          const combinedUpdates = [
+            ...(Array.isArray(previous?.statusUpdates)
+              ? previous.statusUpdates
+              : []),
+            ...(Array.isArray(next?.statusUpdates)
+              ? next.statusUpdates
+              : []),
+          ];
+          const seen = new Set<string>();
+          const dedupedUpdates: any[] = [];
+          for (const update of combinedUpdates) {
+            if (!update || typeof update !== "object") {
+              continue;
+            }
+            const key = [
+              update.taskId ?? "",
+              update.state ?? "",
+              update.message ?? "",
+              update.timestamp ?? "",
+            ].join("|");
+            if (seen.has(key)) {
+              continue;
+            }
+            seen.add(key);
+            dedupedUpdates.push(update);
+          }
+          merged.statusUpdates = dedupedUpdates;
+        }
+
+        if (
+          Array.isArray(previous?.artifacts) ||
+          Array.isArray(next?.artifacts)
+        ) {
+          const combinedArtifacts = [
+            ...(Array.isArray(previous?.artifacts)
+              ? previous.artifacts
+              : []),
+            ...(Array.isArray(next?.artifacts) ? next.artifacts : []),
+          ];
+          const seenArtifacts = new Set<string>();
+          const dedupedArtifacts: any[] = [];
+          for (const artifact of combinedArtifacts) {
+            if (!artifact || typeof artifact !== "object") {
+              continue;
+            }
+            const key =
+              artifact.id ??
+              [artifact.url ?? "", artifact.name ?? "", artifact.type ?? ""].join(
+                "|"
+              );
+            if (seenArtifacts.has(key)) {
+              continue;
+            }
+            seenArtifacts.add(key);
+            dedupedArtifacts.push(artifact);
+          }
+          merged.artifacts = dedupedArtifacts;
+        }
+
+        if (Array.isArray(next?.messages)) {
+          merged.messages = next.messages;
+        }
+
+        if (next?.responseText !== undefined) {
+          merged.responseText = next.responseText;
+        }
+
+        return merged;
+      };
+
       const upsertToolPart = (
         toolCall: any,
         context: {
@@ -313,19 +416,37 @@ export const generateAssistantMessage = internalAction({
           return;
         }
 
+        const isA2A = toolName.startsWith("a2a_");
+        const a2aAgentKey = isA2A
+          ? toolName.slice("a2a_".length) || "unknown"
+          : undefined;
+        const partType = isA2A
+          ? `tool-a2a_${a2aAgentKey}`
+          : "dynamic-tool";
+
         const existing = toolPartsMap.get(toolCallId) || {
-          type: "dynamic-tool",
+          type: partType,
           toolCallId,
           toolName,
           state: "input-available",
           input: toolCall.input ?? toolCall.args ?? {},
         };
 
-        existing.input = toolCall.input ?? toolCall.args ?? existing.input;
+        existing.type = partType;
+        if (a2aAgentKey) {
+          (existing as any).agentKey = a2aAgentKey;
+        }
+
+        const resolvedInput = toolCall.input ?? toolCall.args;
+        if (resolvedInput !== undefined) {
+          existing.input = resolvedInput;
+        }
 
         const output = context.result?.output ?? context.result?.result;
         if (output !== undefined) {
-          existing.output = output;
+          existing.output = isA2A
+            ? mergeA2AOutput(existing.output, output)
+            : output;
           existing.state = "output-available";
         }
 
