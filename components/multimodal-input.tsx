@@ -395,5 +395,11 @@ export const MultimodalInput = memo(PureMultimodalInput, (prev, next) => {
   if (!equal(prev.selectedTools, next.selectedTools)) {
     return false;
   }
+  if (prev.activeLoadoutId !== next.activeLoadoutId) {
+    return false;
+  }
+  if (prev.onActiveLoadoutChange !== next.onActiveLoadoutChange) {
+    return false;
+  }
   return true;
 });
