@@ -388,15 +388,26 @@ export const generateAssistantMessage = internalAction({
         }
       };
 
+      // Await steps if it's a Promise
+      let resolvedSteps: any = finalResult.steps;
+      if (resolvedSteps && typeof (resolvedSteps as Promise<unknown>).then === "function") {
+        try {
+          resolvedSteps = await resolvedSteps;
+        } catch (stepsError) {
+          console.warn("⚠️ Failed to await steps promise:", stepsError);
+          resolvedSteps = [];
+        }
+      }
+
       console.log("[AI] Processing steps for tool calls:", {
-        hasSteps: !!finalResult.steps,
-        isArray: Array.isArray(finalResult.steps),
-        stepsCount: Array.isArray(finalResult.steps) ? finalResult.steps.length : 0,
-        steps: finalResult.steps,
+        hasSteps: !!resolvedSteps,
+        isArray: Array.isArray(resolvedSteps),
+        stepsCount: Array.isArray(resolvedSteps) ? resolvedSteps.length : 0,
+        steps: resolvedSteps,
       });
 
-      if (finalResult.steps && Array.isArray(finalResult.steps)) {
-        for (const step of finalResult.steps) {
+      if (resolvedSteps && Array.isArray(resolvedSteps)) {
+        for (const step of resolvedSteps) {
           console.log("[AI] Processing step:", {
             hasToolCalls: !!step?.toolCalls,
             toolCallsCount: Array.isArray(step?.toolCalls) ? step.toolCalls.length : 0,
