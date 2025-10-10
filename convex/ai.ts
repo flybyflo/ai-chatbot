@@ -149,24 +149,12 @@ export const generateAssistantMessage = internalAction({
       });
 
       // 5. Stream all parts (text AND reasoning) and write chunks to database
-      console.log("🌊 Starting fullStream processing...");
-      let partCount = 0;
-      let textDeltaCount = 0;
-      let reasoningDeltaCount = 0;
-
       for await (const part of result.fullStream) {
-        partCount++;
-        console.log(`📦 Part #${partCount}: type=${part.type}`);
-
         const now = Date.now();
 
         // Handle text deltas
         if (part.type === "text-delta") {
-          textDeltaCount++;
           textBuffer += part.text; // AI SDK v5 uses 'text' not 'textDelta'
-          console.log(
-            `✍️ Text delta #${textDeltaCount}, buffer length: ${textBuffer.length}`
-          );
 
           // Flush text buffer if threshold reached or time elapsed
           if (
@@ -174,7 +162,6 @@ export const generateAssistantMessage = internalAction({
               now - lastTextFlushTime >= timeThreshold) &&
             textBuffer.length > 0
           ) {
-            console.log(`💾 Flushing text buffer (${textBuffer.length} chars)`);
             await ctx.runMutation(api.mutations.createMessageChunk, {
               messageId: args.assistantMessageId,
               content: textBuffer,
@@ -187,11 +174,7 @@ export const generateAssistantMessage = internalAction({
 
         // Handle reasoning deltas (thinking content from models like O1)
         if (part.type === "reasoning-delta") {
-          reasoningDeltaCount++;
           reasoningBuffer += part.text; // AI SDK v5 uses 'text' not 'reasoningDelta'
-          console.log(
-            `🧠 Reasoning delta #${reasoningDeltaCount}, buffer length: ${reasoningBuffer.length}, text: "${part.text.substring(0, 50)}..."`
-          );
 
           // Flush reasoning buffer if threshold reached or time elapsed
           if (
@@ -199,9 +182,6 @@ export const generateAssistantMessage = internalAction({
               now - lastReasoningFlushTime >= timeThreshold) &&
             reasoningBuffer.length > 0
           ) {
-            console.log(
-              `💾 Flushing reasoning buffer (${reasoningBuffer.length} chars)`
-            );
             const reasoningToPersist = reasoningBuffer;
             await ctx.runMutation(api.mutations.createReasoningChunk, {
               messageId: args.assistantMessageId,
@@ -215,19 +195,8 @@ export const generateAssistantMessage = internalAction({
         }
       }
 
-      console.log(
-        `✅ Stream complete: ${partCount} total parts (${textDeltaCount} text, ${reasoningDeltaCount} reasoning)`
-      );
-      console.log("🧾 Stream summary snapshot:", {
-        textChunkSequence,
-        reasoningChunkSequence,
-        textBufferLength: textBuffer.length,
-        reasoningBufferLength: reasoningBuffer.length,
-      });
-
       // Final flush for both text and reasoning
       if (textBuffer.length > 0) {
-        console.log(`💾 Final text flush (${textBuffer.length} chars)`);
         await ctx.runMutation(api.mutations.createMessageChunk, {
           messageId: args.assistantMessageId,
           content: textBuffer,
@@ -236,9 +205,6 @@ export const generateAssistantMessage = internalAction({
       }
 
       if (reasoningBuffer.length > 0) {
-        console.log(
-          `💾 Final reasoning flush (${reasoningBuffer.length} chars)`
-        );
         const reasoningToPersist = reasoningBuffer;
         await ctx.runMutation(api.mutations.createReasoningChunk, {
           messageId: args.assistantMessageId,
@@ -252,45 +218,6 @@ export const generateAssistantMessage = internalAction({
       // Get the final result for usage tracking
       const finalResult = await result;
       const rawReasoning = (finalResult as any)?.reasoning;
-      console.log("🧪 Final result diagnostics:", {
-        // biome-ignore lint/suspicious/noPrototypeBuiltins: must be this way
-        hasReasoningProperty: Object.prototype.hasOwnProperty.call(
-          finalResult,
-          "reasoning"
-        ),
-        reasoningType: rawReasoning === null ? "null" : typeof rawReasoning,
-        reasoningConstructor:
-          rawReasoning &&
-          typeof rawReasoning === "object" &&
-          rawReasoning.constructor
-            ? rawReasoning.constructor.name
-            : null,
-        reasoningIsPromise:
-          rawReasoning &&
-          typeof rawReasoning === "object" &&
-          typeof (rawReasoning as Promise<unknown>).then === "function",
-        reasoningIsArray: Array.isArray(rawReasoning),
-        reasoningLength: Array.isArray(rawReasoning) ? rawReasoning.length : 0,
-        reasoningPreview: Array.isArray(rawReasoning)
-          ? rawReasoning
-              .map((r: any) =>
-                typeof r?.text === "string" ? r.text.substring(0, 80) : null
-              )
-              .filter((r: string | null) => r)
-          : typeof rawReasoning === "string"
-            ? rawReasoning.substring(0, 120)
-            : null,
-        // biome-ignore lint/suspicious/noPrototypeBuiltins: must be this way
-        hasResponse: Object.prototype.hasOwnProperty.call(
-          finalResult,
-          "response"
-        ),
-        responseKeys:
-          typeof (finalResult as any).response === "object" &&
-          (finalResult as any).response !== null
-            ? Object.keys((finalResult as any).response)
-            : null,
-      });
 
       // Extract final text
       let finalText: string | null = null;
@@ -306,13 +233,6 @@ export const generateAssistantMessage = internalAction({
       // Extract final reasoning
       // In AI SDK v5, reasoning is an array of ReasoningOutput objects
       let finalReasoning: string | null = null;
-      console.log("🔍 Checking finalResult.reasoning:", {
-        hasReasoning: !!finalResult.reasoning,
-        isArray: Array.isArray(finalResult.reasoning),
-        length: Array.isArray(finalResult.reasoning)
-          ? finalResult.reasoning.length
-          : 0,
-      });
 
       if (
         rawReasoning &&
@@ -325,21 +245,12 @@ export const generateAssistantMessage = internalAction({
               .map((r: any) => r?.text || "")
               .filter((t: string) => t.length > 0)
               .join("\n\n");
-            console.log(
-              `🧠 Awaited reasoning array extracted: ${finalReasoning.length} chars`
-            );
           } else if (typeof awaitedReasoning === "string") {
             finalReasoning = awaitedReasoning;
-            console.log(
-              `🧠 Awaited reasoning string extracted: ${finalReasoning.length} chars`
-            );
           } else if (awaitedReasoning && typeof awaitedReasoning === "object") {
             const maybeText = (awaitedReasoning as any).text;
             if (typeof maybeText === "string" && maybeText.length > 0) {
               finalReasoning = maybeText;
-              console.log(
-                `🧠 Awaited reasoning object text extracted: ${finalReasoning.length} chars`
-              );
             }
           }
         } catch (awaitError) {
@@ -351,227 +262,230 @@ export const generateAssistantMessage = internalAction({
           .map((r: any) => r.text || "")
           .filter((t: string) => t.length > 0)
           .join("\n\n");
-        console.log(
-          `🧠 Final reasoning extracted: ${finalReasoning.length} chars`
-        );
       } else if (typeof rawReasoning === "string" && rawReasoning.length > 0) {
         finalReasoning = rawReasoning;
-        console.log(
-          `🧠 Final reasoning string extracted: ${finalReasoning.length} chars`
-        );
       } else if (rawReasoning && typeof rawReasoning === "object") {
         const maybeText = (rawReasoning as any).text;
         if (typeof maybeText === "string" && maybeText.length > 0) {
           finalReasoning = maybeText;
-          console.log(
-            `🧠 Final reasoning object text extracted: ${finalReasoning.length} chars`
-          );
-        } else {
-          console.log("🧠 Reasoning object did not include text field:", {
-            keys: Object.keys(rawReasoning),
-          });
         }
-      } else {
-        console.log(
-          "⚠️ No finalResult.reasoning returned by provider. Falling back to streamed chunks.",
-          {
-            reasoningChunkSequence,
-            reasoningBufferLength: reasoningBuffer.length,
-            streamedReasoningLength: streamedReasoning.length,
-          }
-        );
-        if (!finalReasoning && streamedReasoning.length > 0) {
-          finalReasoning = streamedReasoning;
-          console.log(
-            `🧠 Using streamed reasoning fallback (${finalReasoning.length} chars)`
-          );
-        }
+      } else if (!finalReasoning && streamedReasoning.length > 0) {
+        finalReasoning = streamedReasoning;
       }
 
       // 6. Extract tool calls and results from steps
-      const flattenSteps = (items: any[]): any[] =>
-        items.flatMap((item) =>
-          Array.isArray(item) ? flattenSteps(item) : [item]
-        );
+      const toolPartsMap = new Map<string, any>();
 
-      const stepsToArray = async (value: any): Promise<any[]> => {
-        if (!value) {
-          return [];
+      const formatError = (error: unknown) => {
+        if (error === undefined || error === null) {
+          return;
         }
-
-        if (Array.isArray(value)) {
-          return flattenSteps(value);
+        if (typeof error === "string") {
+          return error;
         }
-
-        if (
-          typeof value === "object" &&
-          typeof (value as PromiseLike<any>).then === "function"
-        ) {
-          return stepsToArray(await value);
+        try {
+          return JSON.stringify(error, null, 2);
+        } catch (jsonError) {
+          console.warn("⚠️ Failed to stringify tool error:", jsonError);
+          return String(error);
         }
-
-        if (
-          typeof value === "object" &&
-          value !== null &&
-          typeof (value as any).toArray === "function"
-        ) {
-          return stepsToArray(await (value as any).toArray());
-        }
-
-        if (
-          typeof value === "object" &&
-          value !== null &&
-          typeof (value as any)[Symbol.iterator] === "function"
-        ) {
-          return stepsToArray(Array.from(value as Iterable<any>));
-        }
-
-        if (
-          typeof value === "object" &&
-          value !== null &&
-          typeof (value as any)[Symbol.asyncIterator] === "function"
-        ) {
-          const collected: any[] = [];
-          for await (const entry of value as AsyncIterable<any>) {
-            collected.push(...(await stepsToArray(entry)));
-          }
-          return collected;
-        }
-
-        return [];
       };
 
-      const rawSteps = (finalResult as any)?.steps;
-      console.log("[AI] Processing steps for tool calls:", {
-        hasSteps: !!rawSteps,
-        isArray: Array.isArray(rawSteps),
-        hasThen:
-          rawSteps &&
-          typeof rawSteps === "object" &&
-          typeof (rawSteps as PromiseLike<any>).then === "function",
-        hasToArray:
-          rawSteps &&
-          typeof rawSteps === "object" &&
-          rawSteps !== null &&
-          typeof (rawSteps as any).toArray === "function",
-        hasIterator:
-          rawSteps &&
-          typeof rawSteps === "object" &&
-          rawSteps !== null &&
-          typeof (rawSteps as any)[Symbol.iterator] === "function",
-        hasAsyncIterator:
-          rawSteps &&
-          typeof rawSteps === "object" &&
-          rawSteps !== null &&
-          typeof (rawSteps as any)[Symbol.asyncIterator] === "function",
-      });
-
-      let resolvedSteps = await stepsToArray(rawSteps);
-
-      if (resolvedSteps.length === 0) {
-        const responseSteps = (finalResult as any)?.response?.steps;
-        if (responseSteps) {
-          console.log("[AI] Trying response.steps fallback");
-          resolvedSteps = await stepsToArray(responseSteps);
+      const upsertToolPart = (
+        toolCall: any,
+        context: {
+          result?: any;
+          error?: any;
         }
-      }
+      ) => {
+        if (!toolCall) {
+          return;
+        }
 
-      console.log(
-        "[AI] After processing steps, toolPartsMap size:",
-        resolvedSteps.length
-      );
+        const toolName: string = toolCall.toolName || "";
+        const toolCallId: string = toolCall.toolCallId || "";
+        if (!toolName || !toolCallId) {
+          return;
+        }
 
-      const toolParts: any[] = [];
-      if (resolvedSteps.length > 0) {
-        console.log(
-          `🔧 Processing ${resolvedSteps.length} steps for tool calls`
+        const isDynamic = toolCall.dynamic === true || toolName.includes("_");
+        if (!isDynamic) {
+          return;
+        }
+
+        const existing = toolPartsMap.get(toolCallId) || {
+          type: "dynamic-tool",
+          toolCallId,
+          toolName,
+          state: "input-available",
+          input: toolCall.input ?? toolCall.args ?? {},
+        };
+
+        existing.input = toolCall.input ?? toolCall.args ?? existing.input;
+
+        const output = context.result?.output ?? context.result?.result;
+        if (output !== undefined) {
+          existing.output = output;
+          existing.state = "output-available";
+        }
+
+        const formattedError = formatError(
+          context.error ?? context.result?.error ?? existing.errorText
         );
+        if (formattedError !== undefined) {
+          existing.errorText = formattedError;
+          existing.state = "output-available";
+        }
 
-        for (const step of resolvedSteps) {
-          if (step.toolCalls && Array.isArray(step.toolCalls)) {
-            console.log(`🔧 Found ${step.toolCalls.length} tool calls in step`);
+        toolPartsMap.set(toolCallId, existing);
+      };
 
-            for (const toolCall of step.toolCalls) {
-              const toolName = toolCall.toolName || "";
-              const toolCallId = toolCall.toolCallId || "";
-              const toolArgs = toolCall.args || {};
+      const collectFromStep = (step: any) => {
+        if (
+          !step ||
+          !Array.isArray(step.toolCalls) ||
+          step.toolCalls.length === 0
+        ) {
+          return;
+        }
 
-              // Find matching tool result
-              const toolResult = step.toolResults?.find(
-                (r: any) => r.toolCallId === toolCallId
-              );
-
-              console.log("🔧 Tool call:", {
-                toolName,
-                toolCallId,
-                hasResult: !!toolResult,
-              });
-
-              // Check if this is a dynamic tool (MCP or A2A)
-              // Dynamic tools typically have underscore in their name (e.g., better-auth_search)
-              if (toolName.includes("_")) {
-                const state = toolResult
-                  ? "output-available"
-                  : "input-available";
-
-                const toolPart: any = {
-                  type: "dynamic-tool",
-                  toolCallId,
-                  toolName,
-                  state,
-                  input: toolArgs,
-                };
-
-                if (toolResult) {
-                  if (toolResult.result) {
-                    toolPart.output = toolResult.result;
-                  }
-                  if ((toolResult as any).error) {
-                    toolPart.errorText = String((toolResult as any).error);
-                  }
-                }
-
-                toolParts.push(toolPart);
-                console.log(`✅ Added dynamic tool part: ${toolName}`);
-              }
+        const toolResultsById = new Map<string, any>();
+        if (Array.isArray(step.toolResults)) {
+          for (const toolResultEntry of step.toolResults) {
+            if (toolResultEntry?.toolCallId) {
+              toolResultsById.set(toolResultEntry.toolCallId, toolResultEntry);
             }
           }
         }
+
+        const content = Array.isArray(step.content) ? step.content : [];
+        const toolErrorsById = new Map<string, any>();
+        const contentResultsById = new Map<string, any>();
+        for (const part of content) {
+          if (!part || typeof part !== "object") {
+            continue;
+          }
+          if (part.type === "tool-error" && part.toolCallId) {
+            toolErrorsById.set(part.toolCallId, part);
+          }
+          if (part.type === "tool-result" && part.toolCallId) {
+            contentResultsById.set(part.toolCallId, part);
+          }
+        }
+
+        for (const toolCall of step.toolCalls) {
+          const toolCallId = toolCall?.toolCallId;
+          if (!toolCallId) {
+            continue;
+          }
+
+          const matchedResult =
+            toolResultsById.get(toolCallId) ??
+            contentResultsById.get(toolCallId);
+          const error = toolErrorsById.get(toolCallId)?.error;
+
+          upsertToolPart(toolCall, { result: matchedResult, error });
+        }
+      };
+
+      console.log("[AI] Processing steps for tool calls:", {
+        hasSteps: !!finalResult.steps,
+        isArray: Array.isArray(finalResult.steps),
+        stepsCount: Array.isArray(finalResult.steps) ? finalResult.steps.length : 0,
+        steps: finalResult.steps,
+      });
+
+      if (finalResult.steps && Array.isArray(finalResult.steps)) {
+        for (const step of finalResult.steps) {
+          console.log("[AI] Processing step:", {
+            hasToolCalls: !!step?.toolCalls,
+            toolCallsCount: Array.isArray(step?.toolCalls) ? step.toolCalls.length : 0,
+            toolCalls: step?.toolCalls,
+          });
+          collectFromStep(step);
+        }
       }
 
-      console.log(`🔧 Total tool parts extracted: ${toolParts.length}`);
+      console.log("[AI] After processing steps, toolPartsMap size:", toolPartsMap.size);
+
+      // Fallback to aggregated dynamic tool data if steps did not yield results
+      if (toolPartsMap.size === 0) {
+        const dynamicToolCalls = (finalResult as any)?.dynamicToolCalls;
+        const dynamicToolResults = (finalResult as any)?.dynamicToolResults;
+        const content = (finalResult as any)?.content;
+
+        if (Array.isArray(dynamicToolCalls) && dynamicToolCalls.length > 0) {
+          const resultsById = new Map<string, any>();
+          if (Array.isArray(dynamicToolResults)) {
+            for (const dynamicResult of dynamicToolResults) {
+              if (dynamicResult?.toolCallId) {
+                resultsById.set(dynamicResult.toolCallId, dynamicResult);
+              }
+            }
+          }
+
+          const errorById = new Map<string, any>();
+          if (Array.isArray(content)) {
+            for (const part of content) {
+              if (part?.type === "tool-error" && part.toolCallId) {
+                errorById.set(part.toolCallId, part.error);
+              }
+            }
+          }
+
+          for (const toolCall of dynamicToolCalls) {
+            const toolCallId = toolCall?.toolCallId;
+            const resolvedResult = toolCallId
+              ? resultsById.get(toolCallId)
+              : undefined;
+            const error = toolCallId ? errorById.get(toolCallId) : undefined;
+            upsertToolPart(toolCall, { result: resolvedResult, error });
+          }
+        }
+      }
+
+      const toolParts = Array.from(toolPartsMap.values());
+
+      console.log("[AI] Tool parts extracted:", {
+        count: toolParts.length,
+        toolParts: JSON.stringify(toolParts, null, 2),
+      });
 
       // 7. Update message parts with final content (reasoning + tools + text)
       const parts: any[] = [];
 
       // Add reasoning part first (if exists) so it appears before text
       if (finalReasoning) {
-        console.log(
-          `➕ Adding reasoning part (${finalReasoning.length} chars)`
-        );
         parts.push({ type: "reasoning", text: finalReasoning });
       }
 
       // Add tool parts
       if (toolParts.length > 0) {
-        console.log(`➕ Adding ${toolParts.length} tool parts`);
+        console.log("[AI] Adding tool parts to message parts array:", toolParts);
         parts.push(...toolParts);
       }
 
       // Add text part
       if (finalText) {
-        console.log(`➕ Adding text part (${finalText.length} chars)`);
         parts.push({ type: "text", text: finalText });
       }
 
-      console.log(`📝 Updating message parts: ${parts.length} parts total`);
+      console.log("[AI] Final parts to persist:", {
+        count: parts.length,
+        parts: JSON.stringify(parts, null, 2),
+      });
 
       // Update message with all parts
       if (parts.length > 0) {
+        console.log("[AI] Calling updateMessageParts with:", {
+          messageId: args.assistantMessageId,
+          partsCount: parts.length,
+        });
         await ctx.runMutation(api.mutations.updateMessageParts, {
           messageId: args.assistantMessageId,
           parts,
         });
+        console.log("[AI] updateMessageParts completed");
       }
 
       // 7. Mark message as complete

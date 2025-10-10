@@ -13,13 +13,6 @@ export function MCPToolRenderer({
   output,
   isInProgress = false,
 }: MCPToolRendererProps) {
-  console.log("🎨 MCPToolRenderer:", {
-    toolName,
-    serverName,
-    output,
-    isInProgress,
-  });
-
   // Handle different MCP tool types with custom UI
   const renderToolOutput = () => {
     if (toolName === "greet") {

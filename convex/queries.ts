@@ -167,29 +167,16 @@ export const getMessagesByChatId = query({
           .order("asc")
           .collect();
 
-        console.log(`🔍 [getMessagesByChatId] Message ${message._id}:`, {
-          role: message.role,
-          textChunksCount: chunks.length,
-          reasoningChunksCount: reasoningChunks.length,
-          isComplete: message.isComplete,
-        });
-
         // Combine text chunks
         let combinedContent: string | null = null;
         if (chunks.length > 0) {
           combinedContent = chunks.map((c) => c.content).join("");
-          console.log(
-            `📝 [getMessagesByChatId] Combined text: ${combinedContent.length} chars`
-          );
         }
 
         // Combine reasoning chunks
         let combinedReasoning: string | null = null;
         if (reasoningChunks.length > 0) {
           combinedReasoning = reasoningChunks.map((c) => c.content).join("");
-          console.log(
-            `🧠 [getMessagesByChatId] Combined reasoning: ${combinedReasoning.length} chars`
-          );
         }
 
         return {
