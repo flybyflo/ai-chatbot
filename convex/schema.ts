@@ -173,6 +173,14 @@ export default defineSchema({
   userSelectedTools: defineTable({
     userId: v.string(),
     selectedTools: v.array(v.string()),
+    selectedMcpTools: v.optional(v.array(v.string())),
+    selectedA2AServers: v.optional(v.array(v.string())),
+    selectedLocalTools: v.optional(v.array(v.string())),
+    selectedChatModel: v.optional(v.string()),
+    selectedReasoningEffort: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+    ),
+    activeLoadoutId: v.optional(v.union(v.string(), v.null())),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),

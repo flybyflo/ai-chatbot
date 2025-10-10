@@ -10,7 +10,7 @@ import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
 const testA2AServerSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1),
   cardUrl: z.string().url(),
   headers: z.record(z.string()).optional(),
 });
