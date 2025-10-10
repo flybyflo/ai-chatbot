@@ -513,3 +513,73 @@ export const getUserSelectedTools = query({
     };
   },
 });
+
+// ============================================================================
+// A2A Data Queries
+// ============================================================================
+
+export const getA2AData = query({
+  args: {},
+  returns: v.object({
+    registry: v.union(v.null(), v.any()),
+    sessions: v.array(
+      v.object({
+        sessionKey: v.string(),
+        snapshot: v.any(),
+      })
+    ),
+    events: v.array(v.any()),
+  }),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return {
+        registry: null,
+        sessions: [],
+        events: [],
+      };
+    }
+
+    const userId = identity.subject;
+
+    const registryDocs = await ctx.db
+      .query("a2aRegistries")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    let latestRegistry: any = null;
+    let latestUpdatedAt = Number.NEGATIVE_INFINITY;
+
+    for (const doc of registryDocs) {
+      const updatedAt = doc.updatedAt ?? doc._creationTime;
+      if (updatedAt > latestUpdatedAt) {
+        latestUpdatedAt = updatedAt;
+        latestRegistry = doc.registry;
+      }
+    }
+
+    const sessionDocs = await ctx.db
+      .query("a2aSessions")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    const sessions = sessionDocs.map((doc) => ({
+      sessionKey: doc.sessionKey,
+      snapshot: doc.snapshot,
+    }));
+
+    const eventDocs = await ctx.db
+      .query("a2aEvents")
+      .withIndex("by_userId_timestamp", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(200);
+
+    const events = eventDocs.map((doc) => doc.payload);
+
+    return {
+      registry: latestRegistry ?? null,
+      sessions,
+      events,
+    };
+  },
+});

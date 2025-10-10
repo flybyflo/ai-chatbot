@@ -9,7 +9,6 @@ import {
   MessageCircle,
   SearchIcon,
 } from "lucide-react";
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   ChainOfThought,
@@ -55,15 +54,6 @@ function extractUrls(value: string | undefined | null) {
     .map((match) => match.replace(/[.,)]+$/g, ""))
     .filter(Boolean);
   return Array.from(new Set(cleaned));
-}
-
-function getLogoUrl(hostname: string) {
-  const token = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
-  const url = new URL(`https://img.logo.dev/${hostname}`);
-  if (token) {
-    url.searchParams.set("token", token);
-  }
-  return url.toString();
 }
 
 function getStatusIcon(label: string, state?: string) {
@@ -135,6 +125,7 @@ type Step = {
   urls?: string[];
   progress?: "complete" | "pending";
 };
+
 export default function MessageA2ATimeline({
   event,
   tasks,
@@ -334,12 +325,9 @@ export default function MessageA2ATimeline({
   }, [visibleCount, steps.length, enableAnimation]);
 
   return (
-    <section
-      aria-live="polite"
-      className="relative w-full px-2 pb-3 sm:px-4 sm:pb-4"
-    >
+    <section aria-live="polite" className="relative w-full p-0">
       <ChainOfThought
-        className="rounded-xl border bg-card/70 p-4 shadow-sm"
+        className="rounded-none border-0 bg-transparent p-0 shadow-none"
         defaultOpen
       >
         <ChainOfThoughtHeader>
@@ -376,13 +364,6 @@ export default function MessageA2ATimeline({
                         const hostname = parsed.hostname;
                         return (
                           <ChainOfThoughtSearchResult key={url}>
-                            <Image
-                              alt=""
-                              className="size-4"
-                              height={16}
-                              src={getLogoUrl(hostname)}
-                              width={16}
-                            />
                             {hostname}
                           </ChainOfThoughtSearchResult>
                         );

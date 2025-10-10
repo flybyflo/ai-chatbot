@@ -415,11 +415,16 @@ export function useSharedSelectedTools(
       }
 
       const categories = categorizeTools(normalized, resolveToolType);
-      void updatePreferences({
+      updatePreferences({
         selectedTools: normalized,
         selectedMcpTools: categories.mcp,
         selectedA2AServers: categories.a2a,
         selectedLocalTools: categories.local,
+      }).catch((error) => {
+        console.error(
+          "[SELECTED_TOOLS] Failed to persist tool selection",
+          error
+        );
       });
       return normalized;
     },

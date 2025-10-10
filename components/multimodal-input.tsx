@@ -221,7 +221,7 @@ function PureMultimodalInput({
       {/* CONTAINER — minimal & modern: thin border, subtle shadow, tight padding */}
       <PromptInput
         className={cn(
-          "rounded-xl border bg-popover/70 p-2.5 shadow-sm backdrop-blur transition-colors duration-150",
+          "rounded-3xl border bg-popover/70 p-2.5 shadow-sm backdrop-blur transition-colors duration-150",
           activeLoadoutId
             ? "border-purple-500/50 focus-within:border-purple-500 hover:border-purple-500/70"
             : "border-border/30 focus-within:border-border hover:border-muted-foreground/40"
