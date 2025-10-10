@@ -146,6 +146,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility}
         isReadonly={session?.user?.id !== chat.userId}
+        key={chat._id}
       />
     );
   }
@@ -159,6 +160,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       initialMessages={uiMessages}
       initialVisibilityType={chat.visibility}
       isReadonly={session?.user?.id !== chat.userId}
+      key={chat._id}
     />
   );
 }

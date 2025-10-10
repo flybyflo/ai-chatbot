@@ -153,6 +153,14 @@ function dedupeA2AToolParts(parts: unknown[]) {
   return deduped;
 }
 
+function serializeForKey(value: unknown) {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
+
 export function Chat({
   id,
   initialMessages,
@@ -179,45 +187,9 @@ export function Chat({
   const { setDataStream } = useDataStream();
   const { setCurrentMessages } = useChatContext();
 
-  // Extract data parts from initial messages and populate data stream
   useEffect(() => {
-    const initialDataParts: any[] = [];
-
-    for (const message of initialMessages) {
-      if (!message.parts) {
-        continue;
-      }
-
-      for (const part of message.parts) {
-        const partType = (part as any)?.type;
-        if (typeof partType !== "string") {
-          continue;
-        }
-
-        if (partType.startsWith("tool-a2a_")) {
-          const output = (part as any)?.output;
-          if (output && typeof output === "object") {
-            initialDataParts.push({
-              type: "data-a2aEvents",
-              data: output,
-            });
-          }
-          continue;
-        }
-
-        if (partType.startsWith("data-")) {
-          const dataPayload =
-            (part as any)?.data ?? (part as any)?.output ?? part;
-          initialDataParts.push({
-            type: partType,
-            data: dataPayload,
-          });
-        }
-      }
-    }
-
-    setDataStream(initialDataParts);
-  }, [initialMessages, setDataStream]);
+    setDataStream([]);
+  }, [setDataStream]);
 
   const [input, setInput] = useState<string>("");
   const [usage] = useState<AppUsage | undefined>(initialLastContext);
@@ -352,6 +324,8 @@ export function Chat({
       });
 
       const nextDataStreamParts: any[] = [];
+      const seenA2AEventKeys = new Set<string>();
+      const seenDataPartKeys = new Set<string>();
 
       const uiMessages: ChatMessage[] = messagesFromConvex.map((msg) => {
         const rawParts: any[] = Array.isArray(msg.parts)
@@ -362,32 +336,69 @@ export function Chat({
         const normalizedParts = dedupeA2AToolParts(rawParts) as any[];
         let parts: any[] = [...normalizedParts];
 
-        for (const part of normalizedParts) {
+        normalizedParts.forEach((part, partIndex) => {
           const partType = (part as any)?.type;
           if (typeof partType !== "string") {
-            continue;
+            return;
           }
 
           if (partType.startsWith("tool-a2a_")) {
             const output = (part as any)?.output;
             if (output && typeof output === "object") {
-              nextDataStreamParts.push({
-                type: "data-a2aEvents",
-                data: output,
-              });
+              const keySegments = [`msg:${msg._id}`];
+              const toolCallId = (part as any)?.toolCallId;
+              if (typeof toolCallId === "string" && toolCallId.length > 0) {
+                keySegments.push(`call:${toolCallId}`);
+              }
+              const outputRecord = output as Record<string, unknown>;
+              const primaryTaskId = outputRecord?.primaryTaskId;
+              if (
+                typeof primaryTaskId === "string" &&
+                primaryTaskId.length > 0
+              ) {
+                keySegments.push(`task:${primaryTaskId}`);
+              }
+              const contextId = outputRecord?.contextId;
+              if (typeof contextId === "string" && contextId.length > 0) {
+                keySegments.push(`ctx:${contextId}`);
+              }
+              const agentToolId = outputRecord?.agentToolId;
+              if (typeof agentToolId === "string" && agentToolId.length > 0) {
+                keySegments.push(`tool:${agentToolId}`);
+              }
+              const agentKey = outputRecord?.agentKey;
+              if (typeof agentKey === "string" && agentKey.length > 0) {
+                keySegments.push(`agent:${agentKey}`);
+              }
+              if (keySegments.length === 1) {
+                keySegments.push(`idx:${partIndex}`);
+              }
+              const eventKey = keySegments.join("|");
+              if (!seenA2AEventKeys.has(eventKey)) {
+                seenA2AEventKeys.add(eventKey);
+                nextDataStreamParts.push({
+                  type: "data-a2aEvents",
+                  data: output,
+                });
+              }
             }
-            continue;
+            return;
           }
 
           if (partType.startsWith("data-")) {
             const dataPayload =
               (part as any)?.data ?? (part as any)?.output ?? part;
-            nextDataStreamParts.push({
-              type: partType,
-              data: dataPayload,
-            });
+            const serialized = serializeForKey(dataPayload);
+            const dataKey = `msg:${msg._id}|type:${partType}|payload:${serialized}`;
+            if (!seenDataPartKeys.has(dataKey)) {
+              seenDataPartKeys.add(dataKey);
+              nextDataStreamParts.push({
+                type: partType,
+                data: dataPayload,
+              });
+            }
           }
-        }
+        });
 
         const toolPartsForStream = normalizedParts.filter((part) => {
           const type = (part as any)?.type;
