@@ -37,6 +37,122 @@ import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import type { VisibilityType } from "./visibility-selector";
 
+function dedupeA2AToolParts(parts: unknown[]) {
+  if (!Array.isArray(parts)) {
+    return [] as unknown[];
+  }
+
+  const deduped: unknown[] = [];
+  const seen = new Map<string, number>();
+
+  const clonePart = (part: any) => {
+    if (!part || typeof part !== "object") {
+      return part;
+    }
+    const clone: Record<string, unknown> = { ...part };
+    if (part.input && typeof part.input === "object") {
+      clone.input = { ...part.input };
+    }
+    if (part.output && typeof part.output === "object") {
+      clone.output = { ...part.output };
+    }
+    if (part.data && typeof part.data === "object") {
+      clone.data = { ...part.data };
+    }
+    return clone;
+  };
+
+  for (const part of parts) {
+    if (!part || typeof part !== "object") {
+      deduped.push(part);
+      continue;
+    }
+
+    const type = (part as { type?: unknown }).type;
+    if (typeof type !== "string" || !type.startsWith("tool-a2a_")) {
+      deduped.push(clonePart(part));
+      continue;
+    }
+
+    const normalizedPart = clonePart(part) as Record<string, unknown>;
+    const output = normalizedPart.output as Record<string, unknown> | undefined;
+
+    const keySegments: string[] = [];
+    const toolCallId = normalizedPart.toolCallId;
+    if (typeof toolCallId === "string" && toolCallId.length > 0) {
+      keySegments.push(`call:${toolCallId}`);
+    }
+    if (output) {
+      const primaryTaskId = output.primaryTaskId;
+      if (typeof primaryTaskId === "string" && primaryTaskId.length > 0) {
+        keySegments.push(`task:${primaryTaskId}`);
+      }
+      const contextId = output.contextId;
+      if (typeof contextId === "string" && contextId.length > 0) {
+        keySegments.push(`ctx:${contextId}`);
+      }
+      const agentToolId = output.agentToolId;
+      if (typeof agentToolId === "string" && agentToolId.length > 0) {
+        keySegments.push(`tool:${agentToolId}`);
+      }
+    }
+    const toolName = normalizedPart.toolName;
+    if (typeof toolName === "string" && toolName.length > 0) {
+      keySegments.push(`name:${toolName}`);
+    }
+
+    const key =
+      keySegments.length > 0
+        ? keySegments.join("|")
+        : `${type}:${(normalizedPart.agentKey as string | undefined) ?? ""}:${
+            deduped.length
+          }`;
+
+    const existingIndex = seen.get(key);
+    if (existingIndex !== undefined) {
+      const existing = deduped[existingIndex];
+      if (existing && typeof existing === "object") {
+        const existingRecord = existing as Record<string, unknown>;
+        const merged: Record<string, unknown> = { ...existingRecord };
+
+        for (const [field, value] of Object.entries(normalizedPart)) {
+          if (value === undefined) {
+            continue;
+          }
+
+          if (field === "output" || field === "input" || field === "data") {
+            const existingValue = existingRecord[field];
+            if (
+              existingValue &&
+              typeof existingValue === "object" &&
+              value &&
+              typeof value === "object"
+            ) {
+              merged[field] = {
+                ...(existingValue as Record<string, unknown>),
+                ...(value as Record<string, unknown>),
+              };
+              continue;
+            }
+          }
+
+          merged[field] = value;
+        }
+
+        deduped[existingIndex] = merged;
+      } else {
+        deduped[existingIndex] = normalizedPart;
+      }
+      continue;
+    }
+
+    seen.set(key, deduped.length);
+    deduped.push(normalizedPart);
+  }
+
+  return deduped;
+}
+
 export function Chat({
   id,
   initialMessages,
@@ -243,9 +359,10 @@ export function Chat({
           : msg.parts
             ? [msg.parts]
             : [];
-        let parts: any[] = [...rawParts];
+        const normalizedParts = dedupeA2AToolParts(rawParts) as any[];
+        let parts: any[] = [...normalizedParts];
 
-        for (const part of rawParts) {
+        for (const part of normalizedParts) {
           const partType = (part as any)?.type;
           if (typeof partType !== "string") {
             continue;
@@ -272,7 +389,7 @@ export function Chat({
           }
         }
 
-        const toolPartsForStream = rawParts.filter((part) => {
+        const toolPartsForStream = normalizedParts.filter((part) => {
           const type = (part as any)?.type;
           return typeof type === "string" && type.startsWith("tool-a2a_");
         });
