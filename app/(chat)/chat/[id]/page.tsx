@@ -6,12 +6,12 @@ import { api } from "@/convex/_generated/api";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { auth } from "@/lib/auth";
 import { getToken } from "@/lib/auth-server";
-import { convertToUIMessages } from "@/lib/utils";
 import type { AppUsage } from "@/lib/usage";
+import { convertToUIMessages } from "@/lib/utils";
 
 function normalizeLastContext(context: unknown): AppUsage | undefined {
   if (!context || typeof context !== "object") {
-    return undefined;
+    return;
   }
 
   const usage = context as Record<string, unknown>;
@@ -31,11 +31,11 @@ function normalizeLastContext(context: unknown): AppUsage | undefined {
   const inputTokens =
     typeof usage.inputTokens === "number"
       ? usage.inputTokens
-      : promptTokens ?? 0;
+      : (promptTokens ?? 0);
   const outputTokens =
     typeof usage.outputTokens === "number"
       ? usage.outputTokens
-      : completionTokens ?? 0;
+      : (completionTokens ?? 0);
 
   const totalTokens =
     typeof usage.totalTokens === "number"
@@ -52,8 +52,7 @@ function normalizeLastContext(context: unknown): AppUsage | undefined {
     (normalized as Record<string, unknown>).promptTokens = promptTokens;
   }
   if (typeof completionTokens === "number") {
-    (normalized as Record<string, unknown>).completionTokens =
-      completionTokens;
+    (normalized as Record<string, unknown>).completionTokens = completionTokens;
   }
   if (typeof usage.modelId === "string") {
     normalized.modelId = usage.modelId;

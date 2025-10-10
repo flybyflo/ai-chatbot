@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense, use, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -173,12 +174,34 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
       return;
     }
     try {
-      await testMCPServer({
+      toast.loading("Testing connection...", { id: "test-mcp-server" });
+      const result = await testMCPServer({
         id: server.id,
         url: server.url,
         headers: server.headers,
       });
+
+      if (result.connected) {
+        toast.success(
+          `Connected successfully! Found ${result.tools ? Object.keys(result.tools).length : 0} tools.`,
+          { id: "test-mcp-server" }
+        );
+      } else {
+        toast.error("Connection failed. Check the error details below.", {
+          id: "test-mcp-server",
+        });
+      }
     } catch (error) {
+      let errorMessage = "Failed to test server";
+
+      if (error instanceof Error) {
+        // Extract the actual error cause if available
+        errorMessage = (error as any).cause || error.message;
+      }
+
+      toast.error(`Connection test failed: ${errorMessage}`, {
+        id: "test-mcp-server",
+      });
       console.error("Failed to test server:", error);
     }
   };
@@ -188,8 +211,15 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
       return;
     }
     try {
-      await updateMCPServer({ id: server.id, isActive: !server.isActive });
+      const newState = !server.isActive;
+      await updateMCPServer({ id: server.id, isActive: newState });
+      toast.success(`Server ${newState ? "enabled" : "disabled"} successfully`);
     } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? (error as any).cause || error.message
+          : "Unknown error";
+      toast.error(`Failed to update server: ${errorMessage}`);
       console.error("Failed to update server:", error);
     }
   };
@@ -200,9 +230,20 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
     }
     if (confirm("Are you sure you want to delete this MCP server?")) {
       try {
+        toast.loading("Deleting server...", { id: "delete-mcp-server" });
         await deleteMCPServer(server.id);
+        toast.success("Server deleted successfully", {
+          id: "delete-mcp-server",
+        });
         window.location.href = "/settings/mcp-servers";
       } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? (error as any).cause || error.message
+            : "Unknown error";
+        toast.error(`Failed to delete server: ${errorMessage}`, {
+          id: "delete-mcp-server",
+        });
         console.error("Failed to delete server:", error);
       }
     }

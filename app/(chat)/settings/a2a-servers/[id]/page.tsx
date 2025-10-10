@@ -42,8 +42,11 @@ export default function A2AServerDetailPage() {
     ? routeParams?.id?.[0]
     : routeParams?.id;
 
-  const toError = (error: unknown) =>
-    error instanceof Error ? error : new Error(String(error));
+  const toError = useCallback(
+    (error: unknown) =>
+      error instanceof Error ? error : new Error(String(error)),
+    []
+  );
 
   const fetchWithConsoleLog = useCallback(
     async (path: string, init?: RequestInit) => {
@@ -146,7 +149,7 @@ export default function A2AServerDetailPage() {
       controller.abort();
       cancelled = true;
     };
-  }, [fetchWithConsoleLog, idParam]);
+  }, [fetchWithConsoleLog, idParam, toError]);
 
   useEffect(() => {
     if (!idParam || !server) {
@@ -194,7 +197,7 @@ export default function A2AServerDetailPage() {
       controller.abort();
       cancelled = true;
     };
-  }, [fetchWithConsoleLog, idParam, server]);
+  }, [fetchWithConsoleLog, idParam, server, toError]);
 
   useEffect(() => {
     if (!idParam) {

@@ -1,10 +1,10 @@
 "use client";
 
+import type { UseChatHelpers } from "@ai-sdk/react";
+import type { ChatStatus } from "ai";
 import { useAction, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatStatus } from "ai";
-import type { UseChatHelpers } from "@ai-sdk/react";
 import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -186,7 +186,11 @@ export function Chat({
           const streamingParts: any[] = [];
 
           // Add reasoning part if available
-          if (msg.reasoningChunks && msg.reasoningChunks.length > 0 && msg.combinedReasoning) {
+          if (
+            msg.reasoningChunks &&
+            msg.reasoningChunks.length > 0 &&
+            msg.combinedReasoning
+          ) {
             streamingParts.push({
               type: "reasoning",
               text: msg.combinedReasoning,
@@ -249,17 +253,21 @@ export function Chat({
     ? "streaming"
     : "ready";
 
-  console.log('🚦 [Chat] Status check:', {
+  console.log("🚦 [Chat] Status check:", {
     status,
     hasMessagesFromConvex: !!messagesFromConvex,
     messageCount: messagesFromConvex?.length || 0,
-    incompleteMessages: messagesFromConvex?.filter((m) => !m.isComplete).map(m => m._id) || [],
+    incompleteMessages:
+      messagesFromConvex?.filter((m) => !m.isComplete).map((m) => m._id) || [],
   });
 
   // Send message function
   const sendMessage = useCallback(
     async (message: ChatMessage) => {
-      console.log('📤 [Chat] Attempting to send message, current status:', status);
+      console.log(
+        "📤 [Chat] Attempting to send message, current status:",
+        status
+      );
 
       if (!session?.user) {
         toast.error("You must be logged in to send messages");
@@ -351,6 +359,7 @@ export function Chat({
       currentReasoningEffort,
       mutate,
       input,
+      status,
     ]
   );
 
@@ -367,18 +376,21 @@ export function Chat({
 
   const stop = useCallback<UseChatHelpers<ChatMessage>["stop"]>(async () => {
     console.warn("Stop not yet implemented for Convex streaming");
+    return Promise.resolve();
   }, []);
 
   const regenerate = useCallback<
     UseChatHelpers<ChatMessage>["regenerate"]
   >(async () => {
     console.warn("Regenerate not yet implemented for Convex streaming");
+    return Promise.resolve();
   }, []);
 
   const resumeStream = useCallback<
     UseChatHelpers<ChatMessage>["resumeStream"]
   >(async () => {
     console.warn("Resume stream not yet implemented for Convex streaming");
+    return Promise.resolve();
   }, []);
 
   useEffect(() => {
@@ -394,11 +406,13 @@ export function Chat({
 
   useEffect(() => {
     if (query && !hasAppendedQuery) {
-      void sendMessage({
+      sendMessage({
         id: generateUUID(),
         role: "user" as const,
         parts: [{ type: "text", text: query }],
         metadata: { createdAt: new Date().toISOString() },
+      }).catch((error) => {
+        console.error("Failed to send message:", error);
       });
 
       setHasAppendedQuery(true);

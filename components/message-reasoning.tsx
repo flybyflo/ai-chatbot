@@ -19,7 +19,7 @@ export function MessageReasoning({
   reasoning,
   className,
 }: MessageReasoningProps) {
-  console.log(`🤔 [MessageReasoning] Component rendered:`, {
+  console.log("🤔 [MessageReasoning] Component rendered:", {
     isLoading,
     reasoningLength: reasoning.length,
     reasoningPreview: reasoning.substring(0, 100),
@@ -29,7 +29,7 @@ export function MessageReasoning({
 
   useEffect(() => {
     if (isLoading) {
-      console.log(`▶️ [MessageReasoning] Setting hasBeenStreaming to true`);
+      console.log("▶️ [MessageReasoning] Setting hasBeenStreaming to true");
       setHasBeenStreaming(true);
     }
   }, [isLoading]);
@@ -38,7 +38,7 @@ export function MessageReasoning({
   // Rough estimate: ~50 characters per second of thinking
   const estimatedDuration = Math.max(1, Math.round(reasoning.length / 50));
 
-  console.log(`🔧 [MessageReasoning] Rendering Reasoning component:`, {
+  console.log("🔧 [MessageReasoning] Rendering Reasoning component:", {
     hasBeenStreaming,
     estimatedDuration,
     isStreaming: isLoading,

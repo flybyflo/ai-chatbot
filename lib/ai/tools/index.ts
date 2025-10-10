@@ -1,4 +1,4 @@
-import { fetchQuery } from "convex/nextjs";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { A2AManager } from "../a2a/manager";
@@ -25,11 +25,87 @@ type CombinedToolsResult = {
   localTools: LocalTools;
 };
 
+type RegistrySnapshot = Doc<"userMCPRegistrySnapshots">;
+
 const localTools: LocalTools = {
   getWeather,
   codeCompare,
   plantuml,
 };
+
+function cloneRegistry(registry: MCPToolRegistry): MCPToolRegistry {
+  return {
+    tools: { ...registry.tools },
+    metadata: { ...registry.metadata },
+    serverStatus: { ...registry.serverStatus },
+  };
+}
+
+function mergeRegistries(
+  base?: MCPToolRegistry,
+  override?: MCPToolRegistry
+): MCPToolRegistry | undefined {
+  if (!base) {
+    return override ? cloneRegistry(override) : undefined;
+  }
+
+  if (!override) {
+    return cloneRegistry(base);
+  }
+
+  const merged = cloneRegistry(base);
+
+  for (const [toolId, tool] of Object.entries(override.tools)) {
+    merged.tools[toolId] = tool;
+  }
+
+  for (const [toolId, metadata] of Object.entries(override.metadata)) {
+    merged.metadata[toolId] = metadata;
+  }
+
+  for (const [serverName, status] of Object.entries(override.serverStatus)) {
+    merged.serverStatus[serverName] = status;
+  }
+
+  return merged;
+}
+
+function aggregateSnapshotRegistries(
+  snapshots: RegistrySnapshot[]
+): MCPToolRegistry | undefined {
+  return snapshots.reduce<MCPToolRegistry | undefined>((acc, snapshot) => {
+    return mergeRegistries(acc, snapshot.registry);
+  }, undefined);
+}
+
+function mergeSnapshotWithServerRegistry(
+  snapshot: RegistrySnapshot | undefined,
+  serverRegistry: MCPToolRegistry
+): MCPToolRegistry {
+  if (!snapshot) {
+    return cloneRegistry(serverRegistry);
+  }
+
+  const hasMetadata = Object.keys(serverRegistry.metadata).length > 0;
+  const mergedStatus = {
+    ...snapshot.registry.serverStatus,
+    ...serverRegistry.serverStatus,
+  };
+
+  if (!hasMetadata) {
+    return {
+      tools: { ...snapshot.registry.tools },
+      metadata: { ...snapshot.registry.metadata },
+      serverStatus: mergedStatus,
+    };
+  }
+
+  return {
+    tools: { ...snapshot.registry.tools, ...serverRegistry.tools },
+    metadata: { ...snapshot.registry.metadata, ...serverRegistry.metadata },
+    serverStatus: mergedStatus,
+  };
+}
 
 async function fetchServers<T extends Doc<any>>(fetcher: () => Promise<T[]>) {
   try {
@@ -53,14 +129,31 @@ export async function getAllTools(
   // Add user A2A and MCP tools if userId is provided
   if (userId && token) {
     try {
-      const [a2aServers, mcpServers] = await Promise.all([
+      const [a2aServers, mcpServers, registrySnapshots] = await Promise.all([
         fetchServers(() =>
           fetchQuery(api.queries.getActiveUserA2AServers, { userId }, { token })
         ),
         fetchServers(() =>
           fetchQuery(api.queries.getActiveUserMCPServers, { userId }, { token })
         ),
+        fetchServers(() =>
+          fetchQuery(
+            api.queries.getUserMCPRegistrySnapshots,
+            { userId },
+            { token }
+          )
+        ),
       ]);
+
+      const snapshotByServerId = new Map<string, RegistrySnapshot>();
+      for (const snapshot of registrySnapshots) {
+        snapshotByServerId.set(snapshot.serverId as string, snapshot);
+      }
+
+      let aggregatedRegistry = aggregateSnapshotRegistries(registrySnapshots);
+      if (aggregatedRegistry) {
+        result.mcpRegistry = aggregatedRegistry;
+      }
 
       if (a2aServers.length > 0) {
         const a2aManager = new A2AManager();
@@ -97,15 +190,48 @@ export async function getAllTools(
 
         await mcpManager.initializeServers(serverConfigs);
         const mcpTools = mcpManager.getTools();
-        const mcpRegistry = mcpManager.getRegistry();
+        const mcpRegistry = mcpManager.getSerializableRegistry();
+        const registryByServer = mcpManager.getSerializableRegistryByServer();
 
         // Combine local and MCP tools
         result.tools = {
           ...result.tools,
           ...mcpTools,
         };
-        result.mcpRegistry = mcpRegistry;
+        aggregatedRegistry = mergeRegistries(aggregatedRegistry, mcpRegistry);
+        if (aggregatedRegistry) {
+          result.mcpRegistry = aggregatedRegistry;
+        }
         result.mcpManager = mcpManager;
+
+        const persistPromises = mcpServers
+          .map((server) => {
+            const serverRegistry = registryByServer[server.name];
+            if (!serverRegistry) {
+              return null;
+            }
+
+            const snapshot = snapshotByServerId.get(server._id as string);
+            const registryToPersist = mergeSnapshotWithServerRegistry(
+              snapshot,
+              serverRegistry
+            );
+
+            return fetchMutation(
+              api.mutations.upsertUserMCPRegistrySnapshot,
+              {
+                userId,
+                serverId: server._id,
+                registry: registryToPersist,
+              },
+              { token }
+            );
+          })
+          .filter((promise): promise is Promise<any> => promise !== null);
+
+        if (persistPromises.length > 0) {
+          await Promise.allSettled(persistPromises);
+        }
       }
     } catch (error) {
       console.warn(

@@ -37,8 +37,18 @@ export async function fetchWithErrorHandlers(
     const response = await fetch(input, init);
 
     if (!response.ok) {
-      const { code, cause } = await response.json();
-      throw new ChatSDKError(code as ErrorCode, cause);
+      try {
+        const data = await response.json();
+        const { code, cause } = data;
+        throw new ChatSDKError(code as ErrorCode, cause);
+      } catch (jsonError) {
+        // If it's already a ChatSDKError, re-throw it
+        if (jsonError instanceof ChatSDKError) {
+          throw jsonError;
+        }
+        // If JSON parsing fails, throw a generic error
+        throw new ChatSDKError('bad_request:api', `Request failed with status ${response.status}`);
+      }
     }
 
     return response;
