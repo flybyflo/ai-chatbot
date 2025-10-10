@@ -123,7 +123,20 @@ const PurePreviewMessage = ({
               }
             };
 
+            console.log("[MESSAGE] Processing message parts:", {
+              messageId: message.id,
+              role: message.role,
+              partsCount: message.parts?.length,
+              parts: message.parts,
+            });
+
             message.parts?.forEach((part, index) => {
+              console.log("[MESSAGE] Processing part:", {
+                index,
+                type: part.type,
+                part,
+              });
+
               const partText =
                 typeof (part as { text?: string }).text === "string"
                   ? (part as { text?: string }).text
@@ -148,24 +161,36 @@ const PurePreviewMessage = ({
               }
 
               if (part.type === "tool-getWeather") {
+                console.log("[MESSAGE] Found tool-getWeather part");
                 flowItems.push({ kind: "tool-getWeather", part });
                 return;
               }
 
               if (part.type === "tool-codeCompare") {
+                console.log("[MESSAGE] Found tool-codeCompare part");
                 flowItems.push({ kind: "tool-codeCompare", part });
                 return;
               }
 
               if (part.type === "tool-plantuml") {
+                console.log("[MESSAGE] Found tool-plantuml part");
                 flowItems.push({ kind: "tool-plantuml", part });
                 return;
               }
 
               if (part.type === "dynamic-tool") {
+                console.log("[MESSAGE] Found dynamic-tool part:", part);
                 flowItems.push({ kind: "dynamic-tool", part });
                 return;
               }
+
+              console.log("[MESSAGE] Unhandled part type:", part.type);
+            });
+
+            console.log("[MESSAGE] Final flow items:", {
+              messageId: message.id,
+              flowItemsCount: flowItems.length,
+              flowItems,
             });
 
             // Trailing reasoning, if any

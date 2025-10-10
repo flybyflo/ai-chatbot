@@ -388,11 +388,25 @@ export const generateAssistantMessage = internalAction({
         }
       };
 
+      console.log("[AI] Processing steps for tool calls:", {
+        hasSteps: !!finalResult.steps,
+        isArray: Array.isArray(finalResult.steps),
+        stepsCount: Array.isArray(finalResult.steps) ? finalResult.steps.length : 0,
+        steps: finalResult.steps,
+      });
+
       if (finalResult.steps && Array.isArray(finalResult.steps)) {
         for (const step of finalResult.steps) {
+          console.log("[AI] Processing step:", {
+            hasToolCalls: !!step?.toolCalls,
+            toolCallsCount: Array.isArray(step?.toolCalls) ? step.toolCalls.length : 0,
+            toolCalls: step?.toolCalls,
+          });
           collectFromStep(step);
         }
       }
+
+      console.log("[AI] After processing steps, toolPartsMap size:", toolPartsMap.size);
 
       // Fallback to aggregated dynamic tool data if steps did not yield results
       if (toolPartsMap.size === 0) {
@@ -432,6 +446,11 @@ export const generateAssistantMessage = internalAction({
 
       const toolParts = Array.from(toolPartsMap.values());
 
+      console.log("[AI] Tool parts extracted:", {
+        count: toolParts.length,
+        toolParts: JSON.stringify(toolParts, null, 2),
+      });
+
       // 7. Update message parts with final content (reasoning + tools + text)
       const parts: any[] = [];
 
@@ -442,6 +461,7 @@ export const generateAssistantMessage = internalAction({
 
       // Add tool parts
       if (toolParts.length > 0) {
+        console.log("[AI] Adding tool parts to message parts array:", toolParts);
         parts.push(...toolParts);
       }
 
@@ -450,12 +470,22 @@ export const generateAssistantMessage = internalAction({
         parts.push({ type: "text", text: finalText });
       }
 
+      console.log("[AI] Final parts to persist:", {
+        count: parts.length,
+        parts: JSON.stringify(parts, null, 2),
+      });
+
       // Update message with all parts
       if (parts.length > 0) {
+        console.log("[AI] Calling updateMessageParts with:", {
+          messageId: args.assistantMessageId,
+          partsCount: parts.length,
+        });
         await ctx.runMutation(api.mutations.updateMessageParts, {
           messageId: args.assistantMessageId,
           parts,
         });
+        console.log("[AI] updateMessageParts completed");
       }
 
       // 7. Mark message as complete

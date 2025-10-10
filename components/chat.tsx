@@ -169,6 +169,17 @@ export function Chat({
   // Convert Convex messages to UI format
   useEffect(() => {
     if (messagesFromConvex) {
+      console.log("[CHAT] Converting Convex messages to UI format:", {
+        messageCount: messagesFromConvex.length,
+        messages: messagesFromConvex.map(m => ({
+          id: m._id,
+          role: m.role,
+          isComplete: m.isComplete,
+          partsCount: Array.isArray(m.parts) ? m.parts.length : (m.parts ? 1 : 0),
+          parts: m.parts,
+        }))
+      });
+
       const uiMessages: ChatMessage[] = messagesFromConvex.map((msg) => {
         // For streaming messages, build parts from chunks
         let parts: any[] = Array.isArray(msg.parts)
@@ -176,6 +187,14 @@ export function Chat({
           : msg.parts
             ? [msg.parts]
             : [];
+
+        console.log("[CHAT] Processing message:", {
+          id: msg._id,
+          role: msg.role,
+          isComplete: msg.isComplete,
+          initialParts: parts,
+          hasToolCalls: parts.some(p => p?.type?.startsWith?.('tool-')),
+        });
 
         if (!msg.isComplete) {
           const streamingParts: any[] = [];
@@ -223,6 +242,12 @@ export function Chat({
           ];
         }
 
+        console.log("[CHAT] Final parts for message:", {
+          id: msg._id,
+          parts: parts,
+          toolParts: parts.filter(p => p?.type?.startsWith?.('tool-')),
+        });
+
         const normalized: ChatMessage & {
           experimental_isStreaming?: boolean;
         } = {
@@ -237,6 +262,11 @@ export function Chat({
         };
 
         return normalized;
+      });
+
+      console.log("[CHAT] Setting local messages:", {
+        count: uiMessages.length,
+        messagesWithTools: uiMessages.filter(m => m.parts.some(p => p?.type?.startsWith?.('tool-'))).length,
       });
 
       setLocalMessages(uiMessages);
