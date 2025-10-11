@@ -143,14 +143,13 @@ export function DataStreamProvider({
 
   // Only load global A2A data when NOT in a chat context (e.g., settings page)
   // In chat view, we use only events from message parts to avoid cross-chat pollution
-  const persistedA2A = useQuery(
-    api.queries.getA2AData,
-    chatId ? "skip" : {}
-  );
+  const persistedA2A = useQuery(api.queries.getA2AData, chatId ? "skip" : {});
 
   // Only use persisted data when NOT in chat context (to avoid cross-chat pollution)
   const persistedRegistry =
-    !chatId && persistedA2A?.registry && typeof persistedA2A.registry === "object"
+    !chatId &&
+    persistedA2A?.registry &&
+    typeof persistedA2A.registry === "object"
       ? (persistedA2A.registry as A2AAgentRegistry)
       : undefined;
 

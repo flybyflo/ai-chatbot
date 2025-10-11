@@ -103,7 +103,8 @@ function PureMultimodalInput({
 
   // Get active loadout color
   const activeLoadout = useMemo(
-    () => activeLoadoutId ? loadouts.find((l) => l.id === activeLoadoutId) : null,
+    () =>
+      activeLoadoutId ? loadouts.find((l) => l.id === activeLoadoutId) : null,
     [loadouts, activeLoadoutId]
   );
   const shadowColor = useMemo(
@@ -137,7 +138,7 @@ function PureMultimodalInput({
       const mouseX = (event.clientX - rect.left) * ROTATION_RANGE;
       const mouseY = (event.clientY - rect.top) * ROTATION_RANGE;
 
-      const rX = (mouseY / cardHeight - HALF_ROTATION_RANGE);
+      const rX = mouseY / cardHeight - HALF_ROTATION_RANGE;
       const rY = -(mouseX / cardWidth - HALF_ROTATION_RANGE);
 
       x.set(rX);
@@ -341,7 +342,9 @@ function PureMultimodalInput({
                 <div
                   className="flex flex-row items-end gap-1.5 overflow-x-auto px-0.5"
                   data-testid="attachments-preview"
-                  style={{ transform: enable3D ? "translateZ(8px)" : undefined }}
+                  style={{
+                    transform: enable3D ? "translateZ(8px)" : undefined,
+                  }}
                 >
                   {attachments.map((attachment) => (
                     <PreviewAttachment
