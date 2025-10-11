@@ -36,18 +36,25 @@
   --chart-3: hsl(197 37% 24%);
   --chart-4: hsl(43 74% 66%);
   --chart-5: hsl(27 87% 67%);
-  --sidebar-background: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-background: hsl(220 13% 97%);
+  --sidebar-foreground: hsl(222 14% 22%);
+  --sidebar-primary: hsl(222 18% 18%);
   --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(240 4.8% 95.9%);
-  --sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar-accent: hsl(220 12% 93%);
+  --sidebar-accent-foreground: hsl(222 15% 24%);
+  --sidebar-border: hsl(220 10% 82%);
+  --sidebar-ring: hsl(218 10% 42%);
   /* border radius unit */
   --radius: 0.5rem;
-  --sidebar: hsl(0 0% 98%);
-  --tool-bg: #f6f6f7;
+  --sidebar: hsl(220 13% 97%);
+  --tool-bg: hsl(220 15% 96%);
+  --sidebar-surface: hsl(220 14% 98%);
+  --sidebar-surface-muted: hsl(220 13% 94%);
+  --sidebar-surface-strong: hsl(220 12% 90%);
+  --sidebar-highlight: hsla(0, 0%, 100%, 0.75);
+  --sidebar-ambient: hsla(220, 18%, 40%, 0.12);
+  --sidebar-elevated-shadow: rgba(28, 36, 52, 0.18);
+  --sidebar-glow: hsla(220, 20%, 92%, 0.65);
 }
 
 /* define design tokens (dark mode) */
@@ -76,16 +83,23 @@
   --chart-3: hsl(30 80% 55%);
   --chart-4: hsl(280 65% 60%);
   --chart-5: hsl(340 75% 55%);
-  --sidebar-background: hsl(240 5.9% 10%);
-  --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
-  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
-  --sidebar: hsl(240 5.9% 10%);
-  --tool-bg: #212124;
+  --sidebar-background: hsl(220 9% 12%);
+  --sidebar-foreground: hsl(220 9% 84%);
+  --sidebar-primary: hsl(220 10% 88%);
+  --sidebar-primary-foreground: hsl(220 14% 10%);
+  --sidebar-accent: hsl(220 7% 18%);
+  --sidebar-accent-foreground: hsl(0 0% 98%);
+  --sidebar-border: hsl(220 9% 24%);
+  --sidebar-ring: hsl(218 10% 42%);
+  --sidebar: hsl(220 9% 12%);
+  --tool-bg: hsl(220 7% 18%);
+  --sidebar-surface: hsl(220 8% 20%);
+  --sidebar-surface-muted: hsl(220 8% 16%);
+  --sidebar-surface-strong: hsl(220 7% 13%);
+  --sidebar-highlight: hsla(0, 0%, 100%, 0.08);
+  --sidebar-ambient: hsla(220, 9%, 6%, 0.65);
+  --sidebar-elevated-shadow: rgba(0, 0, 0, 0.55);
+  --sidebar-glow: hsla(220, 18%, 20%, 0.45);
 }
 
 /* define theme */

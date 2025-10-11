@@ -53,6 +53,32 @@ function useSidebar() {
   return context;
 }
 
+const SidebarSurface = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div">
+>(({ className, children, ...props }, ref) => (
+  <div
+    className={cn(
+      "relative flex h-full flex-col overflow-hidden rounded-[1.75rem] text-sidebar-foreground transition-[background,box-shadow]",
+      "before:pointer-events-none before:absolute before:inset-0 before:-z-30 before:rounded-[2rem] before:bg-[linear-gradient(145deg,var(--sidebar-surface)_0%,var(--sidebar-surface-muted)_48%,var(--sidebar-surface-strong)_100%)]",
+      "after:pointer-events-none after:absolute after:inset-0 after:-z-20 after:rounded-[2.4rem] after:blur-3xl after:bg-[radial-gradient(circle_at_top,var(--sidebar-glow)_0%,transparent_70%)]",
+      "group-data-[variant=floating]:shadow-[0_35px_90px_-65px_var(--sidebar-elevated-shadow)]",
+      "group-data-[variant=floating]:before:opacity-90 group-data-[variant=floating]:after:opacity-90",
+      className
+    )}
+    ref={ref}
+    {...props}
+  >
+    <div className="pointer-events-none absolute inset-[1px] -z-10 rounded-[1.7rem] border border-white/5" />
+    <div className="pointer-events-none absolute inset-0 -z-10 rounded-[1.75rem] ring-1 ring-inset ring-sidebar-border/60" />
+    <div className="pointer-events-none absolute inset-x-8 top-0 -z-10 h-24 rounded-b-[3rem] bg-[radial-gradient(circle_at_top,var(--sidebar-highlight)_0%,transparent_75%)] opacity-75" />
+    <div className="relative flex h-full flex-col rounded-[1.55rem] border border-white/5 bg-sidebar/85 backdrop-blur-xl shadow-[0_28px_80px_-60px_var(--sidebar-elevated-shadow)]">
+      {children}
+    </div>
+  </div>
+));
+SidebarSurface.displayName = "SidebarSurface";
+
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -185,16 +211,14 @@ const Sidebar = React.forwardRef<
 
     if (collapsible === "none") {
       return (
-        <div
-          className={cn(
-            "flex h-full w-[var(--sidebar-width)] flex-col bg-sidebar text-sidebar-foreground",
-            className
-          )}
+        <SidebarSurface
+          className={cn("w-[var(--sidebar-width)]", className)}
+          data-sidebar="sidebar"
           ref={ref}
           {...props}
         >
           {children}
-        </div>
+        </SidebarSurface>
       );
     }
 
@@ -202,7 +226,7 @@ const Sidebar = React.forwardRef<
       return (
         <Sheet onOpenChange={setOpenMobile} open={openMobile} {...props}>
           <SheetContent
-            className="w-[var(--sidebar-width)] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className="w-[var(--sidebar-width)] bg-transparent p-0 text-sidebar-foreground [&>button]:hidden"
             data-mobile="true"
             data-sidebar="sidebar"
             side={side}
@@ -216,7 +240,9 @@ const Sidebar = React.forwardRef<
               <SheetTitle>Sidebar</SheetTitle>
               <SheetDescription>Displays the mobile sidebar.</SheetDescription>
             </SheetHeader>
-            <div className="flex h-full w-full flex-col">{children}</div>
+            <SidebarSurface className="h-full w-full" data-sidebar="sidebar">
+              {children}
+            </SidebarSurface>
           </SheetContent>
         </Sheet>
       );
@@ -256,12 +282,9 @@ const Sidebar = React.forwardRef<
           )}
           {...props}
         >
-          <div
-            className="flex h-full w-full flex-col bg-gradient-to-br from-tool-bg to-bg-background group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow"
-            data-sidebar="sidebar"
-          >
+          <SidebarSurface className="w-full" data-sidebar="sidebar">
             {children}
-          </div>
+          </SidebarSurface>
         </div>
       </div>
     );
