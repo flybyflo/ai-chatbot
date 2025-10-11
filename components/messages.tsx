@@ -51,8 +51,15 @@ function PureMessages({
   const events = useA2AEvents();
 
   const eventsAfterMessage = useMemo(() => {
+    console.group("[A2A-MESSAGES] Mapping Events to Messages");
+    console.log("Chat ID:", chatId);
+    console.log("Total events:", events.length);
+    console.log("Total messages:", messages.length);
+
     const map = new Map<number, ReturnType<typeof useA2AEvents>[number][]>();
     if (events.length === 0) {
+      console.log("No events to map");
+      console.groupEnd();
       return map;
     }
 
@@ -63,6 +70,12 @@ function PureMessages({
         ? new Date(message.metadata.createdAt).getTime()
         : index,
     }));
+
+    console.log("Message metadata:", messageMeta.map((m) => ({
+      index: m.index,
+      role: m.role,
+      time: new Date(m.time).toISOString(),
+    })));
 
     for (const event of events) {
       const eventTime = event.timestamp
@@ -81,13 +94,26 @@ function PureMessages({
         }
       }
 
+      console.log("[A2A-MESSAGES] Mapped event to message:", {
+        eventAgentToolId: event.agentToolId,
+        eventTimestamp: event.timestamp,
+        targetMessageIndex: targetIndex,
+        targetMessageTime: new Date(messageMeta[targetIndex].time).toISOString(),
+      });
+
       const existing = map.get(targetIndex) ?? [];
       existing.push(event);
       map.set(targetIndex, existing);
     }
 
+    console.log("Events mapped to message indices:", Array.from(map.entries()).map(([idx, evts]) => ({
+      messageIndex: idx,
+      eventCount: evts.length,
+    })));
+    console.groupEnd();
+
     return map;
-  }, [events, messages]);
+  }, [events, messages, chatId]);
 
   useEffect(() => {
     if (status === "submitted") {
@@ -115,6 +141,14 @@ function PureMessages({
 
           {messages.map((message, index) => {
             const eventsForMessage = eventsAfterMessage.get(index) ?? [];
+
+            if (eventsForMessage.length > 0) {
+              console.group(`[A2A-MESSAGES] Rendering message ${index}`);
+              console.log("Message ID:", message.id);
+              console.log("Message role:", message.role);
+              console.log("Events for this message:", eventsForMessage.length);
+            }
+
             const latestEventsByTask = (() => {
               if (eventsForMessage.length <= 1) {
                 return eventsForMessage;
@@ -141,10 +175,19 @@ function PureMessages({
                   ? new Date(event.timestamp).getTime()
                   : Number.POSITIVE_INFINITY;
                 if (currentTime >= existingTime) {
+                  console.log(`[A2A-MESSAGES] Replaced event for task ${key}:`, {
+                    oldTimestamp: existing.timestamp,
+                    newTimestamp: event.timestamp,
+                  });
                   byTask.set(key, event);
                 }
               }
-              return Array.from(byTask.values());
+              const result = Array.from(byTask.values());
+              console.log("Deduped events by task:", result.length);
+              if (eventsForMessage.length > 0) {
+                console.groupEnd();
+              }
+              return result;
             })();
             const showThinkingAfterMessage =
               (status === "submitted" || status === "streaming") &&
@@ -189,6 +232,9 @@ function PureMessages({
                         status === "streaming" && index === messages.length - 1
                       }
                       event={event}
+                      isStreaming={
+                        status === "streaming" && index === messages.length - 1
+                      }
                       key={eventKey}
                       tasks={event.tasks}
                     />

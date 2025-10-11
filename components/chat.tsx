@@ -178,13 +178,28 @@ export function Chat({
   });
 
   const { mutate } = useSWRConfig();
-  const { setDataStream } = useDataStream();
+  const { setDataStream, setChatId } = useDataStream();
   const { setCurrentMessages } = useChatContext();
 
-  // Clear data stream when chat mounts to prevent carry-over between chats
+  // Set chat ID and clear data stream when chat mounts to prevent carry-over between chats
   useEffect(() => {
+    console.group(`[A2A-STREAM] Chat Component Mount - ID: ${id}`);
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("Setting chatId in provider:", id);
+    console.log("Clearing data stream for new chat session");
+    console.groupEnd();
+    setChatId(id);
     setDataStream([]);
-  }, [setDataStream]);
+
+    return () => {
+      console.group(`[A2A-STREAM] Chat Component Unmount - ID: ${id}`);
+      console.log("Timestamp:", new Date().toISOString());
+      console.log("Cleaning up chat session");
+      console.log("Clearing chatId from provider");
+      console.groupEnd();
+      setChatId(undefined);
+    };
+  }, [id, setDataStream, setChatId]);
 
   const [input, setInput] = useState<string>("");
   const [usage] = useState<AppUsage | undefined>(initialLastContext);
@@ -304,10 +319,14 @@ export function Chat({
   const [localMessages, setLocalMessages] =
     useState<ChatMessage[]>(initialMessages);
 
+  // Track previous A2A event count to only log on changes
+  const prevA2ACountRef = useRef(0);
+
   // Convert Convex messages to UI format
   useEffect(() => {
     if (messagesFromConvex) {
       const nextDataStreamParts: any[] = [];
+      let totalA2AParts = 0;
 
       const uiMessages: ChatMessage[] = messagesFromConvex.map((msg) => {
         const rawParts: any[] = Array.isArray(msg.parts)
@@ -315,6 +334,7 @@ export function Chat({
           : msg.parts
             ? [msg.parts]
             : [];
+
         const normalizedParts = dedupeA2AToolParts(rawParts) as any[];
         let parts: any[] = [...normalizedParts];
 
@@ -325,6 +345,7 @@ export function Chat({
           }
 
           if (partType.startsWith("tool-a2a_")) {
+            totalA2AParts++;
             const output = (part as any)?.output;
             if (output && typeof output === "object") {
               nextDataStreamParts.push({
@@ -416,10 +437,28 @@ export function Chat({
         return normalized;
       });
 
+      // Only log when A2A event count changes
+      if (totalA2AParts !== prevA2ACountRef.current) {
+        console.group(`[A2A-STREAM] A2A Events Changed - Chat ID: ${id}`);
+        console.log("Previous count:", prevA2ACountRef.current);
+        console.log("New count:", totalA2AParts);
+        console.log("Events:", nextDataStreamParts
+          .filter((p) => p.type === "data-a2aEvents" || p.type === "data-a2a-events")
+          .map((p) => ({
+            agentToolId: p.data?.agentToolId,
+            contextId: p.data?.contextId,
+            primaryTaskId: p.data?.primaryTaskId,
+            timestamp: p.data?.timestamp,
+          }))
+        );
+        console.groupEnd();
+        prevA2ACountRef.current = totalA2AParts;
+      }
+
       setLocalMessages(uiMessages);
       setDataStream(nextDataStreamParts);
     }
-  }, [messagesFromConvex, setDataStream]);
+  }, [messagesFromConvex, id, setDataStream]);
 
   const messages = localMessages;
   const status: ChatStatus = messagesFromConvex?.some((m) => !m.isComplete)

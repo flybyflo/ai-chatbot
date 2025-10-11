@@ -2,13 +2,12 @@
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import {
-  BrainIcon,
   ChevronDownIcon,
   DotIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { ComponentProps } from "react";
-import { createContext, memo, useContext, useMemo } from "react";
+import { createContext, memo, useContext, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
@@ -40,7 +39,10 @@ export type ChainOfThoughtProps = ComponentProps<"div"> & {
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  isStreaming?: boolean;
 };
+
+const AUTO_CLOSE_DELAY = 500;
 
 export const ChainOfThought = memo(
   ({
@@ -48,6 +50,7 @@ export const ChainOfThought = memo(
     open,
     defaultOpen = false,
     onOpenChange,
+    isStreaming = false,
     children,
     ...props
   }: ChainOfThoughtProps) => {
@@ -56,6 +59,21 @@ export const ChainOfThought = memo(
       defaultProp: defaultOpen,
       onChange: onOpenChange,
     });
+
+    const [hasAutoClosed, setHasAutoClosed] = useState(false);
+
+    // Auto-close when streaming ends (once only)
+    useEffect(() => {
+      if (defaultOpen && !isStreaming && isOpen && !hasAutoClosed) {
+        // Add a small delay before closing to allow user to see the content
+        const timer = setTimeout(() => {
+          setIsOpen(false);
+          setHasAutoClosed(true);
+        }, AUTO_CLOSE_DELAY);
+
+        return () => clearTimeout(timer);
+      }
+    }, [isStreaming, isOpen, defaultOpen, setIsOpen, hasAutoClosed]);
 
     const chainOfThoughtContext = useMemo(
       () => ({ isOpen, setIsOpen }),
@@ -66,7 +84,7 @@ export const ChainOfThought = memo(
       <ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
         <div
           className={cn(
-            "not-prose w-full max-w-none space-y-4 text-xs",
+            "not-prose w-full max-w-none text-xs",
             className
           )}
           {...props}
@@ -95,13 +113,12 @@ export const ChainOfThoughtHeader = memo(
           )}
           {...props}
         >
-          <BrainIcon className="size-4" />
-          <span className="flex-1 truncate text-left">
+          <span className="truncate text-left">
             {children ?? "Chain of Thought"}
           </span>
           <ChevronDownIcon
             className={cn(
-              "size-4 transition-transform",
+              "size-4 shrink-0 transition-transform",
               isOpen ? "rotate-180" : "rotate-0"
             )}
           />

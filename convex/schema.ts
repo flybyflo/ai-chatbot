@@ -223,5 +223,6 @@ export default defineSchema({
   })
     .index("by_userId_timestamp", ["userId", "timestamp"])
     .index("by_userId_eventKey", ["userId", "eventKey"])
-    .index("by_sessionKey_timestamp", ["sessionKey", "timestamp"]),
+    .index("by_sessionKey_timestamp", ["sessionKey", "timestamp"])
+    .index("by_chatId_timestamp", ["chatId", "timestamp"]),
 });

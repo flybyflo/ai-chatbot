@@ -130,10 +130,12 @@ export default function MessageA2ATimeline({
   event,
   tasks,
   enableAnimation = true,
+  isStreaming = false,
 }: {
   event: A2AToolEventPayload;
   tasks?: A2ATaskSummary[];
   enableAnimation?: boolean;
+  isStreaming?: boolean;
 }) {
   const summaryText =
     event.responseText?.trim() ||
@@ -329,6 +331,7 @@ export default function MessageA2ATimeline({
       <ChainOfThought
         className="w-full rounded-none border-0 bg-transparent p-0 shadow-none"
         defaultOpen
+        isStreaming={isStreaming}
       >
         <ChainOfThoughtHeader>
           {event.agentName

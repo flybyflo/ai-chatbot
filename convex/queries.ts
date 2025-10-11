@@ -519,7 +519,9 @@ export const getUserSelectedTools = query({
 // ============================================================================
 
 export const getA2AData = query({
-  args: {},
+  args: {
+    chatId: v.optional(v.union(v.id("chats"), v.string())),
+  },
   returns: v.object({
     registry: v.union(v.null(), v.any()),
     sessions: v.array(
@@ -530,7 +532,7 @@ export const getA2AData = query({
     ),
     events: v.array(v.any()),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return {
@@ -541,6 +543,31 @@ export const getA2AData = query({
     }
 
     const userId = identity.subject;
+
+    // Resolve chatId if needed (could be slug or ID)
+    let resolvedChatId: Id<"chats"> | null = null;
+    if (args.chatId) {
+      try {
+        const directLookup = await ctx.db.get(args.chatId as Id<"chats">);
+        if (directLookup) {
+          resolvedChatId = args.chatId as Id<"chats">;
+        } else {
+          // Try slug lookup
+          const chat = await ctx.db
+            .query("chats")
+            .withIndex("by_slug", (q) => q.eq("slug", args.chatId as string))
+            .unique();
+          resolvedChatId = chat?._id ?? null;
+        }
+      } catch {
+        // Try slug lookup
+        const chat = await ctx.db
+          .query("chats")
+          .withIndex("by_slug", (q) => q.eq("slug", args.chatId as string))
+          .unique();
+        resolvedChatId = chat?._id ?? null;
+      }
+    }
 
     const registryDocs = await ctx.db
       .query("a2aRegistries")
@@ -558,21 +585,36 @@ export const getA2AData = query({
       }
     }
 
-    const sessionDocs = await ctx.db
-      .query("a2aSessions")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .collect();
+    // Filter sessions by chatId if provided
+    const sessionDocs = resolvedChatId
+      ? await ctx.db
+          .query("a2aSessions")
+          .withIndex("by_chatId", (q) => q.eq("chatId", resolvedChatId))
+          .collect()
+      : await ctx.db
+          .query("a2aSessions")
+          .withIndex("by_userId", (q) => q.eq("userId", userId))
+          .collect();
 
     const sessions = sessionDocs.map((doc) => ({
       sessionKey: doc.sessionKey,
       snapshot: doc.snapshot,
     }));
 
-    const eventDocs = await ctx.db
-      .query("a2aEvents")
-      .withIndex("by_userId_timestamp", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(200);
+    // Filter events by chatId if provided
+    const eventDocs = resolvedChatId
+      ? await ctx.db
+          .query("a2aEvents")
+          .withIndex("by_chatId_timestamp", (q) =>
+            q.eq("chatId", resolvedChatId)
+          )
+          .order("desc")
+          .take(200)
+      : await ctx.db
+          .query("a2aEvents")
+          .withIndex("by_userId_timestamp", (q) => q.eq("userId", userId))
+          .order("desc")
+          .take(200);
 
     const events = eventDocs.map((doc) => doc.payload);
 
