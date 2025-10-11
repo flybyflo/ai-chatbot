@@ -22,14 +22,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
   // Convert Convex messages to UI format
   const messages: ChatMessage[] =
     messagesFromConvex?.map((msg, msgIndex) => {
-      console.log("[USE_CONVEX_CHAT] Processing message:", {
-        index: msgIndex,
-        id: msg._id,
-        role: msg.role,
-        isComplete: msg.isComplete,
-        parts: msg.parts,
-      });
-
       // For streaming messages, use combined chunks as temporary content
       let parts: any[] = Array.isArray(msg.parts)
         ? [...msg.parts]
@@ -85,13 +77,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
       }
 
       const finalParts = parts || [];
-
-      console.log("[USE_CONVEX_CHAT] Final parts:", {
-        id: msg._id,
-        partsCount: finalParts.length,
-        parts: finalParts,
-        toolParts: finalParts.filter((p) => p?.type?.startsWith?.("tool-")),
-      });
 
       return {
         id: msg._id,
