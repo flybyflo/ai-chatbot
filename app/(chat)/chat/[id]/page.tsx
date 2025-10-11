@@ -139,7 +139,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   if (!chatModelFromCookie) {
     return (
       <Chat
-        key={chat._id}
         autoResume={true}
         id={chat._id}
         initialChatModel={DEFAULT_CHAT_MODEL}
@@ -147,13 +146,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility}
         isReadonly={session?.user?.id !== chat.userId}
+        key={chat._id}
       />
     );
   }
 
   return (
     <Chat
-      key={chat._id}
       autoResume={true}
       id={chat._id}
       initialChatModel={chatModelFromCookie.value}
@@ -161,6 +160,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       initialMessages={uiMessages}
       initialVisibilityType={chat.visibility}
       isReadonly={session?.user?.id !== chat.userId}
+      key={chat._id}
     />
   );
 }
