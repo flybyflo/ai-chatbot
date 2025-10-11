@@ -3,7 +3,6 @@
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { A2AAgentCard } from "@/components/a2a";
-import { useDataStream } from "@/components/data-stream-provider";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,21 +11,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useA2APersistedData } from "@/hooks/use-a2a-persisted-data";
 import { FILTER_STATES, type FilterState } from "@/lib/enums";
 
 export default function A2AAgentsPage() {
-  const { a2aRegistry } = useDataStream();
+  const { registry } = useA2APersistedData();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterState, setFilterState] = useState<FilterState>(
     FILTER_STATES.ALL
   );
 
   const agents = useMemo(() => {
-    if (!a2aRegistry) {
+    if (!registry) {
       return [];
     }
-    return Object.values(a2aRegistry.agents);
-  }, [a2aRegistry]);
+    return Object.values(registry.agents);
+  }, [registry]);
 
   const filteredAgents = useMemo(() => {
     let result = agents;

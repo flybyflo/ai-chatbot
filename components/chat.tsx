@@ -178,28 +178,25 @@ export function Chat({
   });
 
   const { mutate } = useSWRConfig();
-  const { setDataStream, setChatId } = useDataStream();
+  const { setDataStream } = useDataStream();
   const { setCurrentMessages } = useChatContext();
 
   // Set chat ID and clear data stream when chat mounts to prevent carry-over between chats
   useEffect(() => {
     console.group(`[A2A-STREAM] Chat Component Mount - ID: ${id}`);
     console.log("Timestamp:", new Date().toISOString());
-    console.log("Setting chatId in provider:", id);
     console.log("Clearing data stream for new chat session");
     console.groupEnd();
-    setChatId(id);
     setDataStream([]);
 
     return () => {
       console.group(`[A2A-STREAM] Chat Component Unmount - ID: ${id}`);
       console.log("Timestamp:", new Date().toISOString());
       console.log("Cleaning up chat session");
-      console.log("Clearing chatId from provider");
       console.groupEnd();
-      setChatId(undefined);
+      setDataStream([]);
     };
-  }, [id, setDataStream, setChatId]);
+  }, [id, setDataStream]);
 
   const [input, setInput] = useState<string>("");
   const [usage] = useState<AppUsage | undefined>(initialLastContext);
