@@ -582,11 +582,6 @@ function MCPToolToggle({
 
   const handleToggle = () => {
     const next = toggleTool(tool.id);
-    console.log("[MCP_SETTINGS] Toggling tool:", {
-      toolId: tool.id,
-      wasActive: isActive,
-      newSelection: next,
-    });
 
     // Invalidate SWR cache so other components pick up the change
     mutate("/api/tools").catch((err) => {
