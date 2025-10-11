@@ -635,75 +635,34 @@ export function Chat({
               {showHeroLayout ? (
                 <motion.div
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute inset-x-0 top-0 flex h-full items-center justify-center px-2 md:px-4"
+                  className="pointer-events-none absolute inset-x-0 top-0 flex h-full items-center justify-center px-2 md:px-4"
                   exit={{ opacity: 0, y: 160 }}
-                  initial={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 120 }}
                   key="chat-hero"
                   transition={{
                     y: { duration: 0.36, ease: [0.16, 1, 0.3, 1] },
-                    opacity: { duration: 0.22, ease: "easeOut" },
+                    opacity: { duration: 0.3, ease: "easeOut" },
                   }}
                 >
-                  <motion.div className="w-full max-w-4xl" layout="position">
-                    <motion.div
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mb-8 text-center"
-                      exit={{ opacity: 0, y: 120 }}
-                      initial={{ opacity: 1, y: 0 }}
-                      transition={{
-                        duration: 0.26,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                    >
-                      <h1 className="font-bold text-3xl text-foreground">
-                        <ContainerTextFlip
-                          words={["better", "modern", "awesome"]}
-                        />
-                      </h1>
-                    </motion.div>
-
-                    <motion.div
-                      layout
-                      layoutId="chat-input"
-                      transition={{
-                        layout: {
-                          type: "spring",
-                          stiffness: 160,
-                          damping: 20,
-                        },
-                        y: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
-                      }}
-                    >
-                      <MultimodalInput
-                        activeLoadoutId={activeLoadoutId}
-                        attachments={attachments}
-                        chatId={id}
-                        input={input}
-                        messages={messages}
-                        onActiveLoadoutChange={handleActiveLoadoutChange}
-                        onModelChange={handleModelChange}
-                        onReasoningEffortChange={handleReasoningEffortChange}
-                        onToolsChange={updateSelectedTools}
-                        selectedModelId={currentModelId}
-                        selectedReasoningEffort={currentReasoningEffort}
-                        selectedTools={selectedTools}
-                        selectedVisibilityType={visibilityType}
-                        sendMessage={sendMessage}
-                        setAttachments={setAttachments}
-                        setInput={setInput}
-                        setMessages={setMessages}
-                        status={status}
-                        stop={stop}
-                        usage={usage}
+                  <motion.div
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-4xl"
+                    exit={{ opacity: 0, y: 80 }}
+                    initial={{ opacity: 0, y: 40 }}
+                    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <h1 className="mb-8 text-center font-bold text-3xl text-foreground">
+                      <ContainerTextFlip
+                        words={["better", "modern", "awesome"]}
                       />
-                    </motion.div>
+                    </h1>
                   </motion.div>
                 </motion.div>
               ) : null}
             </AnimatePresence>
 
-            {hasHeroExited ? (
-              <div className="flex h-full flex-col">
+            <div className="flex h-full flex-col">
+              {hasHeroExited ? (
                 <Messages
                   chatId={id}
                   isReadonly={isReadonly}
@@ -714,67 +673,55 @@ export function Chat({
                   status={status}
                   votes={votes}
                 />
+              ) : (
+                <div className="flex-1" />
+              )}
 
+              {!isReadonly && (
                 <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
-                  {!isReadonly && (
-                    <AnimatePresence mode="wait">
-                      {!showHeroLayout && (
-                        <motion.div
-                          animate={{ opacity: 1, y: 0 }}
-                          className="w-full"
-                          exit={{ opacity: 0, y: 16 }}
-                          initial={{ opacity: 0, y: 24 }}
-                          key="chat-input-sticky"
-                          layout
-                          layoutId="chat-input"
-                          transition={{
-                            layout: {
-                              type: "spring",
-                              stiffness: 220,
-                              damping: 24,
-                              mass: 0.65,
-                            },
-                            opacity: {
-                              duration: 0.22,
-                              ease: "easeInOut",
-                            },
-                            y: {
-                              duration: 0.36,
-                              ease: [0.16, 1, 0.3, 1],
-                            },
-                          }}
-                        >
-                          <MultimodalInput
-                            activeLoadoutId={activeLoadoutId}
-                            attachments={attachments}
-                            chatId={id}
-                            input={input}
-                            messages={messages}
-                            onActiveLoadoutChange={handleActiveLoadoutChange}
-                            onModelChange={handleModelChange}
-                            onReasoningEffortChange={
-                              handleReasoningEffortChange
-                            }
-                            onToolsChange={updateSelectedTools}
-                            selectedModelId={currentModelId}
-                            selectedReasoningEffort={currentReasoningEffort}
-                            selectedTools={selectedTools}
-                            selectedVisibilityType={visibilityType}
-                            sendMessage={sendMessage}
-                            setAttachments={setAttachments}
-                            setInput={setInput}
-                            setMessages={setMessages}
-                            status={status}
-                            stop={stop}
-                            usage={usage}
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  )}
+                  <motion.div
+                    animate={
+                      showHeroLayout
+                        ? { opacity: 1, y: "-40vh" }
+                        : { opacity: 1, y: 0 }
+                    }
+                    className="w-full"
+                    initial={
+                      showHeroLayout
+                        ? { opacity: 0, y: "-46vh" }
+                        : { opacity: 0, y: 24 }
+                    }
+                    transition={{
+                      duration: 0.5,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                  >
+                    <MultimodalInput
+                      activeLoadoutId={activeLoadoutId}
+                      attachments={attachments}
+                      chatId={id}
+                      input={input}
+                      messages={messages}
+                      onActiveLoadoutChange={handleActiveLoadoutChange}
+                      onModelChange={handleModelChange}
+                      onReasoningEffortChange={handleReasoningEffortChange}
+                      onToolsChange={updateSelectedTools}
+                      selectedModelId={currentModelId}
+                      selectedReasoningEffort={currentReasoningEffort}
+                      selectedTools={selectedTools}
+                      selectedVisibilityType={visibilityType}
+                      sendMessage={sendMessage}
+                      setAttachments={setAttachments}
+                      setInput={setInput}
+                      setMessages={setMessages}
+                      status={status}
+                      stop={stop}
+                      usage={usage}
+                    />
+                  </motion.div>
                 </div>
-              </div>
-            ) : null}
+              )}
+            </div>
           </div>
         </div>
       </LayoutGroup>
