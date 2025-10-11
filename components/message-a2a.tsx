@@ -126,6 +126,8 @@ type Step = {
   progress?: "complete" | "pending";
 };
 
+const AUTO_CLOSE_DELAY = 500;
+
 export default function MessageA2ATimeline({
   event,
   tasks,
@@ -288,6 +290,34 @@ export default function MessageA2ATimeline({
     [steps, visibleCount]
   );
 
+  const [isOpen, setIsOpen] = useState(isStreaming);
+  const [hasBeenStreaming, setHasBeenStreaming] = useState(isStreaming);
+  const [hasAutoClosed, setHasAutoClosed] = useState(false);
+
+  useEffect(() => {
+    if (isStreaming) {
+      setHasBeenStreaming(true);
+      setHasAutoClosed(false);
+      setIsOpen(true);
+    }
+  }, [isStreaming]);
+
+  useEffect(() => {
+    if (
+      !isStreaming &&
+      hasBeenStreaming &&
+      isOpen &&
+      !hasAutoClosed
+    ) {
+      const timeout = setTimeout(() => {
+        setIsOpen(false);
+        setHasAutoClosed(true);
+      }, AUTO_CLOSE_DELAY);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [hasAutoClosed, hasBeenStreaming, isOpen, isStreaming]);
+
   useEffect(() => {
     setVisibleCount((prev) => {
       if (steps.length === 0) {
@@ -330,7 +360,8 @@ export default function MessageA2ATimeline({
     <section aria-live="polite" className="relative w-full p-0">
       <ChainOfThought
         className="w-full rounded-none border-0 bg-transparent p-0 shadow-none"
-        defaultOpen
+        onOpenChange={setIsOpen}
+        open={isOpen}
         isStreaming={isStreaming}
       >
         <ChainOfThoughtHeader>
