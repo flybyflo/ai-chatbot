@@ -3,11 +3,18 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
 import { ArrowUp } from "lucide-react";
 import {
   type ChangeEvent,
   type Dispatch,
   memo,
+  type MouseEvent as ReactMouseEvent,
   type SetStateAction,
   useCallback,
   useEffect,
@@ -15,6 +22,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { FiMousePointer } from "react-icons/fi";
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { useLoadouts } from "@/hooks/use-loadouts";
@@ -38,6 +46,9 @@ import { ReasoningEffortSelector } from "./reasoning-effort-selector";
 import { StopButton } from "./stop-button";
 import { ToolsSelector } from "./tools-selector";
 import type { VisibilityType } from "./visibility-selector";
+
+const ROTATION_RANGE = 32.5;
+const HALF_ROTATION_RANGE = ROTATION_RANGE / 2;
 
 function PureMultimodalInput({
   activeLoadoutId,
@@ -85,8 +96,45 @@ function PureMultimodalInput({
   onActiveLoadoutChange?: (id: string | null) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { width } = useWindowSize();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const { width: windowWidth } = useWindowSize();
   const { loadouts } = useLoadouts();
+
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const xSpring = useSpring(x, { stiffness: 180, damping: 24 });
+  const ySpring = useSpring(y, { stiffness: 180, damping: 24 });
+
+  const transform = useMotionTemplate`rotateX(${xSpring}deg) rotateY(${ySpring}deg)`;
+
+  const handleMouseMove = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const element = cardRef.current;
+      if (!element) {
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
+      const cardWidth = rect.width;
+      const cardHeight = rect.height;
+
+      const mouseX = (event.clientX - rect.left) * ROTATION_RANGE;
+      const mouseY = (event.clientY - rect.top) * ROTATION_RANGE;
+
+      const rX = (mouseY / cardHeight - HALF_ROTATION_RANGE) * -1;
+      const rY = mouseX / cardWidth - HALF_ROTATION_RANGE;
+
+      x.set(rX);
+      y.set(rY);
+    },
+    [x, y]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    x.set(0);
+    y.set(0);
+  }, [x, y]);
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -152,7 +200,7 @@ function PureMultimodalInput({
     resetHeight();
     setInput("");
 
-    if (width && width > 768) {
+    if (windowWidth && windowWidth > 768) {
       textareaRef.current?.focus();
     }
   }, [
@@ -162,7 +210,7 @@ function PureMultimodalInput({
     sendMessage,
     setAttachments,
     setLocalStorageInput,
-    width,
+    windowWidth,
     chatId,
     resetHeight,
   ]);
@@ -217,158 +265,199 @@ function PureMultimodalInput({
         tabIndex={-1}
         type="file"
       />
-
-      {/* CONTAINER — minimal & modern: thin border, subtle shadow, tight padding */}
-      <PromptInput
-        className={cn(
-          "rounded-3xl border bg-popover/70 p-2.5 shadow-sm backdrop-blur transition-colors duration-150",
-          activeLoadoutId
-            ? "border-purple-500/50 focus-within:border-purple-500 hover:border-purple-500/70"
-            : "border-border/30 focus-within:border-border hover:border-muted-foreground/40"
-        )}
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (status === "streaming") {
-            toast.error("Please wait for the model to finish its response!");
-          } else {
-            submitForm();
-          }
-        }}
-      >
-        {(attachments.length > 0 || uploadQueue.length > 0) && (
+      <div className="group relative w-full" style={{ perspective: "1300px" }}>
+        <motion.div
+          className="relative w-full rounded-[2.25rem] bg-gradient-to-br from-indigo-400/35 via-transparent to-purple-500/40 p-[1px] transition-shadow duration-300 group-hover:shadow-[0_35px_65px_-35px_rgba(99,102,241,0.8)]"
+          onMouseLeave={handleMouseLeave}
+          onMouseMove={handleMouseMove}
+          ref={cardRef}
+          style={{
+            transformStyle: "preserve-3d",
+            transform,
+          }}
+        >
           <div
-            className="flex flex-row items-end gap-1.5 overflow-x-auto px-0.5"
-            data-testid="attachments-preview"
+            className="relative w-full rounded-[2.1rem] bg-background/90 p-0.5 shadow-[0_25px_65px_-32px_rgba(79,70,229,0.65)] backdrop-blur-xl"
+            style={{
+              transform: "translateZ(60px)",
+              transformStyle: "preserve-3d",
+            }}
           >
-            {attachments.map((attachment) => (
-              <PreviewAttachment
-                attachment={attachment}
-                key={attachment.url}
-                onRemove={() => {
-                  setAttachments((prev) =>
-                    prev.filter((a) => a.url !== attachment.url)
+            <FiMousePointer
+              aria-hidden
+              className="pointer-events-none absolute top-6 right-6 hidden text-2xl text-muted-foreground/50 sm:block"
+              style={{ transform: "translateZ(90px)" }}
+            />
+            <PromptInput
+              className={cn(
+                "rounded-[1.9rem] border border-white/10 bg-gradient-to-br from-background/95 to-background/85 p-3 shadow-lg shadow-purple-500/20 transition-all duration-300",
+                "focus-within:border-primary/40 focus-within:shadow-purple-500/30",
+                activeLoadoutId
+                  ? "border-purple-400/60 focus-within:border-purple-400"
+                  : "hover:border-muted-foreground/30"
+              )}
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (status === "streaming") {
+                  toast.error(
+                    "Please wait for the model to finish its response!"
                   );
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                }}
-              />
-            ))}
-            {uploadQueue.map((filename) => (
-              <PreviewAttachment
-                attachment={{ url: "", name: filename, contentType: "" }}
-                isUploading
-                key={filename}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* INPUT ROW — edge-to-edge, compact */}
-        <div className="flex flex-row items-start gap-1.5 sm:gap-2">
-          <PromptInputTextarea
-            autoFocus
-            className="grow resize-none border-0 bg-transparent px-1.5 py-2 text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus-visible:outline-none"
-            data-testid="multimodal-input"
-            disableAutoResize
-            maxHeight={200}
-            minHeight={44}
-            onChange={handleInput}
-            placeholder="Send a message…"
-            ref={textareaRef}
-            rows={1}
-            value={input}
-          />
-          <Context {...contextProps} />
-        </div>
-
-        {/* TOOLBAR — no top border/shadow, dense spacing */}
-        <PromptInputToolbar className="border-t-0 p-0 shadow-none">
-          <PromptInputTools className="gap-0 sm:gap-0.5">
-            <AttachmentsButton
-              fileInputRef={fileInputRef}
-              selectedModelId={selectedModelId}
-              status={status}
-            />
-            <ModelSelectorCompact
-              onModelChange={onModelChange}
-              selectedModelId={selectedModelId}
-            />
-            <ReasoningEffortSelector
-              onReasoningEffortChange={onReasoningEffortChange}
-              selectedReasoningEffort={selectedReasoningEffort}
-            />
-
-            <LoadoutSelector
-              activeLoadoutId={activeLoadoutId ?? undefined}
-              loadouts={loadouts.map((l) => {
-                const updatedAtValue = l.updatedAt as unknown;
-                let updatedAt: string | undefined;
-                if (typeof updatedAtValue === "string") {
-                  updatedAt = updatedAtValue;
-                } else if (typeof updatedAtValue === "number") {
-                  updatedAt = new Date(updatedAtValue).toISOString();
-                } else if (
-                  typeof updatedAtValue === "object" &&
-                  updatedAtValue !== null &&
-                  "toISOString" in updatedAtValue &&
-                  typeof (updatedAtValue as { toISOString?: unknown })
-                    .toISOString === "function"
-                ) {
-                  updatedAt = (
-                    updatedAtValue as { toISOString: () => string }
-                  ).toISOString();
-                }
-
-                return {
-                  id: l.id,
-                  name: l.name,
-                  description: l.description || undefined,
-                  tags: l.tags || undefined,
-                  isDefault: l.isDefault,
-                  updatedAt,
-                };
-              })}
-              onActivate={(id) => {
-                const normalizedId = (id as unknown as string | null) ?? null;
-                onActiveLoadoutChange?.(normalizedId);
-                if (!normalizedId) {
-                  // Deselected - no toast needed, just clear the loadout
-                  return;
-                }
-                const loadout = loadouts.find((l) => l.id === normalizedId);
-                if (loadout && onToolsChange) {
-                  // Apply selected tools from loadout
-                  onToolsChange(loadout.selectedTools || []);
-                  toast.success(`Activated loadout: ${loadout.name}`);
+                } else {
+                  submitForm();
                 }
               }}
-            />
-            <ToolsSelector
-              a2aRegistry={a2aRegistry}
-              availableTools={availableTools}
-              mcpRegistry={mcpRegistry}
-              onToolsChange={onToolsChange}
-              selectedTools={selectedTools}
-            />
-          </PromptInputTools>
-
-          {status === "submitted" ? (
-            <StopButton setMessages={setMessages} stop={stop} />
-          ) : (
-            <PromptInputSubmit
-              className={cn(
-                "size-8 rounded-full bg-primary text-primary-foreground transition-colors duration-150",
-                "hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
-              )}
-              disabled={!input.trim() || uploadQueue.length > 0}
-              status={status}
+              style={{
+                transform: "translateZ(75px)",
+                transformStyle: "preserve-3d",
+              }}
             >
-              <ArrowUp size={14} />
-            </PromptInputSubmit>
-          )}
-        </PromptInputToolbar>
-      </PromptInput>
+              {(attachments.length > 0 || uploadQueue.length > 0) && (
+                <div
+                  className="flex flex-row items-end gap-1.5 overflow-x-auto px-0.5"
+                  data-testid="attachments-preview"
+                  style={{ transform: "translateZ(80px)" }}
+                >
+                  {attachments.map((attachment) => (
+                    <PreviewAttachment
+                      attachment={attachment}
+                      key={attachment.url}
+                      onRemove={() => {
+                        setAttachments((prev) =>
+                          prev.filter((a) => a.url !== attachment.url)
+                        );
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = "";
+                        }
+                      }}
+                    />
+                  ))}
+                  {uploadQueue.map((filename) => (
+                    <PreviewAttachment
+                      attachment={{ url: "", name: filename, contentType: "" }}
+                      isUploading
+                      key={filename}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* INPUT ROW — edge-to-edge, compact */}
+              <div
+                className="flex flex-row items-start gap-1.5 sm:gap-2"
+                style={{ transform: "translateZ(85px)" }}
+              >
+                <PromptInputTextarea
+                  autoFocus
+                  className="grow resize-none border-0 bg-transparent px-1.5 py-2 text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus-visible:outline-none"
+                  data-testid="multimodal-input"
+                  disableAutoResize
+                  maxHeight={200}
+                  minHeight={44}
+                  onChange={handleInput}
+                  placeholder="Send a message…"
+                  ref={textareaRef}
+                  rows={1}
+                  value={input}
+                />
+                <Context {...contextProps} />
+              </div>
+
+              {/* TOOLBAR — no top border/shadow, dense spacing */}
+              <PromptInputToolbar
+                className="border-t-0 p-0 shadow-none"
+                style={{ transform: "translateZ(80px)" }}
+              >
+                <PromptInputTools className="gap-0 sm:gap-0.5">
+                  <AttachmentsButton
+                    fileInputRef={fileInputRef}
+                    selectedModelId={selectedModelId}
+                    status={status}
+                  />
+                  <ModelSelectorCompact
+                    onModelChange={onModelChange}
+                    selectedModelId={selectedModelId}
+                  />
+                  <ReasoningEffortSelector
+                    onReasoningEffortChange={onReasoningEffortChange}
+                    selectedReasoningEffort={selectedReasoningEffort}
+                  />
+
+                  <LoadoutSelector
+                    activeLoadoutId={activeLoadoutId ?? undefined}
+                    loadouts={loadouts.map((l) => {
+                      const updatedAtValue = l.updatedAt as unknown;
+                      let updatedAt: string | undefined;
+                      if (typeof updatedAtValue === "string") {
+                        updatedAt = updatedAtValue;
+                      } else if (typeof updatedAtValue === "number") {
+                        updatedAt = new Date(updatedAtValue).toISOString();
+                      } else if (
+                        typeof updatedAtValue === "object" &&
+                        updatedAtValue !== null &&
+                        "toISOString" in updatedAtValue &&
+                        typeof (updatedAtValue as { toISOString?: unknown })
+                          .toISOString === "function"
+                      ) {
+                        updatedAt = (
+                          updatedAtValue as { toISOString: () => string }
+                        ).toISOString();
+                      }
+
+                      return {
+                        id: l.id,
+                        name: l.name,
+                        description: l.description || undefined,
+                        tags: l.tags || undefined,
+                        isDefault: l.isDefault,
+                        updatedAt,
+                      };
+                    })}
+                    onActivate={(id) => {
+                      const normalizedId =
+                        (id as unknown as string | null) ?? null;
+                      onActiveLoadoutChange?.(normalizedId);
+                      if (!normalizedId) {
+                        // Deselected - no toast needed, just clear the loadout
+                        return;
+                      }
+                      const loadout = loadouts.find(
+                        (l) => l.id === normalizedId
+                      );
+                      if (loadout && onToolsChange) {
+                        // Apply selected tools from loadout
+                        onToolsChange(loadout.selectedTools || []);
+                        toast.success(`Activated loadout: ${loadout.name}`);
+                      }
+                    }}
+                  />
+                  <ToolsSelector
+                    a2aRegistry={a2aRegistry}
+                    availableTools={availableTools}
+                    mcpRegistry={mcpRegistry}
+                    onToolsChange={onToolsChange}
+                    selectedTools={selectedTools}
+                  />
+                </PromptInputTools>
+
+                {status === "submitted" ? (
+                  <StopButton setMessages={setMessages} stop={stop} />
+                ) : (
+                  <PromptInputSubmit
+                    className={cn(
+                      "size-8 rounded-full bg-primary text-primary-foreground transition-colors duration-150",
+                      "hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+                    )}
+                    disabled={!input.trim() || uploadQueue.length > 0}
+                    status={status}
+                  >
+                    <ArrowUp size={14} />
+                  </PromptInputSubmit>
+                )}
+              </PromptInputToolbar>
+            </PromptInput>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }
