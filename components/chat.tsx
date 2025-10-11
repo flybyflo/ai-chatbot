@@ -179,45 +179,10 @@ export function Chat({
   const { setDataStream } = useDataStream();
   const { setCurrentMessages } = useChatContext();
 
-  // Extract data parts from initial messages and populate data stream
+  // Clear data stream when chat id changes to prevent carry-over
   useEffect(() => {
-    const initialDataParts: any[] = [];
-
-    for (const message of initialMessages) {
-      if (!message.parts) {
-        continue;
-      }
-
-      for (const part of message.parts) {
-        const partType = (part as any)?.type;
-        if (typeof partType !== "string") {
-          continue;
-        }
-
-        if (partType.startsWith("tool-a2a_")) {
-          const output = (part as any)?.output;
-          if (output && typeof output === "object") {
-            initialDataParts.push({
-              type: "data-a2aEvents",
-              data: output,
-            });
-          }
-          continue;
-        }
-
-        if (partType.startsWith("data-")) {
-          const dataPayload =
-            (part as any)?.data ?? (part as any)?.output ?? part;
-          initialDataParts.push({
-            type: partType,
-            data: dataPayload,
-          });
-        }
-      }
-    }
-
-    setDataStream(initialDataParts);
-  }, [initialMessages, setDataStream]);
+    setDataStream([]);
+  }, [id, setDataStream]);
 
   const [input, setInput] = useState<string>("");
   const [usage] = useState<AppUsage | undefined>(initialLastContext);

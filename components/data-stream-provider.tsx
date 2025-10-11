@@ -2,6 +2,7 @@
 
 import type { DataUIPart } from "ai";
 import { useQuery } from "convex/react";
+import { useParams } from "next/navigation";
 import type React from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
@@ -36,6 +37,10 @@ export function DataStreamProvider({
   const [dataStream, setDataStream] = useState<DataUIPart<CustomUIDataTypes>[]>(
     []
   );
+
+  // Auto-detect if we're in a chat route to avoid loading global events
+  const params = useParams();
+  const chatId = params?.id as string | undefined;
 
   // Extract MCP registry from data stream
   const mcpRegistry = useMemo(() => {
@@ -136,15 +141,21 @@ export function DataStreamProvider({
     });
   }, [streamA2AEvents]);
 
-  const persistedA2A = useQuery(api.queries.getA2AData, {});
+  // Only load global A2A data when NOT in a chat context (e.g., settings page)
+  // In chat view, we use only events from message parts to avoid cross-chat pollution
+  const persistedA2A = useQuery(
+    api.queries.getA2AData,
+    chatId ? "skip" : {}
+  );
 
+  // Only use persisted data when NOT in chat context (to avoid cross-chat pollution)
   const persistedRegistry =
-    persistedA2A?.registry && typeof persistedA2A.registry === "object"
+    !chatId && persistedA2A?.registry && typeof persistedA2A.registry === "object"
       ? (persistedA2A.registry as A2AAgentRegistry)
       : undefined;
 
   const persistedSessions = useMemo(() => {
-    if (!persistedA2A?.sessions) {
+    if (chatId || !persistedA2A?.sessions) {
       return;
     }
 
@@ -161,14 +172,14 @@ export function DataStreamProvider({
     }
 
     return Object.keys(result).length > 0 ? result : undefined;
-  }, [persistedA2A]);
+  }, [persistedA2A, chatId]);
 
   const persistedEventLog = useMemo(() => {
-    if (!persistedA2A?.events) {
+    if (chatId || !persistedA2A?.events) {
       return;
     }
     return (persistedA2A.events as A2AEventLogEntry[]) ?? [];
-  }, [persistedA2A]);
+  }, [persistedA2A, chatId]);
 
   const resolvedA2ARegistry =
     streamA2ARegistry ?? persistedRegistry ?? undefined;
