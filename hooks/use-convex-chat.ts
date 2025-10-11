@@ -21,7 +21,7 @@ export function useConvexChat({ chatId }: { chatId: string }) {
 
   // Convert Convex messages to UI format
   const messages: ChatMessage[] =
-    messagesFromConvex?.map((msg, msgIndex) => {
+    messagesFromConvex?.map((msg, _msgIndex) => {
       // For streaming messages, use combined chunks as temporary content
       let parts: any[] = Array.isArray(msg.parts)
         ? [...msg.parts]

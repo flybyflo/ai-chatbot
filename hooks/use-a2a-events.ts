@@ -15,12 +15,15 @@ export function useA2AEvents() {
     console.group("[A2A-EVENTS-HOOK] Events Retrieved");
     console.log("Timestamp:", new Date().toISOString());
     console.log("Events count:", a2aEventLog.length);
-    console.log("Events:", a2aEventLog.map((e) => ({
-      agentToolId: e.agentToolId,
-      contextId: e.contextId,
-      primaryTaskId: e.primaryTaskId,
-      timestamp: e.timestamp,
-    })));
+    console.log(
+      "Events:",
+      a2aEventLog.map((e) => ({
+        agentToolId: e.agentToolId,
+        contextId: e.contextId,
+        primaryTaskId: e.primaryTaskId,
+        timestamp: e.timestamp,
+      }))
+    );
     console.groupEnd();
 
     return a2aEventLog;

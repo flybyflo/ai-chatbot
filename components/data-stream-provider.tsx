@@ -199,7 +199,10 @@ export function DataStreamProvider({
       return bTime - aTime;
     });
 
-    console.log("[A2A-PROVIDER] Final stream event log count:", combined.length);
+    console.log(
+      "[A2A-PROVIDER] Final stream event log count:",
+      combined.length
+    );
 
     return combined.length > 0 ? combined : undefined;
   }, [a2aEventParts]);

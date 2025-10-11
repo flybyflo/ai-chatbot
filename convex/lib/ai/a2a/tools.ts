@@ -343,7 +343,6 @@ function buildA2ATool({ key, metadata, client, manager }: BuildA2AToolParams) {
             event,
           });
         }
-
       } catch (error) {
         console.error("❌ A2A stream consumption error", {
           agent: metadata.displayName,

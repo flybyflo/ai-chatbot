@@ -71,11 +71,14 @@ function PureMessages({
         : index,
     }));
 
-    console.log("Message metadata:", messageMeta.map((m) => ({
-      index: m.index,
-      role: m.role,
-      time: new Date(m.time).toISOString(),
-    })));
+    console.log(
+      "Message metadata:",
+      messageMeta.map((m) => ({
+        index: m.index,
+        role: m.role,
+        time: new Date(m.time).toISOString(),
+      }))
+    );
 
     for (const event of events) {
       const eventTime = event.timestamp
@@ -109,7 +112,9 @@ function PureMessages({
         eventAgentToolId: event.agentToolId,
         eventTimestamp: event.timestamp,
         targetMessageIndex: targetIndex,
-        targetMessageTime: new Date(messageMeta[targetIndex].time).toISOString(),
+        targetMessageTime: new Date(
+          messageMeta[targetIndex].time
+        ).toISOString(),
       });
 
       const existing = map.get(targetIndex) ?? [];
@@ -117,10 +122,13 @@ function PureMessages({
       map.set(targetIndex, existing);
     }
 
-    console.log("Events mapped to message indices:", Array.from(map.entries()).map(([idx, evts]) => ({
-      messageIndex: idx,
-      eventCount: evts.length,
-    })));
+    console.log(
+      "Events mapped to message indices:",
+      Array.from(map.entries()).map(([idx, evts]) => ({
+        messageIndex: idx,
+        eventCount: evts.length,
+      }))
+    );
     console.groupEnd();
 
     return map;
@@ -186,10 +194,13 @@ function PureMessages({
                   ? new Date(event.timestamp).getTime()
                   : Number.POSITIVE_INFINITY;
                 if (currentTime >= existingTime) {
-                  console.log(`[A2A-MESSAGES] Replaced event for task ${key}:`, {
-                    oldTimestamp: existing.timestamp,
-                    newTimestamp: event.timestamp,
-                  });
+                  console.log(
+                    `[A2A-MESSAGES] Replaced event for task ${key}:`,
+                    {
+                      oldTimestamp: existing.timestamp,
+                      newTimestamp: event.timestamp,
+                    }
+                  );
                   byTask.set(key, event);
                 }
               }

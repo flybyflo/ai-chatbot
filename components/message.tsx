@@ -266,7 +266,6 @@ const PurePreviewMessage = ({
                 });
                 return;
               }
-
             });
 
             // Trailing reasoning, if any

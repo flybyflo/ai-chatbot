@@ -1,13 +1,16 @@
 "use client";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
-import {
-  ChevronDownIcon,
-  DotIcon,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDownIcon, DotIcon, type LucideIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import { createContext, memo, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  memo,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
@@ -83,10 +86,7 @@ export const ChainOfThought = memo(
     return (
       <ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
         <div
-          className={cn(
-            "not-prose w-full max-w-none text-xs",
-            className
-          )}
+          className={cn("not-prose w-full max-w-none text-xs", className)}
           {...props}
         >
           {children}
