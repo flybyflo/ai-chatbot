@@ -53,7 +53,7 @@ export function ContainerTextFlip({
   }, [words, interval]);
 
   return (
-    <motion.p
+    <motion.div
       animate={{ width }}
       className={cn(
         "relative inline-block rounded-lg pt-1 pb-2 text-center font-bold text-2xl text-black md:text-4xl dark:text-white",
@@ -98,6 +98,6 @@ export function ContainerTextFlip({
           ))}
         </motion.div>
       </motion.div>
-    </motion.p>
+    </motion.div>
   );
 }

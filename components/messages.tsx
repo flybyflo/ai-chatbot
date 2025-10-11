@@ -94,6 +94,17 @@ function PureMessages({
         }
       }
 
+      // Skip if targetIndex is invalid (no messages or no valid target found)
+      if (targetIndex < 0 || targetIndex >= messageMeta.length) {
+        console.log("[A2A-MESSAGES] Skipping event - invalid target index:", {
+          eventAgentToolId: event.agentToolId,
+          eventTimestamp: event.timestamp,
+          targetIndex,
+          messageMetaLength: messageMeta.length,
+        });
+        continue;
+      }
+
       console.log("[A2A-MESSAGES] Mapped event to message:", {
         eventAgentToolId: event.agentToolId,
         eventTimestamp: event.timestamp,
