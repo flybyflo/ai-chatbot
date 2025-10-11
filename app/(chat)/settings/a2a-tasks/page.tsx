@@ -3,7 +3,6 @@
 import { Calendar, ChevronDown, ChevronRight, FileBox } from "lucide-react";
 import { useMemo, useState } from "react";
 import { A2ATaskStateBadge } from "@/components/a2a";
-import { useDataStream } from "@/components/data-stream-provider";
 import {
   Select,
   SelectContent,
@@ -11,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useA2APersistedData } from "@/hooks/use-a2a-persisted-data";
 import type { A2ATaskSummary } from "@/lib/ai/a2a/types";
 
 type TaskWithAgent = A2ATaskSummary & {
@@ -19,20 +19,20 @@ type TaskWithAgent = A2ATaskSummary & {
 };
 
 export default function A2ATasksPage() {
-  const { a2aSessions } = useDataStream();
+  const { sessionsByKey } = useA2APersistedData();
   const [filterState, setFilterState] = useState<string>("all");
   const [filterAgent, setFilterAgent] = useState<string>("all");
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const { tasks, agentNames } = useMemo(() => {
-    if (!a2aSessions) {
+    if (!sessionsByKey) {
       return { tasks: [], agentNames: [] };
     }
 
     const tasksList: TaskWithAgent[] = [];
     const agentSet = new Set<string>();
 
-    for (const session of Object.values(a2aSessions)) {
+    for (const session of Object.values(sessionsByKey)) {
       agentSet.add(session.agentName);
       for (const task of Object.values(session.tasks)) {
         tasksList.push({
@@ -51,7 +51,7 @@ export default function A2ATasksPage() {
       }),
       agentNames: Array.from(agentSet).sort(),
     };
-  }, [a2aSessions]);
+  }, [sessionsByKey]);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;

@@ -4,7 +4,6 @@ import { Clock, Download, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { A2AEventTypeIcon, A2AJsonViewer } from "@/components/a2a";
-import { useDataStream } from "@/components/data-stream-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,28 +13,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useA2APersistedData } from "@/hooks/use-a2a-persisted-data";
 
 export default function A2AEventsPage() {
-  const { a2aEventLog, a2aRegistry } = useDataStream();
+  const { eventLog, registry } = useA2APersistedData();
   const [searchQuery, setSearchQuery] = useState("");
   const [_filterType, _setFilterType] = useState("all");
   const [filterAgent, setFilterAgent] = useState("all");
 
   const agentNames = useMemo(() => {
-    if (!a2aRegistry) {
+    if (!registry) {
       return [];
     }
-    return Object.values(a2aRegistry.agents)
+    return Object.values(registry.agents)
       .map((a) => a.displayName)
       .sort();
-  }, [a2aRegistry]);
+  }, [registry]);
 
   const events = useMemo(() => {
-    if (!a2aEventLog) {
+    if (!eventLog) {
       return [];
     }
-    return a2aEventLog;
-  }, [a2aEventLog]);
+    return eventLog;
+  }, [eventLog]);
 
   const filteredEvents = useMemo(() => {
     let result = events;
