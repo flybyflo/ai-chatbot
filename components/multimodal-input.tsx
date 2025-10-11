@@ -47,7 +47,8 @@ import { StopButton } from "./stop-button";
 import { ToolsSelector } from "./tools-selector";
 import type { VisibilityType } from "./visibility-selector";
 
-const ROTATION_RANGE = 32.5;
+// Make the 3D effect minimal
+const ROTATION_RANGE = 10; // was 32.5
 const HALF_ROTATION_RANGE = ROTATION_RANGE / 2;
 
 function PureMultimodalInput({
@@ -100,11 +101,25 @@ function PureMultimodalInput({
   const { width: windowWidth } = useWindowSize();
   const { loadouts } = useLoadouts();
 
+  // Get active loadout color
+  const activeLoadout = useMemo(
+    () => activeLoadoutId ? loadouts.find((l) => l.id === activeLoadoutId) : null,
+    [loadouts, activeLoadoutId]
+  );
+  const shadowColor = useMemo(
+    () => activeLoadout?.color || "rgb(156, 163, 175)", // grey-400 as default
+    [activeLoadout]
+  );
+
+  // Disable 3D hover effect
+  const enable3D = false;
+
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  const xSpring = useSpring(x, { stiffness: 180, damping: 24 });
-  const ySpring = useSpring(y, { stiffness: 180, damping: 24 });
+  // Softer spring for minimal motion
+  const xSpring = useSpring(x, { stiffness: 140, damping: 18 });
+  const ySpring = useSpring(y, { stiffness: 140, damping: 18 });
 
   const transform = useMotionTemplate`rotateX(${xSpring}deg) rotateY(${ySpring}deg)`;
 
@@ -122,8 +137,8 @@ function PureMultimodalInput({
       const mouseX = (event.clientX - rect.left) * ROTATION_RANGE;
       const mouseY = (event.clientY - rect.top) * ROTATION_RANGE;
 
-      const rX = (mouseY / cardHeight - HALF_ROTATION_RANGE) * -1;
-      const rY = mouseX / cardWidth - HALF_ROTATION_RANGE;
+      const rX = (mouseY / cardHeight - HALF_ROTATION_RANGE);
+      const rY = -(mouseX / cardWidth - HALF_ROTATION_RANGE);
 
       x.set(rX);
       y.set(rY);
@@ -265,36 +280,47 @@ function PureMultimodalInput({
         tabIndex={-1}
         type="file"
       />
-      <div className="group relative w-full" style={{ perspective: "1300px" }}>
+      <div
+        className="group relative w-full"
+        style={{ perspective: enable3D ? "900px" : undefined }}
+      >
         <motion.div
-          className="relative w-full rounded-[2.25rem] bg-gradient-to-br from-indigo-400/35 via-transparent to-purple-500/40 p-[1px] transition-shadow duration-300 group-hover:shadow-[0_35px_65px_-35px_rgba(99,102,241,0.8)]"
-          onMouseLeave={handleMouseLeave}
-          onMouseMove={handleMouseMove}
+          className={cn(
+            "relative w-full rounded-[2.25rem] p-[1px] transition-all duration-300"
+          )}
+          onMouseLeave={enable3D ? handleMouseLeave : undefined}
+          onMouseMove={enable3D ? handleMouseMove : undefined}
           ref={cardRef}
           style={{
-            transformStyle: "preserve-3d",
-            transform,
+            transformStyle: enable3D ? "preserve-3d" : undefined,
+            transform: enable3D ? (transform as unknown as string) : undefined,
+            background: activeLoadout
+              ? `linear-gradient(to bottom right, ${shadowColor}33, transparent, ${shadowColor}40)`
+              : "linear-gradient(to bottom right, rgb(229, 231, 235), transparent, rgb(229, 231, 235))",
           }}
         >
           <div
-            className="relative w-full rounded-[2.1rem] bg-background/90 p-0.5 shadow-[0_25px_65px_-32px_rgba(79,70,229,0.65)] backdrop-blur-xl"
+            className="relative w-full rounded-[2.1rem] bg-background/90 p-0.5 backdrop-blur-xl"
             style={{
-              transform: "translateZ(60px)",
-              transformStyle: "preserve-3d",
+              transform: enable3D ? "translateZ(8px)" : undefined,
+              transformStyle: enable3D ? "preserve-3d" : undefined,
             }}
           >
             <FiMousePointer
               aria-hidden
-              className="pointer-events-none absolute top-6 right-6 hidden text-2xl text-muted-foreground/50 sm:block"
-              style={{ transform: "translateZ(90px)" }}
+              className={cn(
+                "pointer-events-none absolute top-6 right-6 text-2xl text-muted-foreground/50",
+                enable3D ? "hidden sm:block" : "hidden"
+              )}
+              style={{ transform: enable3D ? "translateZ(12px)" : undefined }}
             />
             <PromptInput
               className={cn(
-                "rounded-[1.9rem] border border-white/10 bg-gradient-to-br from-background/95 to-background/85 p-3 shadow-lg shadow-purple-500/20 transition-all duration-300",
-                "focus-within:border-primary/40 focus-within:shadow-purple-500/30",
+                "rounded-[1.9rem] border border-white/10 bg-gradient-to-br from-background/95 to-background/85 p-3 transition-all duration-300",
+                "focus-within:border-primary/30",
                 activeLoadoutId
-                  ? "border-purple-400/60 focus-within:border-purple-400"
-                  : "hover:border-muted-foreground/30"
+                  ? "border-purple-400/40 focus-within:border-purple-400/70"
+                  : "hover:border-muted-foreground/25"
               )}
               onSubmit={(event) => {
                 event.preventDefault();
@@ -307,15 +333,15 @@ function PureMultimodalInput({
                 }
               }}
               style={{
-                transform: "translateZ(75px)",
-                transformStyle: "preserve-3d",
+                transform: enable3D ? "translateZ(10px)" : undefined,
+                transformStyle: enable3D ? "preserve-3d" : undefined,
               }}
             >
               {(attachments.length > 0 || uploadQueue.length > 0) && (
                 <div
                   className="flex flex-row items-end gap-1.5 overflow-x-auto px-0.5"
                   data-testid="attachments-preview"
-                  style={{ transform: "translateZ(80px)" }}
+                  style={{ transform: enable3D ? "translateZ(8px)" : undefined }}
                 >
                   {attachments.map((attachment) => (
                     <PreviewAttachment
@@ -344,7 +370,7 @@ function PureMultimodalInput({
               {/* INPUT ROW — edge-to-edge, compact */}
               <div
                 className="flex flex-row items-start gap-1.5 sm:gap-2"
-                style={{ transform: "translateZ(85px)" }}
+                style={{ transform: enable3D ? "translateZ(10px)" : undefined }}
               >
                 <PromptInputTextarea
                   autoFocus
@@ -365,7 +391,7 @@ function PureMultimodalInput({
               {/* TOOLBAR — no top border/shadow, dense spacing */}
               <PromptInputToolbar
                 className="border-t-0 p-0 shadow-none"
-                style={{ transform: "translateZ(80px)" }}
+                style={{ transform: enable3D ? "translateZ(8px)" : undefined }}
               >
                 <PromptInputTools className="gap-0 sm:gap-0.5">
                   <AttachmentsButton
@@ -417,14 +443,12 @@ function PureMultimodalInput({
                         (id as unknown as string | null) ?? null;
                       onActiveLoadoutChange?.(normalizedId);
                       if (!normalizedId) {
-                        // Deselected - no toast needed, just clear the loadout
                         return;
                       }
                       const loadout = loadouts.find(
                         (l) => l.id === normalizedId
                       );
                       if (loadout && onToolsChange) {
-                        // Apply selected tools from loadout
                         onToolsChange(loadout.selectedTools || []);
                         toast.success(`Activated loadout: ${loadout.name}`);
                       }

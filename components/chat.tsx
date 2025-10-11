@@ -3,6 +3,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { ChatStatus } from "ai";
 import { useAction, useQuery } from "convex/react";
+import { motion } from "framer-motion"; // NEW: for entrance animation
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ import { useDataStream } from "./data-stream-provider";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
+import { ContainerTextFlip } from "./ui/container-text-flip";
 import type { VisibilityType } from "./visibility-selector";
 
 function dedupeA2AToolParts(parts: unknown[]) {
@@ -623,6 +625,20 @@ export function Chat({
     setMessages,
   });
 
+  // Detect first message and animate the input "down" on the first transition
+  const [animateInputDown, setAnimateInputDown] = useState(false);
+  const hasAnimatedDownRef = useRef(false);
+  const prevCountRef = useRef(messages.length);
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    const curr = messages.length;
+    if (!hasAnimatedDownRef.current && prev === 0 && curr > 0) {
+      setAnimateInputDown(true);
+      hasAnimatedDownRef.current = true;
+    }
+    prevCountRef.current = curr;
+  }, [messages.length]);
+
   return (
     <>
       <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
@@ -638,7 +654,9 @@ export function Chat({
             <div className="w-full max-w-4xl">
               <div className="mb-8 text-center">
                 <h1 className="font-bold text-3xl text-foreground">
-                  test chat
+                  <ContainerTextFlip
+                    words={["better", "modern", "awesome"]}
+                  />
                 </h1>
               </div>
               <div className="relative">
@@ -685,28 +703,41 @@ export function Chat({
 
             <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
               {!isReadonly && (
-                <MultimodalInput
-                  activeLoadoutId={activeLoadoutId}
-                  attachments={attachments}
-                  chatId={id}
-                  input={input}
-                  messages={messages}
-                  onActiveLoadoutChange={handleActiveLoadoutChange}
-                  onModelChange={handleModelChange}
-                  onReasoningEffortChange={handleReasoningEffortChange}
-                  onToolsChange={updateSelectedTools}
-                  selectedModelId={currentModelId}
-                  selectedReasoningEffort={currentReasoningEffort}
-                  selectedTools={selectedTools}
-                  selectedVisibilityType={visibilityType}
-                  sendMessage={sendMessage}
-                  setAttachments={setAttachments}
-                  setInput={setInput}
-                  setMessages={setMessages}
-                  status={status}
-                  stop={stop}
-                  usage={usage}
-                />
+                <motion.div
+                  animate={{ y: 0, opacity: 1 }}
+                  className="w-full"
+                  initial={animateInputDown ? { y: -40, opacity: 0 } : false}
+                  onAnimationComplete={() => setAnimateInputDown(false)}
+                  transition={{
+                    type: "spring",
+                    stiffness: 250,
+                    damping: 24,
+                    mass: 0.6,
+                  }}
+                >
+                  <MultimodalInput
+                    activeLoadoutId={activeLoadoutId}
+                    attachments={attachments}
+                    chatId={id}
+                    input={input}
+                    messages={messages}
+                    onActiveLoadoutChange={handleActiveLoadoutChange}
+                    onModelChange={handleModelChange}
+                    onReasoningEffortChange={handleReasoningEffortChange}
+                    onToolsChange={updateSelectedTools}
+                    selectedModelId={currentModelId}
+                    selectedReasoningEffort={currentReasoningEffort}
+                    selectedTools={selectedTools}
+                    selectedVisibilityType={visibilityType}
+                    sendMessage={sendMessage}
+                    setAttachments={setAttachments}
+                    setInput={setInput}
+                    setMessages={setMessages}
+                    status={status}
+                    stop={stop}
+                    usage={usage}
+                  />
+                </motion.div>
               )}
             </div>
           </>
