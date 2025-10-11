@@ -442,14 +442,18 @@ export function Chat({
         console.group(`[A2A-STREAM] A2A Events Changed - Chat ID: ${id}`);
         console.log("Previous count:", prevA2ACountRef.current);
         console.log("New count:", totalA2AParts);
-        console.log("Events:", nextDataStreamParts
-          .filter((p) => p.type === "data-a2aEvents" || p.type === "data-a2a-events")
-          .map((p) => ({
-            agentToolId: p.data?.agentToolId,
-            contextId: p.data?.contextId,
-            primaryTaskId: p.data?.primaryTaskId,
-            timestamp: p.data?.timestamp,
-          }))
+        console.log(
+          "Events:",
+          nextDataStreamParts
+            .filter(
+              (p) => p.type === "data-a2aEvents" || p.type === "data-a2a-events"
+            )
+            .map((p) => ({
+              agentToolId: p.data?.agentToolId,
+              contextId: p.data?.contextId,
+              primaryTaskId: p.data?.primaryTaskId,
+              timestamp: p.data?.timestamp,
+            }))
         );
         console.groupEnd();
         prevA2ACountRef.current = totalA2AParts;
@@ -674,7 +678,7 @@ export function Chat({
               {showHeroLayout ? (
                 <motion.div
                   animate={{ opacity: 1, y: 0 }}
-                  className="pointer-events-none absolute inset-x-0 top-0 flex h-full items-center justify-center px-2 md:px-4"
+                  className="pointer-events-none absolute inset-x-0 top-[-4rem] z-10 flex h-full items-center justify-center px-2 md:px-4"
                   exit={{ opacity: 0, y: 160 }}
                   initial={{ opacity: 0, y: 120 }}
                   key="chat-hero"
