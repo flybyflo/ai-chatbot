@@ -51,19 +51,19 @@ export default function A2AAgentsPage() {
   }, [agents, filterState, searchQuery]);
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-4">
+      <div className="space-y-1">
         <h1 className="font-bold text-2xl">A2A Agent Registry</h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Browse agent capabilities and documentation.
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+          <Search className="-translate-y-1/2 absolute top-1/2 left-2 size-4 text-muted-foreground" />
           <Input
-            className="pl-9"
+            className="pl-8 text-sm"
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search agents..."
             value={searchQuery}
@@ -73,7 +73,7 @@ export default function A2AAgentsPage() {
           onValueChange={(value) => setFilterState(value as FilterState)}
           value={filterState}
         >
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className="w-full sm:w-[160px] text-sm">
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
           <SelectContent>
@@ -85,7 +85,7 @@ export default function A2AAgentsPage() {
       </div>
 
       {filteredAgents.length === 0 ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-dashed">
+        <div className="flex min-h-[320px] items-center justify-center rounded-md border border-dashed bg-muted/40">
           <div className="text-center">
             <p className="font-semibold text-foreground">No agents found</p>
             <p className="text-muted-foreground text-sm">
@@ -96,7 +96,7 @@ export default function A2AAgentsPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredAgents.map((agent) => (
             <A2AAgentCard agent={agent} key={agent.id} />
           ))}
