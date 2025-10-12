@@ -85,6 +85,17 @@ const settingsFeatures = [
     ),
     className: "lg:col-span-1",
   },
+  {
+    Icon: () => null,
+    name: "Auth & Tokens",
+    description: "Mint MCP tokens and inspect Better Auth session details.",
+    href: "/settings/auth",
+    cta: "Open Console",
+    background: (
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-950/20 dark:to-slate-900/20" />
+    ),
+    className: "lg:col-span-1",
+  },
 ];
 
 export default function SettingsPage() {

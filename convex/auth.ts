@@ -1,11 +1,21 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth";
+import { v } from "convex/values";
+import {
+  calculateJwkThumbprint,
+  exportJWK,
+  importPKCS8,
+  importSPKI,
+  type JWK,
+  SignJWT,
+} from "jose";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { action, httpAction, query } from "./_generated/server";
 
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
+const ALG = "RS256";
 
 if (!process.env.SITE_URL) {
   console.warn(
@@ -13,8 +23,6 @@ if (!process.env.SITE_URL) {
   );
 }
 
-// The component client has methods needed for integrating Convex with Better Auth,
-// as well as helper methods for general use.
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 export const createAuth = (
@@ -22,21 +30,15 @@ export const createAuth = (
   { optionsOnly } = { optionsOnly: false }
 ) => {
   return betterAuth({
-    // disable logging when createAuth is called just to generate options.
-    // this is not required, but there's a lot of noise in logs without it.
-    logger: {
-      disabled: optionsOnly,
-    },
+    logger: { disabled: optionsOnly },
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
-    // Configure email/password authentication
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
       minPasswordLength: 6,
       maxPasswordLength: 128,
     },
-    // Social providers (optional - keeping your existing config)
     socialProviders: {
       github: {
         clientId: process.env.GITHUB_CLIENT_ID || "placeholder",
@@ -48,21 +50,112 @@ export const createAuth = (
       },
     },
     session: {
-      cookieCache: {
-        enabled: true,
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      },
+      cookieCache: { enabled: true, maxAge: 60 * 60 * 24 * 7 },
     },
     trustedOrigins: [process.env.SITE_URL || "http://localhost:3000"],
     plugins: [
-      // The Convex plugin is required for Convex compatibility
-      convex(),
+      convex(), // ← keep your existing plugin
     ],
   });
 };
 
-// Example function for getting the current user
 export const getCurrentUser = query({
   args: {},
+  returns: v.any(),
   handler: (ctx) => authComponent.getAuthUser(ctx),
+});
+
+// === MCP token + JWKS additions ==========================================
+
+type PrivateKey = Awaited<ReturnType<typeof importPKCS8>>;
+
+let privateKey: PrivateKey | null = null;
+let publicJwk: (JWK & { kid: string; use: string; alg: string }) | null = null;
+let kid: string | null = null;
+
+async function ensureKeys(): Promise<void> {
+  if (privateKey && publicJwk && kid) {
+    return;
+  }
+
+  const privPem = process.env.MCP_JWT_PRIVATE_KEY_PEM;
+  const pubPem = process.env.MCP_JWT_PUBLIC_KEY_PEM;
+  if (!privPem || !pubPem) {
+    throw new Error(
+      "Missing MCP_JWT_PRIVATE_KEY_PEM or MCP_JWT_PUBLIC_KEY_PEM"
+    );
+  }
+
+  privateKey = await importPKCS8(privPem, ALG);
+  const pubKey = await importSPKI(pubPem, ALG);
+  const jwk = await exportJWK(pubKey);
+  const jwkKid = await calculateJwkThumbprint(jwk);
+
+  publicJwk = {
+    ...jwk,
+    kid: jwkKid,
+    use: "sig",
+    alg: ALG,
+  } as JWK & { kid: string; use: string; alg: string };
+  kid = jwkKid;
+}
+
+/**
+ * Mint an MCP access token for the currently signed-in user.
+ * - scope: "mcp:tools"
+ * - iss: SITE_URL
+ * - aud: MCP_AUDIENCE (your Spring MCP server)
+ * - exp: 1h
+ */
+export const issueMcpToken = action({
+  args: {},
+  returns: v.object({
+    access_token: v.string(),
+    token_type: v.literal("Bearer"),
+    expires_in: v.number(),
+    scope: v.literal("mcp:tools"),
+  }),
+  handler: async (ctx) => {
+    await ensureKeys();
+
+    const signingKey = privateKey;
+    const signingKid = kid;
+    if (!signingKey || !signingKid) {
+      throw new Error("MCP signing key material is not initialized");
+    }
+
+    const user = await authComponent.getAuthUser(ctx);
+    const iss = siteUrl;
+    const aud = process.env.MCP_AUDIENCE ?? "http://127.0.0.1:8080";
+    const now = Math.floor(Date.now() / 1000);
+
+    const jwt = await new SignJWT({ scope: "mcp:tools" })
+      .setProtectedHeader({ alg: ALG, kid: signingKid })
+      .setIssuer(iss)
+      .setAudience(aud)
+      .setSubject(String(user._id))
+      .setIssuedAt(now)
+      .setExpirationTime(now + 3600)
+      .sign(signingKey);
+
+    return {
+      access_token: jwt,
+      token_type: "Bearer",
+      expires_in: 3600,
+      scope: "mcp:tools",
+    } as const;
+  },
+});
+
+/** JWKS for Spring (unauthenticated). */
+export const jwks = httpAction(async (_ctx, _req) => {
+  await ensureKeys();
+  if (!publicJwk) {
+    throw new Error("JWKS public key is not initialized");
+  }
+
+  return new Response(JSON.stringify({ keys: [publicJwk] }), {
+    headers: { "content-type": "application/json" },
+    status: 200,
+  });
 });
