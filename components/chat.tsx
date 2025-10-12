@@ -472,15 +472,23 @@ export function Chat({
   const [hasHeroExited, setHasHeroExited] = useState(
     initialMessages.length > 0
   );
+  const [shouldAnimateHeroExit, setShouldAnimateHeroExit] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (messages.length === 0) {
       setShowHeroLayout(true);
       setHasHeroExited(false);
+      setShouldAnimateHeroExit(false);
       return;
     }
 
     if (showHeroLayout) {
+      setShouldAnimateHeroExit(true);
       setShowHeroLayout(false);
     }
   }, [messages.length, showHeroLayout]);
@@ -488,6 +496,12 @@ export function Chat({
   const handleHeroExitComplete = useCallback(() => {
     setHasHeroExited(true);
   }, []);
+
+  const inputTransition = hasMounted
+    ? shouldAnimateHeroExit
+      ? { duration: 0.5, ease: [0.16, 1, 0.3, 1] }
+      : { duration: 0 }
+    : { duration: 0 };
 
   // Send message function
   const sendMessage = useCallback(
@@ -677,7 +691,7 @@ export function Chat({
                   animate={{ opacity: 1, y: 0 }}
                   className="pointer-events-none absolute inset-x-0 top-[-4rem] z-10 flex h-full items-center justify-center px-2 md:px-4"
                   exit={{ opacity: 0, y: 160 }}
-                  initial={{ opacity: 0, y: 120 }}
+                  initial={{ opacity: 1, y: 0 }}
                   key="chat-hero"
                   transition={{
                     y: { duration: 0.36, ease: [0.16, 1, 0.3, 1] },
@@ -688,7 +702,7 @@ export function Chat({
                     animate={{ opacity: 1, y: 0 }}
                     className="w-full max-w-4xl"
                     exit={{ opacity: 0, y: 80 }}
-                    initial={{ opacity: 0, y: 40 }}
+                    initial={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                   >
                     <h1 className="mb-8 text-center font-bold text-3xl text-foreground">
@@ -720,21 +734,21 @@ export function Chat({
               {!isReadonly && (
                 <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
                   <motion.div
-                    animate={
-                      showHeroLayout
-                        ? { opacity: 1, y: "-40vh" }
-                        : { opacity: 1, y: 0 }
-                    }
-                    className="w-full"
-                    initial={
-                      showHeroLayout
-                        ? { opacity: 0, y: "-46vh" }
-                        : { opacity: 0, y: 24 }
-                    }
-                    transition={{
-                      duration: 0.5,
-                      ease: [0.16, 1, 0.3, 1],
+                    animate={{
+                      opacity: 1,
+                      y: showHeroLayout ? "-40vh" : 0,
                     }}
+                    className="w-full"
+                    initial={{
+                      opacity: 1,
+                      y: showHeroLayout ? "-40vh" : 0,
+                    }}
+                    onAnimationComplete={() => {
+                      if (shouldAnimateHeroExit) {
+                        setShouldAnimateHeroExit(false);
+                      }
+                    }}
+                    transition={inputTransition}
                   >
                     <MultimodalInput
                       activeLoadoutId={activeLoadoutId}
