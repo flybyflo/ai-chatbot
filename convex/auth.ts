@@ -12,7 +12,7 @@ import {
 } from "jose";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { action, httpAction, query } from "./_generated/server";
+import { action, httpAction, internalAction, query } from "./_generated/server";
 
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
 const ALG = "RS256";
@@ -100,6 +100,36 @@ async function ensureKeys(): Promise<void> {
   kid = jwkKid;
 }
 
+async function mintMcpTokenForSubject(subject: string) {
+  await ensureKeys();
+
+  const signingKey = privateKey;
+  const signingKid = kid;
+  if (!signingKey || !signingKid) {
+    throw new Error("MCP signing key material is not initialized");
+  }
+
+  const iss = siteUrl;
+  const aud = process.env.MCP_AUDIENCE ?? "http://127.0.0.1:8080";
+  const now = Math.floor(Date.now() / 1000);
+
+  const jwt = await new SignJWT({ scope: "mcp:tools" })
+    .setProtectedHeader({ alg: ALG, kid: signingKid })
+    .setIssuer(iss)
+    .setAudience(aud)
+    .setSubject(subject)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(signingKey);
+
+  return {
+    access_token: jwt,
+    token_type: "Bearer" as const,
+    expires_in: 3600,
+    scope: "mcp:tools" as const,
+  };
+}
+
 /**
  * Mint an MCP access token for the currently signed-in user.
  * - scope: "mcp:tools"
@@ -116,34 +146,34 @@ export const issueMcpToken = action({
     scope: v.literal("mcp:tools"),
   }),
   handler: async (ctx) => {
-    await ensureKeys();
-
-    const signingKey = privateKey;
-    const signingKid = kid;
-    if (!signingKey || !signingKid) {
-      throw new Error("MCP signing key material is not initialized");
-    }
-
     const user = await authComponent.getAuthUser(ctx);
-    const iss = siteUrl;
-    const aud = process.env.MCP_AUDIENCE ?? "http://127.0.0.1:8080";
-    const now = Math.floor(Date.now() / 1000);
+    if (!user?._id) {
+      throw new Error("Unauthenticated");
+    }
+    const token = await mintMcpTokenForSubject(String(user._id));
+    if (token.scope !== "mcp:tools") {
+      throw new Error("Invalid MCP token scope");
+    }
+    return token;
+  },
+});
 
-    const jwt = await new SignJWT({ scope: "mcp:tools" })
-      .setProtectedHeader({ alg: ALG, kid: signingKid })
-      .setIssuer(iss)
-      .setAudience(aud)
-      .setSubject(String(user._id))
-      .setIssuedAt(now)
-      .setExpirationTime(now + 3600)
-      .sign(signingKey);
-
-    return {
-      access_token: jwt,
-      token_type: "Bearer",
-      expires_in: 3600,
-      scope: "mcp:tools",
-    } as const;
+export const issueMcpTokenForUser = internalAction({
+  args: {
+    userId: v.string(),
+  },
+  returns: v.object({
+    access_token: v.string(),
+    token_type: v.literal("Bearer"),
+    expires_in: v.number(),
+    scope: v.literal("mcp:tools"),
+  }),
+  handler: async (_ctx, args) => {
+    const token = await mintMcpTokenForSubject(args.userId);
+    if (token.scope !== "mcp:tools") {
+      throw new Error("Invalid MCP token scope");
+    }
+    return token;
   },
 });
 

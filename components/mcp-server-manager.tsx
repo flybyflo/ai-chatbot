@@ -14,6 +14,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
 
@@ -29,24 +31,36 @@ export function MCPServerManager() {
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [authMode, setAuthMode] = useState<"convex" | "manual">("convex");
+  const [manualAccessToken, setManualAccessToken] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleCreate = async () => {
-    if (!newName.trim() || !newUrl.trim()) {
+    const trimmedName = newName.trim();
+    const trimmedUrl = newUrl.trim();
+    const trimmedToken = manualAccessToken.trim();
+    if (!trimmedName || !trimmedUrl) {
+      return;
+    }
+    if (authMode === "manual" && !trimmedToken) {
       return;
     }
 
     setIsSaving(true);
     try {
       await createServer({
-        name: newName.trim(),
-        url: newUrl.trim(),
+        name: trimmedName,
+        url: trimmedUrl,
         description: newDescription.trim() || undefined,
+        authMode,
+        accessToken: authMode === "manual" ? trimmedToken : undefined,
       });
       setNewName("");
       setNewUrl("");
       setNewDescription("");
+      setAuthMode("convex");
+      setManualAccessToken("");
       setIsDialogOpen(false);
       toast.success("MCP server created successfully");
     } catch (error) {
@@ -63,6 +77,8 @@ export function MCPServerManager() {
     name?: string;
     url?: string;
     description?: string;
+    authMode?: "convex" | "manual";
+    accessToken?: string | null;
     isActive?: boolean;
   }) => {
     try {
@@ -195,9 +211,54 @@ export function MCPServerManager() {
                 rows={2}
                 value={newDescription}
               />
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Authentication</Label>
+                  <RadioGroup
+                    className="grid gap-2 sm:grid-cols-2"
+                    onValueChange={(value: "convex" | "manual") =>
+                      setAuthMode(value)
+                    }
+                    value={authMode}
+                  >
+                    <Label
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-muted/40 p-2 text-sm"
+                      htmlFor="auth-convex"
+                    >
+                      <RadioGroupItem id="auth-convex" value="convex" />
+                      <span className="font-medium">Built-in auth</span>
+                    </Label>
+                    <Label
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-muted/40 p-2 text-sm"
+                      htmlFor="auth-manual"
+                    >
+                      <RadioGroupItem id="auth-manual" value="manual" />
+                      <span className="font-medium">Access token</span>
+                    </Label>
+                  </RadioGroup>
+                  <p className="text-muted-foreground text-xs">
+                    {authMode === "manual"
+                      ? "We will send this token as a Bearer Authorization header."
+                      : "Tokens are minted on demand using your Better Auth session."}
+                  </p>
+                </div>
+                {authMode === "manual" && (
+                  <Textarea
+                    onChange={(e) => setManualAccessToken(e.target.value)}
+                    placeholder="Paste access token"
+                    rows={3}
+                    value={manualAccessToken}
+                  />
+                )}
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
-                  disabled={!newName.trim() || !newUrl.trim() || isSaving}
+                  disabled={
+                    !newName.trim() ||
+                    !newUrl.trim() ||
+                    isSaving ||
+                    (authMode === "manual" && !manualAccessToken.trim())
+                  }
                   onClick={handleCreate}
                 >
                   {isSaving ? (

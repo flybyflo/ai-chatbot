@@ -28,6 +28,8 @@ interface BentoServerCardProps extends ComponentPropsWithoutRef<"div"> {
     url?: string;
     cardUrl?: string;
     description?: string;
+    authMode?: "convex" | "manual";
+    accessToken?: string | null;
     isActive?: boolean;
   }) => void;
   onDelete: (id: string) => void; // kept for API parity (unused here)

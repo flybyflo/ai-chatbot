@@ -33,9 +33,14 @@ const localTools: LocalTools = {
   plantuml,
 };
 
+type GetAllToolsOptions = {
+  convexBearer?: string;
+};
+
 export async function getAllTools(
   a2aServers?: UserA2AServer[],
-  mcpServers?: UserMCPServer[]
+  mcpServers?: UserMCPServer[],
+  options?: GetAllToolsOptions
 ): Promise<CombinedToolsResult> {
   // Always include local tools
   const result: CombinedToolsResult = {
@@ -72,11 +77,63 @@ export async function getAllTools(
       const mcpManager = new MCPManager();
 
       // Convert user servers to MCP server configs
-      const serverConfigs: MCPServerConfig[] = mcpServers.map((server) => ({
-        name: server.name,
-        url: server.url,
-        headers: server.headers || {},
-      }));
+      const serverConfigs: MCPServerConfig[] = mcpServers.map((server) => {
+        const headers: Record<string, string> = {
+          ...(server.headers ?? {}),
+        };
+
+        const hasAuthHeader = Object.entries(headers).some(
+          ([key, value]) =>
+            key.toLowerCase() === "authorization" &&
+            typeof value === "string" &&
+            value.trim().length > 0
+        );
+
+        const authMode = (server.authMode ?? "convex") as "convex" | "manual";
+        const hasManualToken =
+          typeof server.accessToken === "string" &&
+          server.accessToken.trim().length > 0;
+
+        const removeAuthorizationVariants = () => {
+          for (const key of Object.keys(headers)) {
+            if (key.toLowerCase() === "authorization") {
+              delete headers[key];
+            }
+          }
+        };
+
+        if (authMode === "manual") {
+          if (hasManualToken && !hasAuthHeader) {
+            removeAuthorizationVariants();
+            headers.Authorization = `Bearer ${server.accessToken}`;
+          }
+        } else if (options?.convexBearer && !hasAuthHeader) {
+          removeAuthorizationVariants();
+          headers.Authorization = options.convexBearer;
+        }
+
+        console.log("[MCP][convex] Prepared server config", {
+          serverName: server.name,
+          serverUrl: server.url,
+          authMode,
+          headerKeys: Object.keys(headers),
+          hadAuthHeader: hasAuthHeader,
+          usingManualToken: authMode === "manual" && hasManualToken,
+          usingConvexToken:
+            authMode === "convex" &&
+            Boolean(options?.convexBearer) &&
+            !hasAuthHeader,
+          authorizationPreview: headers.Authorization
+            ? `${headers.Authorization.slice(0, 20)}...`
+            : undefined,
+        });
+
+        return {
+          name: server.name,
+          url: server.url,
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
+        } satisfies MCPServerConfig;
+      });
 
       await mcpManager.initializeServers(serverConfigs);
       const mcpTools = mcpManager.getTools();

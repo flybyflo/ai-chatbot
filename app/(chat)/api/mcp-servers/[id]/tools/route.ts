@@ -1,4 +1,4 @@
-import { fetchMutation, fetchQuery } from "convex/nextjs";
+import { fetchAction, fetchMutation, fetchQuery } from "convex/nextjs";
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -65,10 +65,29 @@ export async function GET(
     }
 
     const manager = new MCPManager();
+    const resolvedHeaders: Record<string, string> = {
+      ...(server.headers ?? {}),
+    };
+
+    if ((server.authMode ?? "convex") === "manual") {
+      if (server.accessToken && !resolvedHeaders.Authorization) {
+        resolvedHeaders.Authorization = `Bearer ${server.accessToken}`;
+      }
+    } else {
+      const tokenResponse = await fetchAction(
+        api.auth.issueMcpToken,
+        {},
+        { token }
+      );
+      resolvedHeaders.Authorization = `Bearer ${tokenResponse.access_token}`;
+    }
+
     const serverConfig = {
       name: server.name,
       url: server.url,
-      headers: server.headers ?? {},
+      headers: Object.keys(resolvedHeaders).length
+        ? resolvedHeaders
+        : undefined,
     };
 
     const prefix = `${server.name}_`;
@@ -264,10 +283,29 @@ export async function POST(
 
     try {
       // Create a client wrapper and connect
+      const resolvedHeaders: Record<string, string> = {
+        ...(server.headers ?? {}),
+      };
+
+      if ((server.authMode ?? "convex") === "manual") {
+        if (server.accessToken && !resolvedHeaders.Authorization) {
+          resolvedHeaders.Authorization = `Bearer ${server.accessToken}`;
+        }
+      } else {
+        const tokenResponse = await fetchAction(
+          api.auth.issueMcpToken,
+          {},
+          { token }
+        );
+        resolvedHeaders.Authorization = `Bearer ${tokenResponse.access_token}`;
+      }
+
       const client = new MCPClientWrapper({
         name: server.name,
         url: server.url,
-        headers: server.headers ?? {},
+        headers: Object.keys(resolvedHeaders).length
+          ? resolvedHeaders
+          : undefined,
       });
 
       const connected = await client.connect();

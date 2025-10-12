@@ -8,11 +8,15 @@ import { auth } from "@/lib/auth";
 import { getToken } from "@/lib/auth-server";
 import { ChatSDKError } from "@/lib/errors";
 
+const authModeSchema = z.enum(["convex", "manual"]);
+
 const createMCPServerSchema = z.object({
   name: z.string().min(1).max(255),
   url: z.string().url(),
   description: z.string().max(1000).optional(),
   headers: z.record(z.string()).optional(),
+  authMode: authModeSchema.default("convex"),
+  accessToken: z.string().optional(),
 });
 
 const updateMCPServerSchema = z.object({
@@ -21,6 +25,8 @@ const updateMCPServerSchema = z.object({
   url: z.string().url().optional(),
   description: z.string().max(1000).optional(),
   headers: z.record(z.string()).optional(),
+  authMode: authModeSchema.optional(),
+  accessToken: z.string().optional(),
   isActive: z.boolean().optional(),
   lastConnectionTest: z.date().optional(),
   lastConnectionStatus: z.string().max(50).optional(),
@@ -39,6 +45,8 @@ const serializeMCPServer = (server: any) => ({
   url: server.url,
   description: server.description ?? null,
   headers: server.headers ?? {},
+  authMode: server.authMode ?? "convex",
+  accessToken: server.accessToken ?? null,
   isActive: server.isActive,
   lastConnectionTest: server.lastConnectionTest
     ? new Date(server.lastConnectionTest).toISOString()
@@ -106,8 +114,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, url, description, headers } =
+    const { name, url, description, headers, authMode, accessToken } =
       createMCPServerSchema.parse(body);
+
+    const accessTokenValue = authMode === "convex" ? undefined : accessToken;
 
     const mcpServer = await fetchMutation(
       api.mutations.createUserMCPServer,
@@ -117,6 +127,8 @@ export async function POST(request: NextRequest) {
         url,
         description,
         headers,
+        authMode,
+        accessToken: accessTokenValue,
       },
       { token }
     );
@@ -157,11 +169,16 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const validatedData = updateMCPServerSchema.parse(body);
+    const accessTokenValue =
+      validatedData.authMode === "convex"
+        ? undefined
+        : validatedData.accessToken;
 
     const mcpServer = await fetchMutation(
       api.mutations.updateUserMCPServer,
       {
         ...validatedData,
+        accessToken: accessTokenValue,
         lastConnectionTest: validatedData.lastConnectionTest?.getTime(),
         id: validatedData.id as Id<"userMCPServers">,
         userId: session.user.id,

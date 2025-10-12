@@ -35,6 +35,8 @@ type MCPServerItemProps = {
     name?: string;
     url?: string;
     description?: string;
+    authMode?: "convex" | "manual";
+    accessToken?: string | null;
     isActive?: boolean;
   }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;

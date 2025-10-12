@@ -21,6 +21,8 @@ export type UserMCPServer = {
   toolCount?: number | null;
   createdAt: string;
   updatedAt: string;
+  authMode?: "convex" | "manual";
+  accessToken?: string | null;
 };
 
 const serializeServer = (server: any): UserMCPServer => ({
@@ -30,6 +32,8 @@ const serializeServer = (server: any): UserMCPServer => ({
   url: server.url,
   description: server.description ?? null,
   headers: server.headers ?? {},
+  authMode: server.authMode ?? "convex",
+  accessToken: server.accessToken ?? null,
   isActive: server.isActive,
   lastConnectionTest: server.lastConnectionTest
     ? new Date(server.lastConnectionTest).toISOString()
@@ -67,6 +71,8 @@ export function useMCPServers() {
     url: string;
     description?: string;
     headers?: Record<string, string>;
+    authMode?: "convex" | "manual";
+    accessToken?: string;
   }) => {
     if (!userId) {
       throw new Error("Not authenticated");
@@ -78,6 +84,8 @@ export function useMCPServers() {
       url: data.url,
       description: data.description,
       headers: data.headers,
+      authMode: data.authMode,
+      accessToken: data.accessToken,
     });
   };
 
@@ -87,6 +95,8 @@ export function useMCPServers() {
     url?: string;
     description?: string;
     headers?: Record<string, string>;
+    authMode?: "convex" | "manual";
+    accessToken?: string | null;
     isActive?: boolean;
     lastConnectionTest?: string | Date | null;
     lastConnectionStatus?: string;
@@ -104,6 +114,8 @@ export function useMCPServers() {
       url: data.url,
       description: data.description,
       headers: data.headers,
+      authMode: data.authMode,
+      accessToken: data.accessToken ?? undefined,
       isActive: data.isActive,
       lastConnectionTest: data.lastConnectionTest
         ? typeof data.lastConnectionTest === "string"

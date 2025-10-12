@@ -1,4 +1,4 @@
-import { fetchMutation, fetchQuery } from "convex/nextjs";
+import { fetchAction, fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { A2AManager } from "../a2a/manager";
@@ -182,11 +182,78 @@ export async function getAllTools(
         const mcpManager = new MCPManager();
 
         // Convert user servers to MCP server configs
-        const serverConfigs: MCPServerConfig[] = mcpServers.map((server) => ({
-          name: server.name,
-          url: server.url,
-          headers: server.headers || {},
-        }));
+        let convexBearer: string | null = null;
+        const ensureConvexBearer = async () => {
+          if (convexBearer) {
+            return convexBearer;
+          }
+          const issued = await fetchAction(
+            api.auth.issueMcpToken,
+            {},
+            { token }
+          );
+          convexBearer = `Bearer ${issued.access_token}`;
+          return convexBearer;
+        };
+
+        const serverConfigs: MCPServerConfig[] = await Promise.all(
+          mcpServers.map(async (server) => {
+            const headers: Record<string, string> = {
+              ...(server.headers ?? {}),
+            };
+
+            const hasAuthHeader = Object.entries(headers).some(
+              ([key, value]) =>
+                key.toLowerCase() === "authorization" &&
+                typeof value === "string" &&
+                value.trim().length > 0
+            );
+
+            const authMode = (server.authMode ?? "convex") as
+              | "convex"
+              | "manual";
+            const hasManualToken =
+              typeof server.accessToken === "string" &&
+              server.accessToken.trim().length > 0;
+
+            const removeAuthorizationVariants = () => {
+              for (const key of Object.keys(headers)) {
+                if (key.toLowerCase() === "authorization") {
+                  delete headers[key];
+                }
+              }
+            };
+
+            if (authMode === "manual") {
+              if (hasManualToken && !hasAuthHeader) {
+                removeAuthorizationVariants();
+                headers.Authorization = `Bearer ${server.accessToken}`;
+              }
+            } else if (!hasAuthHeader) {
+              removeAuthorizationVariants();
+              headers.Authorization = await ensureConvexBearer();
+            }
+
+            console.log("[MCP][api/tools] Prepared server config", {
+              serverName: server.name,
+              serverUrl: server.url,
+              authMode,
+              headerKeys: Object.keys(headers),
+              hadAuthHeader: hasAuthHeader,
+              usingManualToken: authMode === "manual" && hasManualToken,
+              usingConvexToken: authMode === "convex" && !hasAuthHeader,
+              authorizationPreview: headers.Authorization
+                ? `${headers.Authorization.slice(0, 20)}...`
+                : undefined,
+            });
+
+            return {
+              name: server.name,
+              url: server.url,
+              headers: Object.keys(headers).length > 0 ? headers : undefined,
+            } satisfies MCPServerConfig;
+          })
+        );
 
         await mcpManager.initializeServers(serverConfigs);
         const mcpTools = mcpManager.getTools();

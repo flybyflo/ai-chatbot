@@ -1,4 +1,4 @@
-import { fetchMutation } from "convex/nextjs";
+import { fetchAction, fetchMutation, fetchQuery } from "convex/nextjs";
 import { headers as getHeaders } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -22,6 +22,8 @@ const serializeMCPServer = (server: any) => ({
   url: server.url,
   description: server.description ?? null,
   headers: server.headers ?? {},
+  authMode: server.authMode ?? "convex",
+  accessToken: server.accessToken ?? null,
   isActive: server.isActive,
   lastConnectionTest: server.lastConnectionTest
     ? new Date(server.lastConnectionTest).toISOString()
@@ -55,6 +57,41 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { id, url, headers } = testMCPServerSchema.parse(body);
 
+    const userServers = await fetchQuery(
+      api.queries.getUserMCPServers,
+      { userId: session.user.id },
+      { token }
+    );
+
+    const serverRecord = userServers.find(
+      (s) => s._id === (id as Id<"userMCPServers">)
+    );
+
+    if (!serverRecord) {
+      return new ChatSDKError(
+        "not_found:api",
+        "MCP server not found"
+      ).toResponse();
+    }
+
+    const resolvedHeaders: Record<string, string> = {
+      ...(serverRecord.headers ?? {}),
+      ...(headers ?? {}),
+    };
+
+    if ((serverRecord.authMode ?? "convex") === "manual") {
+      if (serverRecord.accessToken && !resolvedHeaders.Authorization) {
+        resolvedHeaders.Authorization = `Bearer ${serverRecord.accessToken}`;
+      }
+    } else {
+      const tokenResponse = await fetchAction(
+        api.auth.issueMcpToken,
+        {},
+        { token }
+      );
+      resolvedHeaders.Authorization = `Bearer ${tokenResponse.access_token}`;
+    }
+
     const testStartTime = new Date();
     let connectionStatus = "failed";
     let lastError: string | undefined;
@@ -66,7 +103,9 @@ export async function POST(request: NextRequest) {
       const client = new MCPClientWrapper({
         name: "test",
         url,
-        headers,
+        headers: Object.keys(resolvedHeaders).length
+          ? resolvedHeaders
+          : undefined,
       });
 
       // Attempt to connect

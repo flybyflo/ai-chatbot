@@ -91,6 +91,8 @@ export default defineSchema({
     url: v.string(),
     description: v.optional(v.string()),
     headers: v.optional(v.any()), // Record<string, string>
+    authMode: v.optional(v.union(v.literal("convex"), v.literal("manual"))),
+    accessToken: v.optional(v.string()),
     isActive: v.boolean(),
     lastConnectionTest: v.optional(v.number()), // timestamp
     lastConnectionStatus: v.optional(v.string()),

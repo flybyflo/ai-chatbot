@@ -20,8 +20,25 @@ export class MCPClientWrapper extends EventEmitter {
   async connect(): Promise<boolean> {
     try {
       const transport = new StreamableHTTPClientTransport(
-        new URL(this.config.url)
+        new URL(this.config.url),
+        this.config.headers && Object.keys(this.config.headers).length > 0
+          ? { requestInit: { headers: this.config.headers } }
+          : undefined
       );
+
+      if (this.config.headers?.Authorization) {
+        console.log("[MCP][client] Connecting with authorization", {
+          serverName: this.config.name,
+          url: this.config.url,
+          authorizationPreview: `${String(this.config.headers.Authorization).slice(0, 20)}...`,
+        });
+      } else {
+        console.log("[MCP][client] Connecting without authorization header", {
+          serverName: this.config.name,
+          url: this.config.url,
+          headerKeys: Object.keys(this.config.headers ?? {}),
+        });
+      }
 
       this.client = await experimental_createMCPClient({
         transport,
@@ -32,6 +49,26 @@ export class MCPClientWrapper extends EventEmitter {
       return true;
     } catch (error) {
       this.isConnected = false;
+      if (typeof (error as any)?.response === "object") {
+        const response = (error as any).response as Response;
+        let bodyText: string | undefined;
+        try {
+          bodyText = await response.text();
+        } catch (bodyError) {
+          console.warn(
+            `[MCP][client] Failed to read error body for ${this.config.name}:`,
+            bodyError
+          );
+        }
+        console.warn(
+          `[MCP][client] HTTP error details for ${this.config.name}:`,
+          {
+            status: (response as any).status,
+            statusText: (response as any).statusText,
+            body: bodyText,
+          }
+        );
+      }
       this.lastError = error instanceof Error ? error.message : "Unknown error";
       console.warn(
         `Failed to connect to MCP server ${this.config.name}:`,

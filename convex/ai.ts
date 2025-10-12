@@ -200,11 +200,48 @@ export const generateAssistantMessage = internalAction({
       );
 
       // 3. Load all tools and filter by selected tools
+      let convexBearer: string | undefined;
+      if (mcpServersFromDb.length > 0) {
+        const needsConvexBearer = mcpServersFromDb.some((server) => {
+          const headers = (server.headers ?? {}) as Record<string, string>;
+          const hasAuthHeader = Object.entries(headers).some(
+            ([key, value]) =>
+              key.toLowerCase() === "authorization" &&
+              typeof value === "string" &&
+              value.trim().length > 0
+          );
+          if ((server.authMode ?? "convex") === "manual") {
+            return false;
+          }
+          return !hasAuthHeader;
+        });
+        if (needsConvexBearer) {
+          const issued = await ctx.runAction(
+            internal.auth.issueMcpTokenForUser,
+            { userId: args.userId }
+          );
+          convexBearer = `Bearer ${issued.access_token}`;
+          console.log(
+            "[MCP][convex] Issued bearer for Convex-managed servers",
+            {
+              userId: args.userId,
+              serverNames: mcpServersFromDb.map((server) => server.name),
+              tokenScope: issued.scope,
+              expiresIn: issued.expires_in,
+            }
+          );
+        }
+      }
+
       const {
         tools: allTools,
         a2aManager,
         a2aRegistry,
-      } = await getAllTools(a2aServersFromDb, mcpServersFromDb);
+      } = await getAllTools(
+        a2aServersFromDb,
+        mcpServersFromDb,
+        convexBearer ? { convexBearer } : undefined
+      );
 
       if (a2aRegistry) {
         await ctx.runMutation(api.mutations.upsertA2ARegistry, {

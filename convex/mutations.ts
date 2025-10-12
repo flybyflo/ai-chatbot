@@ -401,15 +401,20 @@ export const createUserMCPServer = mutation({
     url: v.string(),
     description: v.optional(v.string()),
     headers: v.optional(v.any()),
+    authMode: v.optional(v.union(v.literal("convex"), v.literal("manual"))),
+    accessToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    const authMode = args.authMode ?? "convex";
     const id = await ctx.db.insert("userMCPServers", {
       userId: args.userId,
       name: args.name,
       url: args.url,
       description: args.description,
       headers: args.headers,
+      authMode,
+      accessToken: authMode === "manual" ? args.accessToken : undefined,
       isActive: true,
       createdAt: now,
       updatedAt: now,
@@ -426,6 +431,8 @@ export const updateUserMCPServer = mutation({
     url: v.optional(v.string()),
     description: v.optional(v.string()),
     headers: v.optional(v.any()),
+    authMode: v.optional(v.union(v.literal("convex"), v.literal("manual"))),
+    accessToken: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
     lastConnectionTest: v.optional(v.number()),
     lastConnectionStatus: v.optional(v.string()),
@@ -450,6 +457,17 @@ export const updateUserMCPServer = mutation({
     }
     if (args.headers !== undefined) {
       updateData.headers = args.headers;
+    }
+    if (args.authMode !== undefined) {
+      updateData.authMode = args.authMode;
+      if (args.authMode === "convex") {
+        updateData.accessToken = undefined;
+      }
+    }
+    if (args.accessToken !== undefined) {
+      const effectiveAuthMode = args.authMode ?? server.authMode ?? "convex";
+      updateData.accessToken =
+        effectiveAuthMode === "convex" ? undefined : args.accessToken;
     }
     if (args.isActive !== undefined) {
       updateData.isActive = args.isActive;

@@ -14,7 +14,10 @@ import { toast } from "sonner";
 import { mutate } from "swr";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useMCPServers } from "@/hooks/use-mcp-servers";
 import { useAllTools } from "@/hooks/use-tools";
 import { TOOL_TYPES } from "@/lib/enums";
@@ -100,10 +103,21 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
     isLoading: serversLoading,
   } = useMCPServers();
   const [isMounted, setIsMounted] = useState(false);
+  const [authMode, setAuthMode] = useState<"convex" | "manual">("convex");
+  const [manualToken, setManualToken] = useState("");
+  const [savingAuth, setSavingAuth] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
   const server = mcpServers.find((s) => s.id === resolvedParams.id);
   const { mcpRegistry, isLoading: toolsLoading } = useAllTools();
+
+  useEffect(() => {
+    if (!server) {
+      return;
+    }
+    setAuthMode((server.authMode ?? "convex") as "convex" | "manual");
+    setManualToken(server.accessToken ?? "");
+  }, [server]);
 
   const loadingServer = !isMounted || serversLoading;
   const loadingTools = toolsLoading || loadingServer;
@@ -122,6 +136,14 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
         serverName: (meta as any).serverName as string | undefined,
       }));
   }, [mcpRegistry, server]);
+
+  const serverAuthMode = server?.authMode ?? "convex";
+  const serverAccessToken = server?.accessToken ?? "";
+  const trimmedManualToken = manualToken.trim();
+  const authHasChanges =
+    !!server &&
+    (authMode !== serverAuthMode ||
+      (authMode === "manual" && trimmedManualToken !== serverAccessToken));
 
   const getStatusIcon = () => {
     if (!server) {
@@ -248,6 +270,42 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
         });
         console.error("Failed to delete server:", error);
       }
+    }
+  };
+
+  const handleAuthSave = async () => {
+    if (!server) {
+      return;
+    }
+    if (authMode === "manual" && !trimmedManualToken) {
+      toast.error("Access token is required when using manual auth");
+      return;
+    }
+    if (!authHasChanges) {
+      toast.info("No authentication changes to save");
+      return;
+    }
+    try {
+      setSavingAuth(true);
+      await updateMCPServer({
+        id: server.id,
+        authMode,
+        accessToken: authMode === "manual" ? trimmedManualToken : undefined,
+      });
+      toast.success("Authentication settings updated");
+      if (authMode === "manual") {
+        setManualToken(trimmedManualToken);
+      } else {
+        setManualToken("");
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? (((error as any).cause as string | undefined) ?? error.message)
+          : "Unknown error";
+      toast.error(`Failed to update authentication: ${message}`);
+    } finally {
+      setSavingAuth(false);
     }
   };
 
@@ -401,6 +459,66 @@ function MCPServerSettingsPageContent({ params }: MCPServerSettingsPageProps) {
                 }
               />
             )}
+          </div>
+
+          <div className="rounded-xl border border-border/30 bg-popover/70 p-3 shadow-sm backdrop-blur">
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-sm">Authentication</div>
+              <Badge variant="outline">
+                {authMode === "manual" ? "Access token" : "Built-in"}
+              </Badge>
+            </div>
+            <div className="mt-3 space-y-3">
+              <RadioGroup
+                className="grid gap-2 sm:grid-cols-2"
+                onValueChange={(value: "convex" | "manual") =>
+                  setAuthMode(value)
+                }
+                value={authMode}
+              >
+                <Label
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-muted/40 p-2 text-sm"
+                  htmlFor="server-auth-convex"
+                >
+                  <RadioGroupItem id="server-auth-convex" value="convex" />
+                  <span className="font-medium">Built-in auth</span>
+                </Label>
+                <Label
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-muted/40 p-2 text-sm"
+                  htmlFor="server-auth-manual"
+                >
+                  <RadioGroupItem id="server-auth-manual" value="manual" />
+                  <span className="font-medium">Access token</span>
+                </Label>
+              </RadioGroup>
+              <p className="text-muted-foreground text-xs">
+                {authMode === "manual"
+                  ? "Your token is stored with your MCP server record and sent as a Bearer Authorization header."
+                  : "We'll mint short-lived MCP tokens using your Better Auth session when connecting."}
+              </p>
+              {authMode === "manual" && (
+                <Textarea
+                  onChange={(event) => setManualToken(event.target.value)}
+                  placeholder="Paste access token"
+                  rows={3}
+                  value={manualToken}
+                />
+              )}
+              <div className="flex justify-end gap-2">
+                <Button
+                  disabled={
+                    !server ||
+                    savingAuth ||
+                    (authMode === "manual" && !trimmedManualToken) ||
+                    !authHasChanges
+                  }
+                  onClick={handleAuthSave}
+                  size="sm"
+                >
+                  {savingAuth ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </div>
           </div>
         </section>
 
