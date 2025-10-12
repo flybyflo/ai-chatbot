@@ -72,26 +72,26 @@ export default function A2AEventsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-4">
+      <div className="space-y-1">
         <h1 className="font-bold text-2xl">A2A Event Log</h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Debug A2A protocol events and interactions.
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+          <Search className="-translate-y-1/2 absolute top-1/2 left-2 size-4 text-muted-foreground" />
           <Input
-            className="pl-9"
+            className="pl-8 text-sm"
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search events..."
             value={searchQuery}
           />
         </div>
         <Select onValueChange={setFilterAgent} value={filterAgent}>
-          <SelectTrigger className="w-full sm:w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px] text-sm">
             <SelectValue placeholder="Filter by agent" />
           </SelectTrigger>
           <SelectContent>
@@ -103,14 +103,14 @@ export default function A2AEventsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={handleExport} variant="outline">
+        <Button onClick={handleExport} size="sm" variant="outline">
           <Download className="size-4" />
           Export
         </Button>
       </div>
 
       {filteredEvents.length === 0 ? (
-        <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-dashed">
+        <div className="flex min-h-[320px] items-center justify-center rounded-md border border-dashed bg-muted/40">
           <div className="text-center">
             <p className="font-semibold text-foreground">No events found</p>
             <p className="text-muted-foreground text-sm">
@@ -121,8 +121,8 @@ export default function A2AEventsPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="rounded-md bg-muted/30 p-3 text-muted-foreground text-sm">
+        <div className="space-y-2.5">
+          <div className="rounded-md bg-muted/40 p-2.5 text-muted-foreground text-xs sm:text-sm">
             Showing {filteredEvents.length} event
             {filteredEvents.length !== 1 ? "s" : ""}
           </div>
@@ -140,23 +140,23 @@ export default function A2AEventsPage() {
 
             return (
               <div
-                className="rounded-lg border bg-card p-4"
+                className="rounded-md border bg-card/80 p-3 shadow-sm"
                 key={`${event.agentToolId}-${event.timestamp}-${index}`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
                     <A2AEventTypeIcon showLabel type={eventType} />
-                    <span className="font-medium text-orange-600 text-sm">
+                    <span className="font-medium text-orange-600 text-xs sm:text-sm">
                       {event.agentName}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] sm:text-xs">
                     <Clock className="size-3" />
                     {new Date(event.timestamp).toLocaleString()}
                   </div>
                 </div>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
                   <div>
                     <span className="font-medium text-foreground/70 text-xs">
                       Agent ID:
@@ -186,18 +186,18 @@ export default function A2AEventsPage() {
                 </div>
 
                 {event.responseText && (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <div className="mb-1 font-medium text-foreground/70 text-xs">
                       Response:
                     </div>
-                    <div className="rounded-md bg-muted/50 p-3 text-sm">
+                    <div className="rounded-md bg-muted/40 p-2.5 text-xs sm:text-sm">
                       {event.responseText}
                     </div>
                   </div>
                 )}
 
                 {event.tasks && event.tasks.length > 0 && (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <div className="mb-1 font-medium text-foreground/70 text-xs">
                       Tasks: {event.tasks.length}
                     </div>
@@ -205,7 +205,7 @@ export default function A2AEventsPage() {
                 )}
 
                 {event.statusUpdates && event.statusUpdates.length > 0 && (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <div className="mb-1 font-medium text-foreground/70 text-xs">
                       Status Updates: {event.statusUpdates.length}
                     </div>
@@ -213,14 +213,14 @@ export default function A2AEventsPage() {
                 )}
 
                 {event.artifacts && event.artifacts.length > 0 && (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <div className="mb-1 font-medium text-foreground/70 text-xs">
                       Artifacts: {event.artifacts.length}
                     </div>
                   </div>
                 )}
 
-                <div className="mt-3">
+                <div className="mt-2">
                   <A2AJsonViewer data={event} />
                 </div>
               </div>
