@@ -21,8 +21,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useLoadouts } from "@/hooks/use-loadouts";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
@@ -257,7 +257,7 @@ const Sidebar = React.forwardRef<
           {...props}
         >
           <div
-            className="flex h-full w-full flex-col bg-gradient-to-br from-tool-bg to-bg-background group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow"
+            className="flex h-full w-full flex-col bg-gradient-to-br from-tool-bg to-bg-backgroud group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow"
             data-sidebar="sidebar"
           >
             {children}
