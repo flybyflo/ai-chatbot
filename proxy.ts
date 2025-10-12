@@ -1,20 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
+const PUBLIC_API_PREFIXES = ["/api/auth"];
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hasSession = Boolean(getSessionCookie(request));
 
   // healthcheck for Playwright
   if (pathname.startsWith("/ping")) {
     return new Response("pong", { status: 200 });
   }
 
-  // Let ALL API routes pass; do real auth checks inside the handlers
   if (pathname.startsWith("/api")) {
+    const isPublicApi = PUBLIC_API_PREFIXES.some((prefix) =>
+      pathname.startsWith(prefix)
+    );
+
+    if (!hasSession && !isPublicApi) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     return NextResponse.next();
   }
-
-  const hasSession = Boolean(getSessionCookie(request));
 
   // Public auth pages
   if (pathname === "/login" || pathname === "/register") {
