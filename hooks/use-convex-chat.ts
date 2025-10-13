@@ -43,11 +43,6 @@ export function useConvexChat({ chatId }: { chatId: string }) {
             type: "reasoning",
             text: msg.combinedReasoning,
           });
-        } else if (msg.role === "assistant") {
-          streamingParts.push({
-            type: "reasoning",
-            text: "Reasoning...",
-          });
         }
 
         // Add text part if available

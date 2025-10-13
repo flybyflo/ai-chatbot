@@ -381,11 +381,6 @@ export function Chat({
               type: "reasoning",
               text: msg.combinedReasoning,
             });
-          } else if (msg.role === "assistant") {
-            streamingParts.push({
-              type: "reasoning",
-              text: "Reasoning...",
-            });
           }
 
           if (toolPartsForStream.length > 0) {
@@ -531,12 +526,7 @@ export function Chat({
       } = {
         id: placeholderId,
         role: "assistant",
-        parts: [
-          {
-            type: "reasoning",
-            text: "Reasoning...",
-          },
-        ],
+        parts: [],
         attachments: [],
         metadata: {
           createdAt: new Date().toISOString(),
